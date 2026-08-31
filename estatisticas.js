@@ -51,7 +51,7 @@ async function gerarEstatisticas() {
   _estSetLoading(true);
 
   // 1. Obtém período via helper global
-  const { utcInicio, utcFim } = window._obterPeriodoFinanceiro();
+  const { utcInicio, utcFim } = await window._obterPeriodoFinanceiro();
 
   // Atualiza os campos de data para exibição (se vazios)
   const elIni = document.getElementById('est-ini');
@@ -185,7 +185,7 @@ function _estRenderTabela(produtos) {
   if (!tbody) return;
 
   if (!produtos.length) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#aaa;padding:20px">Nenhum dado no período</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#aaa;padding:20px">Ningún dato en el período</td></tr>';
     return;
   }
 
@@ -277,7 +277,7 @@ async function _estPopularCategorias() {
   const { data } = await supa.from('categorias').select('slug, nome').order('nome');
   const sel = document.getElementById('est-filtro-cat');
   if (!sel || !data) return;
-  sel.innerHTML = '<option value="">Todas as categorias</option>' +
+  sel.innerHTML = '<option value="">Todas las categorías</option>' +
     data.map(c => `<option value="${c.slug}">${c.nome}</option>`).join('');
 }
 

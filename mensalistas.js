@@ -100,71 +100,55 @@ function _mensRenderKPIs() {
   const ativos  = _mens_planos.filter(p => p.ativo).length;
   const receita = _mens_planos.reduce((s, p) => s + (p.valor_plano || 0), 0);
 
-  // Itens restantes: soma de unidades + kg separados para exibição
-  const itensPorTipo = _mens_planos.reduce((acc, p) => {
-    const tipo = _mensGetTipo(p);
-    if (tipo === 'kg') acc.kg += (p.quantidade_restante || 0);
-    else acc.un += (p.quantidade_restante || 0);
-    return acc;
-  }, { un: 0, kg: 0 });
-
-  let itensTxt = '';
-  if (itensPorTipo.un > 0 && itensPorTipo.kg > 0)
-    itensTxt = `${itensPorTipo.un} un + ${_mensFmtKg(itensPorTipo.kg)}`;
-  else if (itensPorTipo.kg > 0)
-    itensTxt = `${_mensFmtKg(itensPorTipo.kg)}`;
-  else
-    itensTxt = String(itensPorTipo.un);
-
   const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
   set('mens-kpi-total',   total);
   set('mens-kpi-ativos',  ativos);
   set('mens-kpi-receita', `Gs ${Math.round(receita).toLocaleString('es-PY')}`);
-  set('mens-kpi-itens',   itensTxt);
+
+  // Oculta o card de itens restantes (se existir no HTML)
+  const elItens = document.getElementById('mens-kpi-itens');
+  if (elItens) {
+    elItens.style.display = 'none';
+    const card = elItens.closest('.kpi-card') || elItens.parentElement;
+    if (card) card.style.display = 'none';
+  }
 }
 
 function mensRenderPlanos() {
   const cont = document.getElementById('mens-lista-planos');
   if (!cont) return;
 
-  const filtro  = (document.getElementById('mens-filtro-status')?.value || 'todos');
-  const busca   = (document.getElementById('mens-busca')?.value || '').toLowerCase().trim();
+  const filtro = (document.getElementById('mens-filtro-status')?.value || 'todos');
+  const busca = (document.getElementById('mens-busca')?.value || '').toLowerCase().trim();
 
   let planos = _mens_planos.filter(p => {
-    if (filtro === 'ativo'   && !p.ativo) return false;
-    if (filtro === 'inativo' &&  p.ativo) return false;
+    if (filtro === 'ativo' && !p.ativo) return false;
+    if (filtro === 'inativo' && p.ativo) return false;
     if (busca) {
-      const nome     = (p.clientes?.nome || '').toLowerCase();
-      const tel      = (p.clientes?.telefone || '').toLowerCase();
-      const produto  = (p.produto_nome || '').toLowerCase();
+      const nome = (p.clientes?.nome || '').toLowerCase();
+      const tel = (p.clientes?.telefone || '').toLowerCase();
+      const produto = (p.produto_nome || '').toLowerCase();
       if (!nome.includes(busca) && !tel.includes(busca) && !produto.includes(busca)) return false;
     }
     return true;
   });
 
   if (!planos.length) {
-    cont.innerHTML = `
-      <div style="text-align:center;color:#aaa;padding:40px">
-        <div style="font-size:2rem;margin-bottom:8px">📋</div>
-        <div>${t('mens.nenhum_plano', 'Nenhum plano mensal registrado ainda.')}</div>
-      </div>`;
+    cont.innerHTML = `<div style="text-align:center;color:#aaa;padding:40px">Nenhum plano mensal registrado ainda.</div>`;
     return;
   }
 
   cont.innerHTML = planos.map(p => {
-    const tipo         = _mensGetTipo(p);
-    const qtdTotal     = p.quantidade_total || 0;
-    const qtdRest      = p.quantidade_restante || 0;
-    const pct          = qtdTotal > 0 ? Math.round((qtdRest / qtdTotal) * 100) : 0;
-    const barColor     = pct > 50 ? '#1a7a2e' : pct > 20 ? '#f39c12' : '#e74c3c';
-    const statusColor  = p.ativo ? '#1a7a2e' : '#9ca3af';
-    const dataFim      = p.data_fim
+    const valorPlano = Math.round(p.valor_plano || 0);
+    const valorRestante = Math.round(p.valor_restante || 0);
+    const pct = valorPlano > 0 ? Math.round((valorRestante / valorPlano) * 100) : 0;
+    const barColor = pct > 50 ? '#1a7a2e' : pct > 20 ? '#f39c12' : '#e74c3c';
+    const statusColor = p.ativo ? '#1a7a2e' : '#9ca3af';
+    const dataFim = p.data_fim
       ? new Date(p.data_fim + 'T12:00:00').toLocaleDateString('es-PY')
-      : t('geral.indeterminado', 'Indeterminado');
-    const vencendo     = p.data_fim && new Date(p.data_fim) < new Date(Date.now() + 7 * 86400000);
-    const fmtRest      = _mensFmtQtd(qtdRest, tipo);
-    const fmtTotal     = _mensFmtQtd(qtdTotal, tipo);
-    const esgotado     = qtdRest <= 0 && p.ativo;
+      : 'Indeterminado';
+    const vencendo = p.data_fim && new Date(p.data_fim) < new Date(Date.now() + 7 * 86400000);
+    const esgotado = valorRestante <= 0 && p.ativo;
 
     return `
       <div style="background:#fff;border:1.5px solid ${p.ativo ? '#d1fae5' : '#e5e7eb'};border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,0.05)">
@@ -172,75 +156,59 @@ function mensRenderPlanos() {
           <div style="flex:1;min-width:0">
             <div style="font-weight:700;font-size:1rem;margin-bottom:2px">${p.clientes?.nome || '—'}</div>
             <div style="color:#6b7280;font-size:0.82rem">${p.clientes?.telefone || ''}</div>
-            <div style="font-weight:600;font-size:0.9rem;margin-top:6px;color:#111">
-              ${tipo === 'kg' ? '⚖️' : '📦'} ${p.produto_nome}
-            </div>
+            <div style="font-weight:600;font-size:0.9rem;margin-top:6px;color:#111">${p.produto_nome}</div>
           </div>
           <div style="text-align:right;flex-shrink:0">
             <span style="background:${p.ativo ? '#dcfce7' : '#f3f4f6'};color:${statusColor};padding:3px 11px;border-radius:10px;font-size:0.73rem;font-weight:700">
-              ${p.ativo ? '● ' + t('geral.ativo', 'ATIVO') : '○ ' + t('geral.inativo', 'INATIVO')}
+              ${p.ativo ? '● ATIVO' : '○ INATIVO'}
             </span>
             <div style="font-size:0.75rem;color:${vencendo && p.ativo ? '#e74c3c' : '#9ca3af'};margin-top:5px">
-              ${vencendo && p.ativo ? '⚠️ ' : ''}${t('geral.vence', 'Vence:')} ${dataFim}
+              ${vencendo && p.ativo ? '⚠️ ' : ''}Vence: ${dataFim}
             </div>
             <div style="font-weight:700;color:#1a7a2e;font-size:0.95rem;margin-top:3px">
-              Gs ${Math.round(p.valor_plano || 0).toLocaleString('es-PY')}
+              Gs ${valorPlano.toLocaleString('es-PY')}
             </div>
           </div>
         </div>
 
         <div style="margin-top:12px">
           <div style="display:flex;justify-content:space-between;font-size:0.82rem;margin-bottom:5px">
-            <span style="color:#555">${t('mens.saldo_itens', 'Saldo:')} <b style="color:#111">${fmtRest}</b> de ${fmtTotal}</span>
+            <span style="color:#555">Saldo financeiro: <b style="color:#111">Gs ${valorRestante.toLocaleString('es-PY')}</b></span>
             <span style="color:${barColor};font-weight:700">${pct}%</span>
           </div>
           <div style="background:#f0f0f0;border-radius:6px;height:9px;overflow:hidden">
             <div style="height:100%;width:${pct}%;background:${barColor};border-radius:6px;transition:width 0.4s"></div>
           </div>
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;font-size:0.78rem;color:#6b7280">
-            <span>💰 Valor restante: <b style="color:#2980b9">Gs ${Math.round(
-              p.valor_restante != null
-                ? p.valor_restante
-                : (p.quantidade_total > 0 ? (p.valor_plano / p.quantidade_total) * qtdRest : 0)
-            ).toLocaleString('es-PY')}</b></span>
-            <span style="color:#bbb">de Gs ${Math.round(p.valor_plano || 0).toLocaleString('es-PY')}</span>
-          </div>
         </div>
 
         <div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap">
-          ${p.ativo && qtdRest > 0 ? `
+          ${p.ativo && valorRestante > 0 ? `
           <button onclick="mensAbrirEntrega(${p.id})"
             style="flex:2;padding:9px;background:#1a7a2e;color:#fff;border:none;border-radius:9px;cursor:pointer;font-size:0.83rem;font-weight:700;min-width:120px">
-            ${tipo === 'kg' ? '⚖️' : '📦'} ${t('mens.registrar_entrega', 'Registrar Entrega')}
+            📦 Registrar Desconto
           </button>` : ''}
           ${esgotado || !p.ativo || vencendo ? `
           <button onclick="mensAbrirModalRenovacao(${p.id})"
             style="flex:2;padding:9px;background:#2980b9;color:#fff;border:none;border-radius:9px;cursor:pointer;font-size:0.83rem;font-weight:700;min-width:120px">
-            🔄 ${t('mens.renovar_plano', 'Renovar Plano')}
+            🔄 Renovar Plano
           </button>` : ''}
           <button onclick="mensAbrirModalPlano(${p.id})"
             style="flex:1;padding:9px;background:#3498db;color:#fff;border:none;border-radius:9px;cursor:pointer;font-size:0.83rem;font-weight:600;min-width:70px"
-            title="${t('mens.editar_plano', 'Editar plano')}">
+            title="Editar plano">
             ✏️
           </button>
-          ${(!esgotado && p.ativo && !vencendo) ? `
-          <button onclick="mensAbrirModalRenovacao(${p.id})"
-            style="flex:0 0 40px;padding:9px;background:#dbeafe;color:#2980b9;border:none;border-radius:9px;cursor:pointer;font-size:0.9rem;font-weight:700"
-            title="${t('mens.renovar_plano', 'Renovar plano')}">
-            🔄
-          </button>` : ''}
           <button onclick="mensVerHistorico(${p.id})"
             style="flex:1;padding:9px;background:#9b59b6;color:#fff;border:none;border-radius:9px;cursor:pointer;font-size:0.83rem;font-weight:600;min-width:70px">
             📋
           </button>
           <button onclick="mensEnviarWhatsAppAviso(${p.id})"
             style="flex:0 0 40px;padding:9px;background:#dcfce7;color:#25d366;border:none;border-radius:9px;cursor:pointer;font-size:0.9rem;font-weight:700"
-            title="${t('mens.whatsapp_aviso', 'Avisar cliente pelo WhatsApp')}">
+            title="Avisar cliente pelo WhatsApp">
             💬
           </button>
           <button onclick="mensExcluirPlano(${p.id})"
             style="flex:0 0 40px;padding:9px;background:#fee2e2;color:#e74c3c;border:none;border-radius:9px;cursor:pointer;font-size:0.9rem;font-weight:700"
-            title="${t('mens.excluir_plano', 'Excluir plano')}">
+            title="Excluir plano">
             🗑️
           </button>
         </div>
@@ -252,61 +220,80 @@ function mensRenderPlanos() {
 // ──────────────────────────────────────────────────────────────
 //  MODAL NOVO / EDITAR PLANO
 // ──────────────────────────────────────────────────────────────
-function mensToggleTipoPlano() {
-  const tipo  = document.getElementById('mens-plano-tipo')?.value || 'un';
-  const label = document.getElementById('mens-plano-qtd-label');
-  const input = document.getElementById('mens-plano-qtd');
-  if (tipo === 'kg') {
-    if (label) label.textContent = 'Peso total contratado (kg) *';
-    if (input) { input.placeholder = 'Ex: 5.250'; input.step = '0.001'; input.min = '0.001'; }
-  } else {
-    if (label) label.textContent = 'Qtd Total de Itens *';
-    if (input) { input.placeholder = 'Ex: 22'; input.step = '1'; input.min = '1'; }
-  }
+// function mensToggleTipoPlano() {
+//   const tipo  = document.getElementById('mens-plano-tipo')?.value || 'un';
+//   const label = document.getElementById('mens-plano-qtd-label');
+//   const input = document.getElementById('mens-plano-qtd');
+//   if (tipo === 'kg') {
+//     if (label) label.textContent = 'Peso total contratado (kg) *';
+//     if (input) { input.placeholder = 'Ex: 5.250'; input.step = '0.001'; input.min = '0.001'; }
+//   } else {
+//     if (label) label.textContent = 'Qtd Total de Itens *';
+//     if (input) { input.placeholder = 'Ex: 22'; input.step = '1'; input.min = '1'; }
+//   }
+// }
+
+// ── Auto-cálculo peso ↔ valor (planos tipo "kg") ────────────────────
+// Usa produtos.preco como preço por kg — mesma convenção já usada no PDV
+// para itens vendidos por peso (ver cfg.preco_kg || p.preco em admin.js).
+// Assim, ao criar/editar um plano em kg, digitar o peso já calcula o valor
+// e digitar o valor já calcula o peso correspondente, sempre coerentes.
+function _mensPrecoKgProdutoAtual() {
+  const nome = (document.getElementById('mens-plano-produto')?.value || '').trim().toLowerCase();
+  if (!nome) return 0;
+  const prod = _mens_produtos.find(p => (p.nome || '').trim().toLowerCase() === nome);
+  return prod?.preco || 0;
+}
+
+function _mensPlanoQtdParaValor() {
+  if ((document.getElementById('mens-plano-tipo')?.value) !== 'kg') return;
+  const precoKg = _mensPrecoKgProdutoAtual();
+  if (!precoKg) return; // sem produto/preço de referência ainda — não força nada
+  const kg = parseFloat(document.getElementById('mens-plano-qtd')?.value);
+  if (isNaN(kg) || kg < 0) return;
+  const valorEl = document.getElementById('mens-plano-valor');
+  if (valorEl) valorEl.value = Math.round(precoKg * kg);
+}
+
+function _mensPlanoValorParaQtd() {
+  if ((document.getElementById('mens-plano-tipo')?.value) !== 'kg') return;
+  const precoKg = _mensPrecoKgProdutoAtual();
+  if (!precoKg) return;
+  const valor = parseFloat(document.getElementById('mens-plano-valor')?.value);
+  if (isNaN(valor) || valor < 0) return;
+  const qtdEl = document.getElementById('mens-plano-qtd');
+  if (qtdEl) qtdEl.value = (valor / precoKg).toFixed(3);
 }
 
 function mensAbrirModalPlano(id = null, renovacao = false) {
-  const p    = id ? _mens_planos.find(p => p.id === id) : null;
-  const tipo = p ? _mensGetTipo(p) : 'un';
+  const p = id ? _mens_planos.find(p => p.id === id) : null;
   const nota = p ? _mensGetNota(p) : '';
 
   const _mset = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
-  _mset('mens-plano-id',         p?.id || '');
-  _mset('mens-plano-cli-id',     p?.cliente_id || '');
-  _mset('mens-plano-renovacao',  renovacao ? '1' : '');
-  _mset('mens-plano-produto',    p?.produto_nome || '');
-  _mset('mens-plano-valor',      p?.valor_plano || '');
-  // NOVO: na renovação, o ciclo começa de novo — data de início hoje e data
-  // fim em branco (o usuário define o novo vencimento), em vez de manter as
-  // datas do ciclo anterior.
-  _mset('mens-plano-ini',        renovacao ? new Date().toISOString().split('T')[0] : (p?.data_inicio || new Date().toISOString().split('T')[0]));
-  _mset('mens-plano-fim',        renovacao ? '' : (p?.data_fim || ''));
-  _mset('mens-plano-nota',       nota);
+  _mset('mens-plano-id', p?.id || '');
+  _mset('mens-plano-cli-id', p?.cliente_id || '');
+  _mset('mens-plano-renovacao', renovacao ? '1' : '');
+  _mset('mens-plano-produto', p?.produto_nome || '');
+  _mset('mens-plano-valor', p?.valor_plano || '');
+  _mset('mens-plano-ini', renovacao ? new Date().toISOString().split('T')[0] : (p?.data_inicio || new Date().toISOString().split('T')[0]));
+  _mset('mens-plano-fim', renovacao ? '' : (p?.data_fim || ''));
+  _mset('mens-plano-nota', nota);
 
-  // Tipo
-  const selTipo = document.getElementById('mens-plano-tipo');
-  if (selTipo) selTipo.value = tipo;
+  // Remove os campos de quantidade e tipo (oculta)
+  const qtdRow = document.getElementById('mens-plano-qtd')?.closest('.form-group') || document.getElementById('mens-plano-qtd')?.parentElement;
+  if (qtdRow) qtdRow.style.display = 'none';
 
-  // Quantidade — exibir em unidade display (kg ou int)
-  const qtdInput = document.getElementById('mens-plano-qtd');
-  if (qtdInput) {
-    if (tipo === 'kg') {
-      qtdInput.value = p ? _mensIntToKg(p.quantidade_total) : '';
-    } else {
-      qtdInput.value = p?.quantidade_total || '';
-    }
-  }
-  mensToggleTipoPlano();
+  const tipoRow = document.getElementById('mens-plano-tipo')?.closest('.form-group') || document.getElementById('mens-plano-tipo')?.parentElement;
+  if (tipoRow) tipoRow.style.display = 'none';
 
-  const chkAtivo = document.getElementById('mens-plano-ativo');
-  // NOVO: renovar sempre reativa o plano (útil para renovar um plano
-  // esgotado/inativo/vencido sem precisar reativar manualmente antes)
-  if (chkAtivo) chkAtivo.checked = renovacao ? true : (p ? p.ativo : true);
+  // Ocultar também o label de quantidade (se houver)
+  const qtdLabel = document.getElementById('mens-plano-qtd-label')?.closest('.form-group');
+  if (qtdLabel) qtdLabel.style.display = 'none';
 
   // Popula select de clientes
   const selCli = document.getElementById('mens-plano-cli-sel');
   if (selCli) {
-    selCli.innerHTML = `<option value="">${t('mens.selecione_cliente', '— Selecione o cliente —')}</option>` +
+    selCli.innerHTML = `<option value="">— Selecione o cliente —</option>` +
       _mens_clientes.map(c =>
         `<option value="${c.id}" ${p?.cliente_id === c.id ? 'selected' : ''}>${c.nome}${c.telefone ? ' · ' + c.telefone : ''}</option>`
       ).join('');
@@ -318,7 +305,7 @@ function mensAbrirModalPlano(id = null, renovacao = false) {
   // Popula select de produtos
   const selProd = document.getElementById('mens-plano-prod-sel');
   if (selProd) {
-    selProd.innerHTML = `<option value="">${t('mens.selecione_cardapio', '— Selecione do cardápio —')}</option>` +
+    selProd.innerHTML = `<option value="">— Selecione do cardápio —</option>` +
       _mens_produtos.map(pr =>
         `<option value="${pr.nome}" ${p?.produto_nome === pr.nome ? 'selected' : ''}>${pr.nome}${pr.categoria_slug ? ' · ' + pr.categoria_slug : ''}</option>`
       ).join('');
@@ -327,47 +314,45 @@ function mensAbrirModalPlano(id = null, renovacao = false) {
     };
   }
 
-  // Título e botão do modal / info de renovação
-  const titulo   = document.getElementById('mens-plano-titulo');
+  // Título e botão
+  const titulo = document.getElementById('mens-plano-titulo');
   const btnSalvar = document.getElementById('mens-plano-btn-salvar');
   const infoRenov = document.getElementById('mens-renov-info');
 
   if (renovacao && p) {
-    const saldoFmt = _mensFmtQtd(p.quantidade_restante, tipo);
     const saldoValorFmt = Math.round(
       p.valor_restante != null ? p.valor_restante
         : (p.quantidade_total > 0 ? (p.valor_plano / p.quantidade_total) * p.quantidade_restante : 0)
     ).toLocaleString('es-PY');
-    if (titulo) titulo.innerHTML = `🔄 ${t('mens.renovar_plano', 'Renovar Plano')}`;
-    if (btnSalvar) btnSalvar.innerHTML = `🔄 ${t('mens.renovar_e_cobrar', 'Renovar e Cobrar')}`;
+    if (titulo) titulo.innerHTML = '🔄 Renovar Plano';
+    if (btnSalvar) btnSalvar.innerHTML = '🔄 Renovar e Cobrar';
     if (infoRenov) {
       infoRenov.style.display = 'block';
       infoRenov.innerHTML = `
         <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;font-size:0.82rem;color:#1e40af;margin-bottom:14px">
-          🔄 <b>${t('mens.renovando_plano', 'Renovando o plano de')} ${p.clientes?.nome || ''}.</b><br>
-          ${t('mens.renovacao_reinicia', 'Isso inicia um novo ciclo: o saldo abaixo é substituído pelos valores novos que você definir (não é somado).')}<br>
-          ${saldoFmt !== '0' ? `${t('mens.saldo_atual_antes', 'Saldo atual antes da renovação:')} <b>${saldoFmt}</b> (Gs ${saldoValorFmt}).` : ''}
+          🔄 <b>Renovando o plano de ${p.clientes?.nome || ''}.</b><br>
+          Isso inicia um novo ciclo: o saldo atual (<b>Gs ${saldoValorFmt}</b>) será substituído pelo novo valor que você definir.
         </div>`;
     }
   } else if (p) {
-    if (titulo) titulo.innerHTML = `✏️ ${t('mens.editar_plano', 'Editar Plano')}`;
-    if (btnSalvar) btnSalvar.innerHTML = t('mens.salvar_plano', 'Salvar Plano');
+    if (titulo) titulo.innerHTML = '✏️ Editar Plano';
+    if (btnSalvar) btnSalvar.innerHTML = 'Salvar Plano';
     if (infoRenov) {
-      const saldoFmt = _mensFmtQtd(p.quantidade_restante, tipo);
       infoRenov.style.display = 'block';
       infoRenov.innerHTML = `
         <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;font-size:0.82rem;color:#1e40af;margin-bottom:14px">
-          ${t('mens.renovacao_info', '<b>Ajuste manual:</b> Ao modificar a quantidade total, o saldo restante será ajustado proporcionalmente.<br>Saldo atual: <b>{qtd}</b>.<br>Para iniciar um novo ciclo do zero, use o botão 🔄 Renovar na lista de planos.').replace('{qtd}', saldoFmt)}
+          <b>Ajuste manual:</b> Ao modificar o valor do plano, o saldo restante será recalculado proporcionalmente.<br>
+          Saldo atual: <b>Gs ${Math.round(p.valor_restante || 0).toLocaleString('es-PY')}</b>
         </div>`;
     }
   } else {
-    if (titulo) titulo.innerHTML = `📋 ${t('mens.plano_mensalista', 'Plano Mensalista')}`;
-    if (btnSalvar) btnSalvar.innerHTML = t('mens.salvar_plano', 'Salvar Plano');
+    if (titulo) titulo.innerHTML = '📋 Plano Mensalista';
+    if (btnSalvar) btnSalvar.innerHTML = 'Salvar Plano';
     if (infoRenov) infoRenov.style.display = 'none';
   }
 
   const _mmp = document.getElementById('modal-mens-plano');
-  if (_mmp) { _mmp.style.cssText += ';position:fixed!important;top:0;left:0;width:100%;height:100%;z-index:9999;'; _mmp.style.display = 'flex'; }
+  if (_mmp) { _mmp.style.display = 'flex'; }
   setTimeout(() => document.getElementById('mens-plano-cli-sel')?.focus(), 100);
 }
 
@@ -378,108 +363,81 @@ function mensAbrirModalRenovacao(id) {
 }
 
 async function mensSalvarPlano() {
-  const id           = document.getElementById('mens-plano-id').value;
-  const cliente_id   = parseInt(document.getElementById('mens-plano-cli-id').value) || null;
+  const id = document.getElementById('mens-plano-id').value;
+  const cliente_id = parseInt(document.getElementById('mens-plano-cli-id').value) || null;
   const produto_nome = document.getElementById('mens-plano-produto').value.trim();
-  const tipo         = document.getElementById('mens-plano-tipo')?.value || 'un';
-  const qtdRaw       = document.getElementById('mens-plano-qtd').value;
-  const nota         = document.getElementById('mens-plano-nota')?.value.trim() || '';
-  const valor        = parseFloat(document.getElementById('mens-plano-valor').value) || 0;
-  const data_ini     = document.getElementById('mens-plano-ini').value || null;
-  const data_fim     = document.getElementById('mens-plano-fim').value || null;
-  const ativo        = document.getElementById('mens-plano-ativo')?.checked ?? true;
+  const nota = document.getElementById('mens-plano-nota')?.value.trim() || '';
+  const valor = parseFloat(document.getElementById('mens-plano-valor').value) || 0;
+  const data_ini = document.getElementById('mens-plano-ini').value || null;
+  const data_fim = document.getElementById('mens-plano-fim').value || null;
+  const ativo = document.getElementById('mens-plano-ativo')?.checked ?? true;
 
-  // Converter para inteiro de armazenamento
-  const qtd_total = tipo === 'kg'
-    ? _mensKgToInt(qtdRaw)
-    : (parseInt(qtdRaw) || 0);
-
-  if (!cliente_id)    { alert(t('mens.alerta_cliente', 'Selecione o cliente.')); return; }
-  if (!produto_nome)  { alert(t('mens.alerta_produto', 'Insira o produto/item do plano.')); return; }
-  // Quantidade é opcional — 0 significa plano apenas por valor/saldo
-  if (valor <= 0)     { alert(t('mens.alerta_valor', 'Insira o valor do plano.')); return; }
+  if (!cliente_id) { alert('Selecione o cliente.'); return; }
+  if (!produto_nome) { alert('Insira o produto/item do plano.'); return; }
+  if (valor <= 0) { alert('Insira o valor do plano.'); return; }
 
   const renovacao = document.getElementById('mens-plano-renovacao')?.value === '1';
   const planoAtual = id ? _mens_planos.find(p => p.id == id) : null;
 
-  // NOVO: dinheiro novo que está efetivamente entrando agora.
-  // - Renovação: sempre o valor CHEIO do novo ciclo (é um novo pagamento).
-  // - Plano novo: o valor cheio.
-  // - Edição normal de plano existente: só a diferença, se o valor subiu
-  //   (reforço/recarga de saldo). Se não mudou ou caiu, não há dinheiro
-  //   novo entrando, então não pedimos forma de pagamento nem lançamos
-  //   nada no caixa.
+  // Valor a cobrar (diferença ou total na renovação)
   const valorACobrar = renovacao
     ? valor
     : (planoAtual ? Math.max(0, valor - (planoAtual.valor_plano || 0)) : valor);
 
   let formaPag = null;
   if (valorACobrar > 0) {
-    // Antes, a criação/reforço de um plano de mensalista não gerava
-    // nenhum lançamento financeiro — o valor pago pelo cliente não
-    // aparecia em lugar nenhum do Financeiro. Agora, igual ao fluxo de
-    // quitação de Nota, exigimos caixa aberto e a forma de pagamento.
     if (!_sessaoCaixaAtiva) {
       alert('⚠️ Não há caixa aberto. Abra o caixa antes de registrar o pagamento do plano.');
       return;
     }
     formaPag = await _notasModalFormaPagamento();
-    if (!formaPag) return; // cancelou — não salva sem definir a forma de pagamento
+    if (!formaPag) return;
   }
 
+  // Payload: ignora quantidade_total e quantidade_restante (definimos 0)
   const payload = {
     cliente_id,
     produto_nome,
-    quantidade_total: qtd_total,
+    quantidade_total: 0,
+    quantidade_restante: 0,
     valor_plano: valor,
     data_inicio: data_ini,
     data_fim,
     ativo,
-    obs: _mensEncodeObs(tipo, nota),
+    obs: JSON.stringify({ t: 'un', n: nota }), // mantemos o tipo 'un' para compatibilidade
   };
 
   let error;
   if (id && renovacao) {
-    // CORRIGIDO: antes, renovar um plano exigia apagar e criar outro do
-    // zero (perdendo o histórico de entregas). Agora, renovar atualiza o
-    // MESMO plano (mantém histórico e vínculo com o cliente), mas reinicia
-    // o ciclo por completo: saldo passa a ser exatamente a nova quantidade
-    // e o novo valor definidos aqui — não é somado ao que sobrou do ciclo
-    // anterior.
-    payload.quantidade_restante = qtd_total;
-    payload.valor_restante      = valor;
+    // Renovação: reinicia o saldo financeiro
+    payload.valor_restante = valor;
     ({ error } = await supa.from('planos_mensalistas').update(payload).eq('id', id));
   } else if (id) {
-    if (planoAtual && qtd_total !== planoAtual.quantidade_total) {
-      const diferenca = qtd_total - planoAtual.quantidade_total;
-      payload.quantidade_restante = Math.max(0, planoAtual.quantidade_restante + diferenca);
-    }
-    // Atualizar valor_restante proporcionalmente se o valor do plano mudou
-    if (planoAtual && valor !== planoAtual.valor_plano && planoAtual.quantidade_total > 0) {
-      const percRestante = planoAtual.quantidade_restante / planoAtual.quantidade_total;
-      payload.valor_restante = Math.round(valor * percRestante);
-    } else if (planoAtual && valor !== planoAtual.valor_plano) {
-      payload.valor_restante = valor; // plano só por valor, reseta
+    // Edição: ajusta o valor_restante proporcionalmente
+    if (planoAtual && valor !== planoAtual.valor_plano) {
+      const pctRestante = (planoAtual.valor_restante || 0) / (planoAtual.valor_plano || 1);
+      payload.valor_restante = Math.round(valor * pctRestante);
+    } else if (planoAtual) {
+      payload.valor_restante = planoAtual.valor_restante;
     }
     ({ error } = await supa.from('planos_mensalistas').update(payload).eq('id', id));
   } else {
-    payload.quantidade_restante = qtd_total;
-    payload.valor_restante      = valor;  // saldo inicial = valor total do plano
+    payload.valor_restante = valor;
     ({ error } = await supa.from('planos_mensalistas').insert([payload]));
   }
 
-  if (error) { alert(t('mens.erro_salvar', 'Erro ao salvar: ') + error.message); return; }
+  if (error) { alert('Erro ao salvar: ' + error.message); return; }
 
-  // NOVO: registra a entrada no caixa/financeiro com a forma de pagamento escolhida
+  // Registra entrada no caixa
   if (valorACobrar > 0 && formaPag) {
-    const clienteNome   = _mens_clientes.find(c => c.id === cliente_id)?.nome || 'Cliente';
+    const clienteNome = _mens_clientes.find(c => c.id === cliente_id)?.nome || 'Cliente';
     const usuario_email = document.getElementById('user-email')?.innerText || 'admin';
     const descricao = renovacao
-      ? `Mensalista - Renovação de plano: ${produto_nome} (${clienteNome}) - Forma: ${formaPag}`
+      ? `Mensalista - Renovação: ${produto_nome} (${clienteNome}) - ${formaPag}`
       : planoAtual
-        ? `Mensalista - Reforço de saldo: ${produto_nome} (${clienteNome}) - Forma: ${formaPag}`
-        : `Mensalista - Novo plano: ${produto_nome} (${clienteNome}) - Forma: ${formaPag}`;
-    const sucesso = await registrarMovimentacaoCaixa({
+        ? `Mensalista - Reforço: ${produto_nome} (${clienteNome}) - ${formaPag}`
+        : `Mensalista - Novo plano: ${produto_nome} (${clienteNome}) - ${formaPag}`;
+    await registrarMovimentacaoCaixa({
       tipo: 'entrada',
       valor: valorACobrar,
       descricao,
@@ -487,9 +445,6 @@ async function mensSalvarPlano() {
       sessao_id: _sessaoCaixaAtiva.id,
       forma_pagamento: formaPag,
     });
-    if (!sucesso) {
-      alert('⚠️ Plano salvo, mas houve erro ao registrar no caixa. Verifique manualmente.');
-    }
   }
 
   fecharModal('modal-mens-plano');
@@ -503,69 +458,53 @@ function mensAbrirEntrega(planoId) {
   _mens_planoEntregaAtual = _mens_planos.find(p => p.id === planoId);
   if (!_mens_planoEntregaAtual) return;
 
-  const p    = _mens_planoEntregaAtual;
+  const p = _mens_planoEntregaAtual;
   const tipo = _mensGetTipo(p);
   const isKg = tipo === 'kg';
 
-  // Limpa itens extras ao abrir
+  // Limpa itens extras
   _mens_itensExtras = [];
 
-  document.getElementById('mens-ent-plano-id').value      = p.id;
-  document.getElementById('mens-ent-cliente').textContent  = p.clientes?.nome || '—';
-  document.getElementById('mens-ent-tel').textContent      = p.clientes?.telefone || '';
-  document.getElementById('mens-ent-produto').textContent  = p.produto_nome;
-  document.getElementById('mens-ent-obs').value  = '';
+  document.getElementById('mens-ent-plano-id').value = p.id;
+  document.getElementById('mens-ent-cliente').textContent = p.clientes?.nome || '—';
+  document.getElementById('mens-ent-tel').textContent = p.clientes?.telefone || '';
+  document.getElementById('mens-ent-produto').textContent = p.produto_nome;
+  document.getElementById('mens-ent-obs').value = '';
 
-  // Saldo
-  const fmtRest  = _mensFmtQtd(p.quantidade_restante, tipo);
-  const fmtTotal = _mensFmtQtd(p.quantidade_total, tipo);
-  document.getElementById('mens-ent-saldo').textContent = `${fmtRest} de ${fmtTotal} ${t('mens.disponiveis', 'disponíveis')}`;
+  // Saldo financeiro disponível
+  const saldoFinanceiro = Math.round(p.valor_restante || 0);
+  document.getElementById('mens-ent-saldo').textContent = `Gs ${saldoFinanceiro.toLocaleString('es-PY')}`;
 
-  // Input de quantidade
-  const qtdInput = document.getElementById('mens-ent-qtd');
+  // Campo de valor (único campo de entrada)
   const qtdLabel = document.getElementById('mens-ent-qtd-label');
-  if (isKg) {
-    qtdInput.step  = '0.001';
-    qtdInput.min   = '0.001';
-    qtdInput.value = '0.500';
-    qtdInput.max   = _mensIntToKg(p.quantidade_restante);
-    if (qtdLabel) qtdLabel.textContent = 'Peso entregue (kg) *';
-  } else {
-    qtdInput.step  = '1';
-    qtdInput.min   = '1';
-    qtdInput.value = '1';
-    qtdInput.max   = p.quantidade_restante;
-    if (qtdLabel) qtdLabel.textContent = t('mens.qtd_entregue', 'Quantidade entregue *');
+  const qtdInput = document.getElementById('mens-ent-qtd');
+  if (qtdLabel) qtdLabel.textContent = 'Valor a descontar (Gs) *';
+  if (qtdInput) {
+    qtdInput.type = 'number';
+    qtdInput.step = '1000';
+    qtdInput.min = '1000';
+    qtdInput.placeholder = 'Ex: 5000';
+    qtdInput.value = '';
+    qtdInput.max = '';
+    qtdInput.style.display = 'block';
   }
 
-  // Valor unitário — exibe e ativa campos bidirecionais kg↔valor
+  // Oculta o valor unitário (não será usado)
   const elValor = document.getElementById('mens-ent-valor-unit');
-  const valorUnit = (p.quantidade_total > 0 && p.valor_plano > 0)
-    ? (p.valor_plano / p.quantidade_total)
-    : 0;
-  if (elValor) {
-    if (isKg && valorUnit > 0) {
-      // valorUnit está em Gs por unidade interna (1/1000 kg), multiplica por 1000 para Gs/kg
-      elValor.textContent = `Gs ${Math.round(valorUnit * 1000).toLocaleString('es-PY')} /kg`;
-    } else if (!isKg && valorUnit > 0) {
-      elValor.textContent = `Gs ${Math.round(valorUnit).toLocaleString('es-PY')} /un`;
-    } else {
-      elValor.textContent = '';
-    }
-  }
+  if (elValor) elValor.textContent = '';
 
-  // Armazena valor unitário no input hidden para cálculos bidirecionais
-  const _vup = document.getElementById('mens-ent-valor-unit-preco');
-  if (_vup) _vup.value = valorUnit;
+  // Remove referência ao campo de valor unitário (esconder)
+  const valorInputContainer = document.getElementById('mens-ent-valor-input')?.closest('.row');
+  if (valorInputContainer) valorInputContainer.style.display = 'none';
 
-  // Seta o input de valor correspondente ao peso/qtd default
-  _mensAtualizarValorEntrega();
-
-  // Renderiza seção de itens extras
+  // Renderiza itens extras (se houver)
   _mensRenderItensExtras();
 
   const _mme = document.getElementById('modal-mens-entrega');
-  if (_mme) { _mme.style.cssText += ';position:fixed!important;top:0;left:0;width:100%;height:100%;z-index:9999;'; _mme.style.display = 'flex'; }
+  if (_mme) {
+    _mme.style.cssText += ';position:fixed!important;top:0;left:0;width:100%;height:100%;z-index:9999;';
+    _mme.style.display = 'flex';
+  }
   setTimeout(() => document.getElementById('mens-ent-qtd')?.focus(), 100);
 }
 
@@ -763,102 +702,95 @@ function _mensRemoverItemExtra(idx) {
 
 async function mensSalvarEntrega() {
   const planoId = parseInt(document.getElementById('mens-ent-plano-id').value);
-  const obs     = document.getElementById('mens-ent-obs').value.trim();
+  const obs = document.getElementById('mens-ent-obs').value.trim();
 
-  const p    = _mens_planos.find(p => p.id === planoId);
+  const p = _mens_planos.find(p => p.id === planoId);
   if (!p) return;
 
-  const tipo = _mensGetTipo(p);
-  const isKg = tipo === 'kg';
+  // Valor a descontar (em Gs) – lê do campo que agora é valor
+  const valorDesconto = parseFloat(document.getElementById('mens-ent-qtd').value) || 0;
 
-  // Quantidade do item principal
-  const qtdRaw = document.getElementById('mens-ent-qtd').value;
-  const qtd    = isKg ? _mensKgToInt(qtdRaw) : (parseInt(qtdRaw) || 1);
-
-  if (qtd <= 0) {
-    alert(t('mens.alerta_qtd_valida', 'Insira uma quantidade válida.'));
+  if (valorDesconto <= 0) {
+    alert('Informe um valor válido (mínimo Gs 1.000).');
     return;
   }
-  if (qtd > p.quantidade_restante) {
-    const max = isKg ? _mensIntToKg(p.quantidade_restante) + ' kg' : p.quantidade_restante + ' itens';
-    if (!confirm(`⚠️ Saldo insuficiente. Máximo disponível: ${max}\nDeseja continuar mesmo assim (ficará negativo)?`)) {
+
+  // Saldo financeiro atual
+  const saldoAtual = p.valor_restante || 0;
+
+  // Verifica se o saldo é suficiente (opcional, pode permitir negativo)
+  if (valorDesconto > saldoAtual) {
+    if (!confirm(`⚠️ Saldo insuficiente. Saldo atual: Gs ${Math.round(saldoAtual).toLocaleString('es-PY')}\nValor a descontar: Gs ${valorDesconto.toLocaleString('es-PY')}\n\nDeseja continuar (saldo ficará negativo)?`)) {
       return;
     }
   }
 
-  // Valor total dos itens extras
+  // Novo saldo financeiro
+  const novoSaldoFinanceiro = saldoAtual - valorDesconto;
+
+  // Valor total dos itens extras (se houver)
   const totalExtras = _mens_itensExtras.reduce((s, i) => s + i.preco * i.qtd, 0);
+  const valorFinalDescontado = valorDesconto + totalExtras;
 
-  // Valor proporcional por unidade do plano
-  const valorPorUnidade = (p.quantidade_total || 0) > 0
-    ? (p.valor_plano || 0) / p.quantidade_total
-    : 0;
+  // Se houver extras, desconta também do saldo
+  const novoSaldoFinal = saldoAtual - valorFinalDescontado;
 
-  // Saldo financeiro disponível após descontar o item principal
-  const novoRestante       = p.quantidade_restante - qtd;
-  const valorAposPlano     = Math.round(valorPorUnidade * novoRestante);
-  const novoValorRestante  = valorAposPlano - Math.round(totalExtras); // PERMITE NEGATIVO
-
-  // Aviso se saldo financeiro não cobrir os extras
-  if (totalExtras > 0 && Math.round(totalExtras) > valorAposPlano) {
-    const saldoFmt  = valorAposPlano.toLocaleString('es-PY');
-    const extrasFmt = Math.round(totalExtras).toLocaleString('es-PY');
-    if (!confirm(`⚠️ Saldo financeiro insuficiente para os itens extras.\n\nSaldo disponível após entrega: Gs ${saldoFmt}\nTotal dos extras: Gs ${extrasFmt}\n\nDeseja continuar mesmo assim?`)) {
-      return;
-    }
-  }
-
-  // Salvar entrega (com itens extras em JSON)
+  // Salvar entrega (sem quantidade, apenas valor)
   const { data: entrega, error: errEnt } = await supa
     .from('mensalista_entregas')
     .insert([{
-      plano_id:     planoId,
-      cliente_id:   p.cliente_id,
+      plano_id: planoId,
+      cliente_id: p.cliente_id,
       produto_nome: p.produto_nome,
-      quantidade:   qtd,
-      observacoes:  obs || null,
+      quantidade: 0, // não usamos mais quantidade
+      observacoes: obs || null,
       itens_extras: _mens_itensExtras.length > 0 ? _mens_itensExtras : null,
       valor_extras: totalExtras > 0 ? Math.round(totalExtras) : null,
+      // Armazena o valor descontado principal
+      valor_descontado: Math.round(valorDesconto),
     }])
     .select('id, created_at')
     .single();
 
-  if (errEnt) { alert(t('mens.erro_registrar', 'Erro ao registrar entrega: ') + errEnt.message); return; }
+  if (errEnt) {
+    alert('Erro ao registrar entrega: ' + errEnt.message);
+    return;
+  }
 
-  // Atualizar saldo no plano (PERMITE NEGATIVO)
+  // Atualiza o plano: apenas o valor_restante
   const { error: errUp } = await supa
     .from('planos_mensalistas')
-    .update({ quantidade_restante: novoRestante, valor_restante: novoValorRestante })
+    .update({ valor_restante: Math.round(novoSaldoFinal) })
     .eq('id', planoId);
 
-  if (errUp) { alert(t('mens.erro_saldo', 'Erro ao atualizar saldo: ') + errUp.message); return; }
+  if (errUp) {
+    alert('Erro ao atualizar saldo: ' + errUp.message);
+    return;
+  }
 
   fecharModal('modal-mens-entrega');
-  p.quantidade_restante = novoRestante;
-  p.valor_restante      = novoValorRestante;
+
+  // Atualiza estado local
+  p.valor_restante = Math.round(novoSaldoFinal);
+
   _mensRenderKPIs();
   mensRenderPlanos();
 
-  const novoRestFmt  = _mensFmtQtd(novoRestante, tipo);
-  const qtdFmt       = _mensFmtQtd(qtd, tipo);
-  const novoValorFmt = Math.round(novoValorRestante).toLocaleString('es-PY');
+  const valorFmt = Math.round(valorFinalDescontado).toLocaleString('es-PY');
+  const saldoFmt = Math.round(novoSaldoFinal).toLocaleString('es-PY');
   const linhasExtras = _mens_itensExtras.length > 0
     ? `\nItens extras: Gs ${Math.round(totalExtras).toLocaleString('es-PY')}`
     : '';
 
-  const imprimir = confirm(
-    t('mens.confirm_sucesso', '✅ Entrega registrada!\nEntregue: {qtd}\nSaldo restante: {novoRestante}\nValor restante: Gs {valorRestante}\n\nImprimir comprovante?')
-      .replace('{qtd}', qtdFmt)
-      .replace('{novoRestante}', novoRestFmt)
-      .replace('{valorRestante}', novoValorFmt) + linhasExtras
-  );
-
-  // Guarda extras antes de limpar o estado
-  const itensExtrasSalvos = [..._mens_itensExtras];
+  // Limpa extras
   _mens_itensExtras = [];
 
+  const imprimir = confirm(
+    `✅ Desconto registrado!\nValor descontado: Gs ${valorFmt}\nNovo saldo: Gs ${saldoFmt}${linhasExtras}\n\nImprimir comprovante?`
+  );
+
   if (imprimir) {
-    mensImprimirComprovante(p, qtd, obs, entrega?.id, entrega?.created_at, novoRestante, tipo, novoValorRestante, itensExtrasSalvos);
+    mensImprimirComprovante(p, 0, obs, entrega?.id, entrega?.created_at, novoSaldoFinal, 'un', novoSaldoFinal, []);
   }
 }
 
@@ -867,33 +799,24 @@ async function mensSalvarEntrega() {
 // ──────────────────────────────────────────────────────────────
 function mensImprimirComprovante(plano, qtd, obs, entregaId, dataEntrega, saldoApos, tipo, valorRestante, itensExtras) {
   tipo = tipo || _mensGetTipo(plano);
-  const cliente  = plano.clientes || {};
-  const dataFmt  = dataEntrega
-    ? new Date(dataEntrega).toLocaleString('es-PY', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })
-    : new Date().toLocaleString('es-PY', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
-  const dataFim  = plano.data_fim
+  const cliente = plano.clientes || {};
+  const dataFmt = dataEntrega
+    ? new Date(dataEntrega).toLocaleString('es-PY', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : new Date().toLocaleString('es-PY', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const dataFim = plano.data_fim
     ? new Date(plano.data_fim + 'T12:00:00').toLocaleDateString('es-PY')
-    : t('geral.indeterminado', 'Indeterminado');
-  const saldoAnt = ((saldoApos !== undefined ? saldoApos : plano.quantidade_restante) + qtd);
-  const qtdFmt   = _mensFmtQtd(qtd, tipo);
-  const restFmt  = _mensFmtQtd(saldoApos !== undefined ? saldoApos : plano.quantidade_restante, tipo);
-  const totFmt   = _mensFmtQtd(plano.quantidade_total, tipo);
-  const antFmt   = _mensFmtQtd(saldoAnt, tipo);
-  // Valor restante em dinheiro (pós-entrega)
-  const saldoRestanteInt = saldoApos !== undefined ? saldoApos : plano.quantidade_restante;
-  const valorRestanteGs = valorRestante != null
-    ? Math.round(valorRestante)
-    : (plano.quantidade_total > 0
-        ? Math.round((plano.valor_plano / plano.quantidade_total) * saldoRestanteInt)
-        : 0);
-  const valorRestanteFmt = valorRestanteGs.toLocaleString('es-PY');
+    : 'Indeterminado';
+
+  // Valor descontado (vem da entrega, mas usamos o valor passado ou calculamos)
+  const valorDescontado = Math.round(qtd); // qtd agora é o valor em Gs
+  const valorRestanteFmt = (valorRestante != null ? Math.round(valorRestante) : 0).toLocaleString('es-PY');
   const valorPlanoBefore = Math.round(plano.valor_plano || 0);
 
   const html = `<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>${t('mens.ticket_titulo', 'Comprovante Plano Mensal')}</title>
+  <title>Comprobante Plan Mensual</title>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
     body { font-family:Arial,sans-serif; font-size:13px; background:#d0d0d0; padding:16px; }
@@ -925,53 +848,46 @@ function mensImprimirComprovante(plano, qtd, obs, entregaId, dataEntrega, saldoA
 <div class="ticket">
   <div class="center" style="margin-bottom:6px">
     <div class="big">${_mens_nomeRestaurante || 'RESTAURANTE'}</div>
-    <div class="med">${t('mens.ticket_cabecalho', 'COMPROVANTE PLANO MENSAL')}</div>
+    <div class="med">COMPROBANTE PLAN MENSUAL</div>
     <div class="sm">${dataFmt}</div>
-    ${entregaId ? `<div class="sm">${t('mens.ticket_entrega', 'Entrega')} #${entregaId}</div>` : ''}
+    ${entregaId ? `<div class="sm">Entrega #${entregaId}</div>` : ''}
   </div>
   <hr>
-  <div class="row"><span>${t('geral.cliente', 'Cliente')}:</span><b>${cliente.nome || '—'}</b></div>
+  <div class="row"><span>Cliente:</span><b>${cliente.nome || '—'}</b></div>
   <div class="row"><span>Tel:</span><b>${cliente.telefone || '—'}</b></div>
   <hr>
-  <div class="row"><span>${t('mens.ticket_plano', 'Plano / Item')}:</span><b>${plano.produto_nome}</b></div>
-  <div class="row"><span>${t('mens.ticket_entregada', 'Qtd. entregue')}:</span><b>${qtdFmt}</b></div>
+  <div class="row"><span>Plan / Item:</span><b>${plano.produto_nome}</b></div>
+  <div class="row"><span>Valor descontado:</span><b>Gs ${valorDescontado.toLocaleString('es-PY')}</b></div>
   ${obs ? `<div class="row"><span>Obs:</span><span>${obs}</span></div>` : ''}
   ${(itensExtras && itensExtras.length > 0) ? `
   <hr>
-  <div style="font-size:11px;font-weight:700;color:#374151;margin:4px 0 2px;text-transform:uppercase;letter-spacing:.4px">Itens Adicionais</div>
+  <div style="font-size:11px;font-weight:700;color:#374151;margin:4px 0 2px;text-transform:uppercase;letter-spacing:.4px">Ítems Adicionales</div>
   ${itensExtras.map(i => `
   <div class="row"><span>${i.nome} x${i.qtd}</span><b>Gs ${Math.round(i.preco * i.qtd).toLocaleString('es-PY')}</b></div>`).join('')}
   <div class="row" style="border-top:1px solid #e5e7eb;margin-top:3px;padding-top:4px">
-    <span style="font-weight:700">Total extras:</span>
+    <span style="font-weight:700">Total adicional:</span>
     <b style="color:#1a7a2e">Gs ${Math.round(itensExtras.reduce((s,i)=>s+i.preco*i.qtd,0)).toLocaleString('es-PY')}</b>
   </div>` : ''}
-  <div class="row"><span>${t('mens.ticket_valor', 'Valor do plano')}:</span><b>Gs ${Math.round(plano.valor_plano || 0).toLocaleString('es-PY')}</b></div>
-  <div class="row"><span>${t('geral.vencimento', 'Vencimento')}:</span><b>${dataFim}</b></div>
+  <div class="row"><span>Valor del plan:</span><b>Gs ${valorPlanoBefore.toLocaleString('es-PY')}</b></div>
+  <div class="row"><span>Vencimiento:</span><b>${dataFim}</b></div>
   <hr>
   <div class="saldo-box">
-    <div class="lab">${t('mens.ticket_saldo_restante', 'SALDO RESTANTE APÓS ESTA ENTREGA')}</div>
-    <div class="num">${restFmt}</div>
-    <div class="lab">${t('mens.ticket_contratados', 'de {qtd} contratados').replace('{qtd}', totFmt)}</div>
+    <div class="lab">SALDO RESTANTE</div>
+    <div class="num">Gs ${valorRestanteFmt}</div>
   </div>
-  <div style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:8px;padding:8px 12px;margin:6px 0;text-align:center">
-    <div style="font-size:10px;color:#555;margin-bottom:2px">${t('mens.ticket_saldo_restante_val', 'VALOR RESTANTE')}</div>
-    <div style="font-size:20px;font-weight:900;color:#1d4ed8">Gs ${valorRestanteFmt}</div>
-    <div style="font-size:10px;color:#555">${t('mens.ticket_contratados', 'de {qtd} contratados').replace('{qtd}', 'Gs ' + valorPlanoBefore.toLocaleString('es-PY'))}</div>
-  </div>
-  <div class="center sm" style="margin-top:4px">${t('mens.ticket_saldo_anterior', 'Saldo anterior')}: ${antFmt}</div>
   <hr>
   <div class="assinatura">
     <div style="font-size:11px;color:#555;margin-bottom:16px">
-      ${t('mens.ticket_declaracao', 'Confirmo que recebi o(s) item(ns) acima conforme meu plano mensal.')}
+      Confirmo que recibí los productos según mi plan mensual.
     </div>
     <div class="linha"></div>
-    <div class="leg">${t('mens.ticket_assinatura', 'Assinatura do cliente')} — ${cliente.nome || '_________________'}</div>
-    <div class="leg" style="margin-top:8px">${t('geral.data', 'Data')}: ____/____/________</div>
+    <div class="leg">Firma del cliente — ${cliente.nome || '_________________'}</div>
+    <div class="leg" style="margin-top:8px">Fecha: ____/____/________</div>
   </div>
   <hr>
-  <div class="center sm">*** ${t('geral.obrigado', 'OBRIGADO')} ***</div>
+  <div class="center sm">*** GRACIAS ***</div>
 </div>
-<button class="btn-print" onclick="window.print()">${t('mens.ticket_imprimir', '🖨️ IMPRIMIR COMPROVANTE')}</button>
+<button class="btn-print" onclick="window.print()">🖨️ IMPRIMIR COMPROBANTE</button>
 <script>setTimeout(()=>window.print(), 600);</script>
 </body>
 </html>`;
@@ -981,7 +897,7 @@ function mensImprimirComprovante(plano, qtd, obs, entregaId, dataEntrega, saldoA
     win.document.write(html);
     win.document.close();
   } else {
-    alert(t('geral.popup_bloqueado', 'Popup bloqueado. Permita popups para este site para imprimir.'));
+    alert('Popup bloqueado. Permita popups para este site para imprimir.');
   }
 }
 
@@ -1240,62 +1156,75 @@ function mensEnviarWhatsAppAviso(planoId) {
   const p = _mens_planos.find(p => p.id === planoId);
   if (!p) return;
 
-  const tipo       = _mensGetTipo(p);
   const nomeCliente = p.clientes?.nome || '';
-  const telefone   = (p.clientes?.telefone || '').replace(/\D/g, '');
-  const saldoFmt   = _mensFmtQtd(p.quantidade_restante, tipo);
-  const totalFmt   = _mensFmtQtd(p.quantidade_total, tipo);
-  const dataFim    = p.data_fim
+  const telefone = (p.clientes?.telefone || '').replace(/\D/g, '');
+  const saldoFmt = Math.round(p.valor_restante || 0).toLocaleString('es-PY');
+  const dataFim = p.data_fim
     ? new Date(p.data_fim + 'T12:00:00').toLocaleDateString('es-PY')
     : null;
-  const vencimento = dataFim ? (window._lang === 'es'
-    ? `\nVencimiento del plan: ${dataFim}`
-    : `\nVencimento do plano: ${dataFim}`) : '';
+  const vencimento = dataFim ? `\nVencimento do plano: ${dataFim}` : '';
   const restaurante = _mens_nomeRestaurante || 'RESTAURANTE';
 
-  // Valor restante do plano
-  const valorRestGs = p.valor_restante != null
-    ? Math.round(p.valor_restante)
-    : (p.quantidade_total > 0 ? Math.round((p.valor_plano / p.quantidade_total) * p.quantidade_restante) : 0);
-  const valorRestFmt = valorRestGs.toLocaleString('es-PY');
+  // Mensagem base em português (será a preenchida no textarea)
+  const msgBasePt = `Olá, *${nomeCliente}*! 👋\n\nPassando para avisar que o seu plano mensal de *${p.produto_nome}* está chegando ao fim.\n\n💰 Saldo restante: *Gs ${saldoFmt}*${vencimento}\n\nRenove para continuar aproveitando sem interrupção! 😊\n\n_${restaurante}_`;
 
-  const msgs = {
-    pt: `Olá, *${nomeCliente}*! 👋\n\nPassando para avisar que o seu plano mensal de *${p.produto_nome}* está chegando ao fim.\n\n📦 Saldo restante: *${saldoFmt}* de ${totalFmt}\n💰 Valor restante: *Gs ${valorRestFmt}*${vencimento}\n\nRenove para continuar aproveitando sem interrupção! 😊\n\n_${restaurante}_`,
-    es: `Hola, *${nomeCliente}*! 👋\n\nTe avisamos que tu plan mensual de *${p.produto_nome}* está llegando a su fin.\n\n📦 Saldo restante: *${saldoFmt}* de ${totalFmt}\n💰 Valor restante: *Gs ${valorRestFmt}*${vencimento}\n\n¡Renovalo para seguir disfrutando sin interrupciones! 😊\n\n_${restaurante}_`,
-  };
+  // Mensagem base em espanhol
+  const msgBaseEs = `Hola, *${nomeCliente}*! 👋\n\nTe avisamos que tu plan mensual de *${p.produto_nome}* está llegando a su fin.\n\n💰 Saldo restante: *Gs ${saldoFmt}*${vencimento.replace('Vencimento', 'Vencimiento')}\n\n¡Renovalo para seguir disfrutando sin interrupciones! 😊\n\n_${restaurante}_`;
 
-  // Modal de seleção de idioma
+  // Modal com campo de edição de mensagem
   const overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:10000;display:flex;align-items:center;justify-content:center';
-
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;';
   overlay.innerHTML = `
-    <div style="background:#fff;border-radius:16px;padding:24px;max-width:340px;width:92%;box-shadow:0 8px 32px rgba(0,0,0,0.18)">
-      <div style="font-size:1.4rem;text-align:center;margin-bottom:4px">💬</div>
-      <div style="font-weight:700;font-size:1rem;text-align:center;margin-bottom:4px">WhatsApp — ${nomeCliente}</div>
-      <div style="font-size:0.82rem;color:#6b7280;text-align:center;margin-bottom:18px">
-        ${telefone ? '📱 ' + p.clientes.telefone : '⚠️ Telefone não cadastrado'}
+    <div style="background:#fff;border-radius:16px;padding:24px;max-width:480px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.18)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="font-weight:700;font-size:1rem;color:#1a1a2e">💬 Personalizar mensagem</div>
+        <button id="_wa_close" style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:#999">✕</button>
       </div>
-      <div style="font-size:0.8rem;font-weight:600;color:#374151;margin-bottom:8px">Escolha o idioma da mensagem:</div>
-      <div style="display:flex;gap:10px;margin-bottom:16px">
-        <button id="_wa_pt" style="flex:1;padding:11px;background:#25d366;color:#fff;border:none;border-radius:10px;cursor:pointer;font-weight:700;font-size:0.9rem">
-          🇧🇷 Português
-        </button>
-        <button id="_wa_es" style="flex:1;padding:11px;background:#25d366;color:#fff;border:none;border-radius:10px;cursor:pointer;font-weight:700;font-size:0.9rem">
-          🇵🇾 Español
-        </button>
+      <div style="font-size:0.82rem;color:#6b7280;margin-bottom:12px">
+        Cliente: <strong>${nomeCliente}</strong> ${telefone ? '· 📱 ' + p.clientes.telefone : ''}
       </div>
-      <button id="_wa_cancel" style="width:100%;padding:9px;background:#f3f4f6;color:#374151;border:none;border-radius:10px;cursor:pointer;font-size:0.85rem">
-        Cancelar
-      </button>
+      <div style="margin-bottom:10px">
+        <label style="font-size:0.78rem;font-weight:600;color:#555;display:block;margin-bottom:4px">Mensagem (edite à vontade)</label>
+        <textarea id="_wa_msg" rows="8" style="width:100%;padding:10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:0.88rem;font-family:inherit;resize:vertical;box-sizing:border-box;">${msgBasePt}</textarea>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <button id="_wa_pt" style="padding:6px 14px;background:#e8f4fd;color:#2980b9;border:1.5px solid #2980b9;border-radius:6px;cursor:pointer;font-weight:600;font-size:0.82rem">🇧🇷 Português</button>
+        <button id="_wa_es" style="padding:6px 14px;background:#f0fdf4;color:#16a34a;border:1.5px solid #16a34a;border-radius:6px;cursor:pointer;font-weight:600;font-size:0.82rem">🇵🇾 Español</button>
+        <span style="font-size:0.72rem;color:#888;align-self:center;margin-left:4px">(preenche com modelo)</span>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button id="_wa_cancel" style="flex:1;padding:10px;background:#f3f4f6;color:#374151;border:none;border-radius:10px;cursor:pointer;font-size:0.85rem;font-weight:600">Cancelar</button>
+        <button id="_wa_send" style="flex:2;padding:10px;background:#25D366;color:#fff;border:none;border-radius:10px;cursor:pointer;font-size:0.85rem;font-weight:700">📤 Enviar WhatsApp</button>
+      </div>
     </div>`;
 
   document.body.appendChild(overlay);
 
-  const abrir = (lang) => {
-    document.body.removeChild(overlay);
-    const msg = msgs[lang];
+  // Fechar
+  overlay.querySelector('#_wa_close').onclick = () => overlay.remove();
+  overlay.querySelector('#_wa_cancel').onclick = () => overlay.remove();
+  overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+
+  // Preencher com modelo em português
+  overlay.querySelector('#_wa_pt').onclick = () => {
+    document.getElementById('_wa_msg').value = msgBasePt;
+  };
+
+  // Preencher com modelo em espanhol
+  overlay.querySelector('#_wa_es').onclick = () => {
+    document.getElementById('_wa_msg').value = msgBaseEs;
+  };
+
+  // Enviar
+  overlay.querySelector('#_wa_send').onclick = () => {
+    const msg = document.getElementById('_wa_msg').value.trim();
+    if (!msg) {
+      alert('A mensagem não pode estar vazia.');
+      return;
+    }
     if (!telefone) {
       alert('⚠️ Este cliente não possui telefone cadastrado.');
+      overlay.remove();
       return;
     }
     // Formata número: se começar com 0, substitui pelo DDI 595 (Paraguai)
@@ -1304,12 +1233,8 @@ function mensEnviarWhatsAppAviso(planoId) {
     else if (!num.startsWith('595') && num.length <= 10) num = '595' + num;
     const url = `https://wa.me/${num}?text=${encodeURIComponent(msg)}`;
     window.open(url, '_blank');
+    overlay.remove();
   };
-
-  overlay.querySelector('#_wa_pt').onclick = () => abrir('pt');
-  overlay.querySelector('#_wa_es').onclick = () => abrir('es');
-  overlay.querySelector('#_wa_cancel').onclick = () => document.body.removeChild(overlay);
-  overlay.onclick = (e) => { if (e.target === overlay) document.body.removeChild(overlay); };
 }
 
 // ──────────────────────────────────────────────────────────────

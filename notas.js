@@ -166,7 +166,7 @@ function notasRenderLista() {
 
   if (!clientes.length) {
     cont.innerHTML = `<div style="text-align:center;color:#aaa;padding:40px;font-size:0.9rem">
-      ${_notas_filtro === 'pendente' ? '✅ Nenhuma conta aberta no momento!' : 'Nenhum resultado encontrado.'}
+      ${_notas_filtro === 'pendente' ? '✅ ¡Ninguna cuenta abierta por el momento!' : 'Ningún resultado encontrado.'}
     </div>`;
     return;
   }
@@ -179,12 +179,12 @@ function notasRenderLista() {
     const chaveSanitizada = c.chave.replace(/[^a-zA-Z0-9]/g, '');
     return `
     <div style="background:#fff;border-radius:14px;border:1.5px solid ${temAberto ? '#fca5a5' : '#bbf7d0'};margin-bottom:12px;overflow:hidden">
-      <!-- Cabeçalho do cliente -->
+      <!-- Encabezado del cliente -->
       <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px;cursor:pointer;background:${temAberto ? '#fff5f5' : '#f0fdf4'}"
            onclick="notasToggleCliente('${chaveSanitizada}')">
         <div>
           <div style="font-weight:800;font-size:0.95rem;color:#111">${c.nome}</div>
-          <div style="font-size:0.78rem;color:#6b7280;margin-top:2px">${c.telefone || 'Sem telefone'} · ${c.pedidos.length} pedido(s)</div>
+          <div style="font-size:0.78rem;color:#6b7280;margin-top:2px">${c.telefone || 'Sin teléfono'} · ${c.pedidos.length} pedido(s)</div>
         </div>
         <div style="text-align:right">
           ${temAberto
@@ -195,7 +195,7 @@ function notasRenderLista() {
         </div>
       </div>
 
-      <!-- Detalhe (pedidos) — oculto por padrão -->
+      <!-- Detalle (pedidos) — oculto por defecto -->
       <div id="notas-det-${chaveSanitizada}" style="display:none;padding:0 16px 14px">
         ${abertos.length > 0 ? `
         <div style="margin-top:12px">
@@ -223,7 +223,7 @@ function notasRenderLista() {
         ${quitados.length > 0 ? `
         <div style="margin-top:${abertos.length > 0 ? '14px' : '12px'}">
           <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;color:#16a34a;letter-spacing:.5px;margin-bottom:6px">
-            ✅ Já quitados
+            ✅ Ya saldados
           </div>
           ${quitados.map(p => _notasPedidoRow(p, true)).join('')}
         </div>` : ''}
@@ -315,11 +315,11 @@ async function notasQuitarPedido(pedidoId, event) {
 
   // 1. Verifica se há caixa aberto
   if (!_sessaoCaixaAtiva) {
-    alert('⚠️ Não há caixa aberto. Abra o caixa antes de quitar uma nota.');
+    alert('⚠️ No hay caja abierta. Abra la caja antes de saldar una cuenta.');
     return;
   }
 
-  const ok = confirm('Marcar este pedido como QUITADO?');
+  const ok = confirm('¿Marcar este pedido como PAGADO?');
   if (!ok) return;
 
   // 2. Escolhe a forma de pagamento
@@ -341,14 +341,14 @@ async function notasQuitarPedido(pedidoId, event) {
     .eq('id', pedidoId);
 
   if (error) {
-    alert('Erro ao quitar: ' + error.message);
+    alert('Error al saldar: ' + error.message);
     return;
   }
 
   // 4. Busca o pedido para obter o valor total
   const p = _notas_pedidos.find(x => x.id === pedidoId);
   if (!p) {
-    alert('Pedido não encontrado.');
+    alert('Pedido no encontrado.');
     return;
   }
 
@@ -357,14 +357,14 @@ async function notasQuitarPedido(pedidoId, event) {
   const sucesso = await registrarMovimentacaoCaixa({
     tipo: 'entrada',
     valor: p.total_geral || 0,
-    descricao: `Quitação de nota - Pedido #${pedidoId} - Forma: ${formaPag}`,
+    descricao: `Pago de cuenta - Pedido #${pedidoId} - Forma: ${formaPag}`,
     usuario_email,
     sessao_id: _sessaoCaixaAtiva.id,
     forma_pagamento: formaPag
   });
 
   if (!sucesso) {
-    alert('⚠️ Pedido quitado, mas houve erro ao registrar no caixa. Verifique manualmente.');
+    alert('⚠️ Pedido saldado, pero hubo un error al registrar en la caja. Verifique manualmente.');
   }
 
   // 6. Atualiza a lista local e UI (mantém objeto local coerente com o banco)
@@ -395,11 +395,11 @@ async function notasQuitarTodos(chaveSanitizada) {
 
   // 1. Verifica caixa aberto
   if (!_sessaoCaixaAtiva) {
-    alert('⚠️ Não há caixa aberto. Abra o caixa antes de quitar.');
+    alert('⚠️ No hay caja abierta. Abra la caja antes de saldar.');
     return;
   }
 
-  const ok = confirm(`Quitar TODOS os pedidos de ${c.nome}?\nTotal: Gs ${Math.round(c.total).toLocaleString('es-PY')}`);
+  const ok = confirm(`¿Saldar TODOS los pedidos de ${c.nome}?\nTotal: Gs ${Math.round(c.total).toLocaleString('es-PY')}`);
   if (!ok) return;
 
   // 2. Escolhe forma de pagamento
@@ -421,7 +421,7 @@ async function notasQuitarTodos(chaveSanitizada) {
     .in('id', ids);
 
   if (error) {
-    alert('Erro ao quitar: ' + error.message);
+    alert('Error al saldar: ' + error.message);
     return;
   }
 
@@ -430,14 +430,14 @@ async function notasQuitarTodos(chaveSanitizada) {
   const sucesso = await registrarMovimentacaoCaixa({
     tipo: 'entrada',
     valor: c.total,
-    descricao: `Quitação em lote - Cliente ${c.nome} (${ids.length} pedidos) - Forma: ${formaPag}`,
+    descricao: `Pago en lote - Cliente ${c.nome} (${ids.length} pedidos) - Forma: ${formaPag}`,
     usuario_email,
     sessao_id: _sessaoCaixaAtiva.id,
     forma_pagamento: formaPag
   });
 
   if (!sucesso) {
-    alert('⚠️ Pedidos quitados, mas houve erro ao registrar no caixa. Verifique manualmente.');
+    alert('⚠️ Pedidos saldados, pero hubo un error al registrar en la caja. Verifique manualmente.');
   }
 
   // 5. Atualiza UI (mantém objetos locais coerentes com o banco)
@@ -461,7 +461,7 @@ function notasAvisarCliente(chaveSanitizada) {
 
   const tel = (c.telefone || '').replace(/\D/g, '');
   if (!tel) {
-    alert('Este cliente não tem telefone registrado.');
+    alert('Este cliente no tiene teléfono registrado.');
     return;
   }
 
@@ -470,12 +470,12 @@ function notasAvisarCliente(chaveSanitizada) {
   const totalFmt = Math.round(c.total).toLocaleString('es-PY');
   const primeiroNome = (c.nome || 'Cliente').split(' ')[0];
 
-  const msg = `Oi, ${primeiroNome}! 👋\n\n`
-    + `Somos do *${nomeRestaurante}* e passamos para te lembrar, que você tem `
-    + `${abertos.length > 1 ? `${abertos.length} pedidos` : 'un pedido'} abertos na nota, `
-    + `com um total de *Gs ${totalFmt}*.\n\n`
-    + `Aguardamos a quitação e Agradecemos desde já! 🙏\n`
-    + `Qualquer dúvida, estamos à disposição.`;
+  const msg = `¡Hola, ${primeiroNome}! 👋\n\n`
+    + `Somos de *${nomeRestaurante}* y te escribimos para recordarte que tienes `
+    + `${abertos.length > 1 ? `${abertos.length} pedidos` : 'un pedido'} pendientes en tu cuenta, `
+    + `por un total de *Gs ${totalFmt}*.\n\n`
+    + `¡Esperamos tu pago y desde ya te agradecemos! 🙏\n`
+    + `Cualquier duda, estamos a tu disposición.`;
 
   const foneDestino = tel.startsWith('595') ? tel : `595${tel.replace(/^0/, '')}`;
   window.open(`https://wa.me/${foneDestino}?text=${encodeURIComponent(msg)}`, '_blank');
@@ -488,11 +488,11 @@ function notasAvisarTodosPendentes() {
     .filter(c => c.total > 0 && c.telefone);
 
   if (!pendentes.length) {
-    alert('Nenhum cliente com telefone e conta em aberto.');
+    alert('Ningún cliente con teléfono y cuenta abierta.');
     return;
   }
 
-  const ok = confirm(`Isso abrirá ${pendentes.length} conversa(s) no WhatsApp, uma por cliente. Continuar?`);
+  const ok = confirm(`Esto abrirá ${pendentes.length} conversación(es) en WhatsApp, una por cliente. ¿Continuar?`);
   if (!ok) return;
 
   pendentes.forEach((c, i) => {
@@ -528,7 +528,7 @@ function notasImprimirConta(chaveSanitizada) {
 
   const win = window.open('', '_blank', 'width=400,height=600');
   win.document.write(`<!DOCTYPE html><html><head>
-    <meta charset="UTF-8"><title>Conta — ${c.nome}</title>
+    <meta charset="UTF-8"><title>Cuenta — ${c.nome}</title>
     <style>
       * { margin:0;padding:0;box-sizing:border-box; }
       body { font-family:Arial,sans-serif;font-size:13px;padding:12px; }
@@ -537,7 +537,7 @@ function notasImprimirConta(chaveSanitizada) {
   </head><body>
     <div style="text-align:center;margin-bottom:8px">
       <b style="font-size:16px">${nomeRestaurante.toUpperCase()}</b><br>
-      <span style="font-size:12px">CONTA DO CLIENTE</span>
+      <span style="font-size:12px">CUENTA DEL CLIENTE</span>
     </div>
     <hr style="border-top:1px dashed #000;margin:6px 0">
     <div style="margin-bottom:8px">
@@ -550,7 +550,7 @@ function notasImprimirConta(chaveSanitizada) {
     <div style="text-align:right;font-size:16px;font-weight:900">
       TOTAL: Gs ${Math.round(c.total).toLocaleString('es-PY')}
     </div>
-    <div style="text-align:center;margin-top:10px;font-size:11px">*** OBRIGADO ***</div>
+    <div style="text-align:center;margin-top:10px;font-size:11px">*** GRACIAS ***</div>
     <br>
     <button onclick="window.print()" style="width:100%;padding:12px;background:#16a34a;color:#fff;border:none;font-size:14px;font-weight:700;border-radius:8px;cursor:pointer">
       🖨️ IMPRIMIR

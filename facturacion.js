@@ -46,20 +46,20 @@ function _factConfigPadrao() {
 //  INICIALIZAR — chamado ao abrir a aba "facturacion"
 // ──────────────────────────────────────────────────────────────
 async function initFacturacion() {
-  console.log('[Facturación] initFacturacion chamado');
+  console.log('[Facturación] initFacturacion llamado');
   try {
     await carregarConfigFacturacion();
     await carregarDocumentos();
     await _factCarregarProdutos();
     renderFacturacion();
-    console.log('[Facturación] Inicialização concluída');
+    console.log('[Facturación] Inicialización concluida');
   } catch (err) {
-    console.error('[Facturación] Erro na inicialização:', err);
-    alert('Erro ao carregar dados de facturación. Verifique o console.');
+    console.error('[Facturación] Error en la inicialización:', err);
+    alert('Error al cargar datos de facturación. Verifique la consola.');
   }
 }
 
-// Carrega o cardápio só para preencher o seletor de "IVA por Produto" —
+// Carga el menú solo para llenar el selector de "IVA por Producto" —
 // não depende de nenhum outro módulo (mensalistas, pdv, etc.).
 async function _factCarregarProdutos() {
   const { data, error } = await supa
@@ -67,7 +67,7 @@ async function _factCarregarProdutos() {
     .select('id, nome, categoria_slug')
     .order('nome');
   if (error) {
-    console.warn('[Facturación] Erro ao carregar produtos:', error);
+    console.warn('[Facturación] Error al cargar productos:', error);
     _fact_produtos = [];
     return;
   }
@@ -85,7 +85,7 @@ async function carregarConfigFacturacion() {
     .maybeSingle();
 
   if (error) {
-    console.warn('[Facturación] Erro ao carregar config:', error);
+    console.warn('[Facturación] Error al cargar configuración:', error);
     // Se a coluna não existir, cria um objeto vazio
     _fact_config = _factConfigPadrao();
     return;
@@ -98,7 +98,7 @@ async function carregarConfigFacturacion() {
   if (!_fact_config.iva_produtos || typeof _fact_config.iva_produtos !== 'object') {
     _fact_config.iva_produtos = {};
   }
-  console.log('[Facturación] Config carregada:', _fact_config);
+  console.log('[Facturación] Configuración cargada:', _fact_config);
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -113,7 +113,7 @@ async function carregarDocumentos() {
     .limit(100);
 
   if (error) {
-    console.warn('[Facturación] Erro ao carregar documentos:', error);
+    console.warn('[Facturación] Error al cargar documentos:', error);
     _fact_documentos = [];
     return;
   }
@@ -137,13 +137,13 @@ function renderFacturacion() {
   let elementosOK = true;
   campos.forEach(id => {
     if (!document.getElementById(id)) {
-      console.warn(`[Facturación] Elemento #${id} não encontrado no DOM`);
+      console.warn(`[Facturación] Elemento #${id} no encontrado en el DOM`);
       elementosOK = false;
     }
   });
 
   if (!elementosOK) {
-    console.error('[Facturación] DOM incompleto — verifique o HTML');
+    console.error('[Facturación] DOM incompleto — verifique el HTML');
     return;
   }
 
@@ -169,7 +169,7 @@ function renderFacturacion() {
   renderListaDocumentos();
   // Renderiza o seletor de produtos e a lista de IVA por produto
   renderFacturacionIva();
-  console.log('[Facturación] renderFacturacion concluído');
+  console.log('[Facturación] renderFacturacion concluido');
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -198,7 +198,7 @@ function renderFacturacionIva() {
   const selProd = document.getElementById('fact-iva-prod-sel');
   if (selProd) {
     const atual = selProd.value;
-    selProd.innerHTML = '<option value="">— Selecione um produto —</option>' +
+    selProd.innerHTML = '<option value="">— Seleccione un producto —</option>' +
       _fact_produtos.map(p => `<option value="${p.nome.replace(/"/g, '&quot;')}">${p.nome}${p.categoria_slug ? ' · ' + p.categoria_slug : ''}</option>`).join('');
     if (atual) selProd.value = atual;
   }
@@ -211,7 +211,7 @@ function renderFacturacionIva() {
 
   if (!nomes.length) {
     tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;color:#aaa;padding:14px;">
-      Nenhum produto com IVA específico. Tudo usa o padrão (${(_fact_config?.iva_default || '10') === 'exento' ? 'Exento' : (_fact_config.iva_default || '10') + '%'}).
+      Ningún producto con IVA específico. Todo usa el valor por defecto (${(_fact_config?.iva_default || '10') === 'exento' ? 'Exento' : (_fact_config.iva_default || '10') + '%'}).
     </td></tr>`;
     return;
   }
@@ -230,14 +230,14 @@ function renderFacturacionIva() {
 }
 
 // Adiciona/atualiza o override de IVA de um produto e salva imediatamente
-// (não depende do botão "Guardar Configuración" geral, para não perder a
+// (no depende del botón "Guardar Configuración" general, para no perder la
 // lista se o usuário esquecer de salvar).
 async function factAdicionarIvaProduto() {
   const nome = document.getElementById('fact-iva-prod-sel')?.value || '';
   const tipo = document.getElementById('fact-iva-prod-valor')?.value || '10';
 
   if (!nome) {
-    alert('Selecione um produto.');
+    alert('Seleccione un producto.');
     return;
   }
 
@@ -263,8 +263,8 @@ async function _factSalvarConfigCompleta() {
     .update({ facturacion_config: _fact_config })
     .gt('id', 0);
   if (error) {
-    alert('❌ Erro ao salvar IVA do produto: ' + error.message);
-    console.error('[Facturación] Erro ao salvar iva_produtos:', error);
+    alert('❌ Error al guardar IVA del producto: ' + error.message);
+    console.error('[Facturación] Error al guardar iva_produtos:', error);
   }
 }
 
@@ -274,13 +274,13 @@ async function _factSalvarConfigCompleta() {
 function renderListaDocumentos() {
   const tbody = document.getElementById('fact-documentos-tbody');
   if (!tbody) {
-    console.warn('[Facturación] #fact-documentos-tbody não encontrado');
+    console.warn('[Facturación] #fact-documentos-tbody no encontrado');
     return;
   }
 
   if (!_fact_documentos || _fact_documentos.length === 0) {
     tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#aaa;padding:20px;">
-      Nenhum documento eletrônico emitido ainda.
+      Ningún documento electrónico emitido todavía.
     </td></tr>`;
     return;
   }
@@ -334,14 +334,14 @@ async function salvarConfigFacturacion() {
     .gt('id', 0);
 
   if (error) {
-    alert('❌ Erro ao salvar: ' + error.message);
-    console.error('[Facturación] Erro no update:', error);
+    alert('❌ Error al guardar: ' + error.message);
+    console.error('[Facturación] Error en el update:', error);
     return;
   }
 
   _fact_config = config;
-  alert('✅ Configurações salvas com sucesso!');
-  console.log('[Facturación] Config salva:', config);
+  alert('✅ ¡Configuración guardada con éxito!');
+  console.log('[Facturación] Configuración guardada:', config);
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -350,7 +350,7 @@ async function salvarConfigFacturacion() {
 async function emitirFactura(pedidoId, dadosCliente = null) {
   console.log('[Facturación] emitirFactura para pedido', pedidoId);
   if (!_fact_config?.ruc) {
-    alert('⚠️ Configure os dados do contribuinte antes de emitir.');
+    alert('⚠️ Configure los datos del contribuyente antes de emitir.');
     return null;
   }
 
@@ -361,7 +361,7 @@ async function emitirFactura(pedidoId, dadosCliente = null) {
     .single();
 
   if (error || !pedido) {
-    alert('Pedido não encontrado.');
+    alert('Pedido no encontrado.');
     return null;
   }
 
@@ -372,7 +372,7 @@ async function emitirFactura(pedidoId, dadosCliente = null) {
     .maybeSingle();
 
   if (existente) {
-    alert('⚠️ Este pedido já possui uma factura emitida.');
+    alert('⚠️ Este pedido ya tiene una factura emitida.');
     return null;
   }
 
@@ -392,7 +392,7 @@ async function emitirFactura(pedidoId, dadosCliente = null) {
     const result = await response.json();
 
     if (!response.ok) {
-      throw new Error(result.mensaje || 'Erro ao emitir factura');
+      throw new Error(result.mensaje || 'Error al emitir factura');
     }
 
     const qrCodeData = result.qr_code || result.qr_code_url || null;
@@ -407,13 +407,13 @@ async function emitirFactura(pedidoId, dadosCliente = null) {
       respuesta_dnit: result.respuesta || result,
     });
 
-    alert(`✅ Factura emitida com sucesso!\nKUDE: ${result.kude || 'N/A'}`);
+    alert(`✅ ¡Factura emitida con éxito!\nKUDE: ${result.kude || 'N/A'}`);
     carregarDocumentos();
     renderListaDocumentos();
     return result;
   } catch (err) {
-    console.error('[Facturación] Erro ao emitir:', err);
-    alert('❌ Erro ao emitir factura: ' + err.message);
+    console.error('[Facturación] Error al emitir:', err);
+    alert('❌ Error al emitir factura: ' + err.message);
     return null;
   }
 }
@@ -436,12 +436,12 @@ function montarPayloadFactura(pedido, dadosCliente) {
   // produto (fact-iva-prod na aba Facturación), com o padrão geral (10%)
   // para qualquer produto ainda não classificado.
   //
-  // Preço no cardápio é considerado "IVA incluído" (prática padrão no
+  // El precio en el menú se considera "IVA incluido" (práctica estándar en
   // Paraguay) — a base gravada e o valor do IVA são calculados por dentro:
   //   base_gravada = total / (1 + aliquota/100)
   //   monto_iva    = total - base_gravada
   const itens = (pedido.itens || []).map(item => {
-    const nome = item.nome || item.n || 'Produto';
+    const nome = item.nome || item.n || 'Producto';
     const qtd = item.qtd || item.q || 1;
     const precoUnit = item.preco || item.p || 0;
     const total = precoUnit * qtd;
@@ -519,7 +519,7 @@ async function salvarFacturaNoBanco(pedidoId, resultado) {
   }]);
 
   if (error) {
-    console.warn('[Facturación] Erro ao salvar factura no banco:', error);
+    console.warn('[Facturación] Error al guardar factura en la base de datos:', error);
   }
 }
 
@@ -528,10 +528,10 @@ async function salvarFacturaNoBanco(pedidoId, resultado) {
 // ──────────────────────────────────────────────────────────────
 async function emitirFacturaDoPedido(pedidoId) {
   if (!pedidoId || isNaN(pedidoId)) {
-    alert('Digite um número de pedido válido.');
+    alert('Ingrese un número de pedido válido.');
     return;
   }
-  if (!confirm('Emitir factura electrónica para este pedido?')) return;
+  if (!confirm('¿Emitir factura electrónica para este pedido?')) return;
   await emitirFactura(pedidoId);
 }
 
@@ -546,9 +546,9 @@ async function consultarStatusFactura(kude) {
       },
     });
     const result = await response.json();
-    alert(`📄 Status da factura ${kude}:\n${JSON.stringify(result, null, 2)}`);
+    alert(`📄 Estado de la factura ${kude}:\n${JSON.stringify(result, null, 2)}`);
     return result;
   } catch (err) {
-    alert('Erro ao consultar: ' + err.message);
+    alert('Error al consultar: ' + err.message);
   }
 }

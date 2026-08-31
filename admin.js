@@ -201,7 +201,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   setTimeout(() => {
     const overlay = document.getElementById("auth-overlay");
     if (overlay) {
-      console.warn("⏰ Timeout de auth — removendo overlay forçado");
+      console.warn("⏰ Timeout de auth — quitando overlay forzado");
       overlay.remove();
       // Se perfilUsuario ainda não carregou, define padrão para não travar o painel
       if (!perfilUsuario) perfilUsuario = "dono";
@@ -698,7 +698,7 @@ function _feat(categoria, chave) {
 
 /**
  * Retorna true se o usuário logado pode cancelar pedidos diretamente
- * (sem solicitar aprovação). Lê de features_ativas.permissoes_cargo
+ * (sin solicitar aprobación). Lee de features_ativas.permissoes_cargo
  * se disponível, cai back para a lógica antiga (dono/adminMaster).
  */
 function _podeCancelarDireto() {
@@ -833,7 +833,7 @@ async function salvarFeatures() {
     .from("configuracoes")
     .update({ features_ativas: features })
     .gt("id", 0);
-  if (error) return alert("Erro: " + error.message);
+  if (error) return alert("Error: " + error.message);
   FEATURES_ATIVAS = features;
 
   // Re-aplica imediatamente (sem reload)
@@ -911,7 +911,7 @@ async function renderPainelFeatures() {
   const chkPags = [
     ["Efetivo",        "💵 Efectivo/Dinheiro"],
     ["Cartao",         "💳 Tarjeta PY"],
-    ["CartaoBR",       "💳🇧🇷 Cartão BR (R$)"],
+    ["CartaoBR",       "💳🇧🇷 Tarjeta BR (R$)"],
     ["Pix",            "🟢 Pix (BR)"],
     ["Transferencia",  "🏦 Alias/Transferência PY"],
     ["QrPy",           "📱 QR Paraguay"],
@@ -923,7 +923,7 @@ async function renderPainelFeatures() {
     ["delivery",       "🛵 Delivery"],
     ["retirada",       "🏃 Retirada"],
     ["local",          "🍽️ Comer no Local"],
-    ["balcao",         "🏪 Balcão/PDV"],
+    ["balcao",         "🏪 Mostrador/PDV"],
     ["cupons",         "🎟️ Cupons"],
     ["factura",        "🧾 Factura PY"],
     ["multipagamento", "🔀 Multipagamento"],
@@ -941,8 +941,8 @@ async function renderPainelFeatures() {
   const CARGOS_UI = [
     { key: "dono",        label: "🔑 Dono",        cor: "#f59e0b" },
     { key: "gerente",     label: "👔 Gerente",      cor: "#2980b9" },
-    { key: "funcionario", label: "👷 Funcionário",  cor: "#7f8c8d" },
-    { key: "garcom",      label: "🍽️ Garçom",      cor: "#27ae60" },
+    { key: "funcionario", label: "👷 Empleado",  cor: "#7f8c8d" },
+    { key: "garcom",      label: "🍽️ Mozo",      cor: "#27ae60" },
   ];
   const ABAS_UI = [
     ["pedidos","📋 Pedidos"],["cozinha","👨‍🍳 Cozinha"],["pdv","🖥️ PDV"],
@@ -987,7 +987,7 @@ async function renderPainelFeatures() {
             onchange="this.closest('label').style.background=this.checked?'#fdecea':'#f5f5f5';
                       this.closest('label').style.borderColor=this.checked?'#e74c3c':'#ddd'"
             style="width:14px;height:14px;accent-color:#e74c3c;flex-shrink:0">
-          ❌ Pode cancelar diretamente
+          ❌ Puede cancelar directamente
         </label>
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:5px">${abasChk}</div>
@@ -1002,17 +1002,17 @@ async function renderPainelFeatures() {
       ${_sec("⚙️ Funcionalidades", "Oculta recursos específicos da interface", chkFuncs)}
       <div style="border:2px solid #e74c3c55;border-radius:14px;padding:16px 18px;background:#fffafa">
         <h4 style="margin:0 0 4px;color:#c0392b;font-size:0.95rem;font-weight:800">
-          🔐 Permissões Granulares por Cargo
+          🔐 Permisos Granulares por Cargo
         </h4>
         <p style="font-size:0.78rem;color:#999;margin:0 0 14px">
-          Define quais abas cada cargo pode ver <strong>e</strong> se pode cancelar pedidos diretamente
-          (sem solicitar aprovação). Tem prioridade sobre a seção "Abas visíveis" acima.
+          Define qué pestañas puede ver cada cargo <strong>y</strong> si puede cancelar pedidos directamente
+          (sin solicitar aprobación). Tiene prioridad sobre la sección "Pestañas visibles" arriba.
         </p>
         <div style="display:grid;gap:12px">${permSection}</div>
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         <button class="btn btn-primary" onclick="salvarFeatures()" style="flex:1;min-width:160px">
-          <i class="fas fa-save"></i> Salvar Configurações
+          <i class="fas fa-save"></i> Guardar Configuración
         </button>
         <button class="btn" onclick="renderPainelFeatures()"
           style="background:#f0f4ff;color:#2c3e50;border:1.5px solid #c5cae9">
@@ -1097,7 +1097,7 @@ async function carregarPedidos(silencioso = false) {
   if (silencioso) {
     const selecionados = document.querySelectorAll(".check-pedido:checked");
     if (selecionados.length > 0) {
-      console.log("Atualização pausada: Usuário está montando rota.");
+      console.log("Actualización pausada: el usuario está montando ruta.");
       return;
     }
   }
@@ -1109,7 +1109,7 @@ async function carregarPedidos(silencioso = false) {
     .eq("status", "pendente");
 
   if (countError) {
-    console.warn("Erro ao contar pedidos pendentes:", countError.message);
+    console.warn("Error al contar pedidos pendientes:", countError.message);
   }
 
   if (count > 0) {
@@ -1231,13 +1231,13 @@ async function carregarPedidos(silencioso = false) {
         if (p.tipo_entrega === "delivery") {
           const jsonSeguro = encodeURIComponent(JSON.stringify(p));
           checkbox = `<input type="checkbox" class="check-pedido" value="${jsonSeguro}" style="width:20px; height:20px;">`;
-          acoes = `${btnPrint} ${btnCancelar} <button class="btn btn-sm" style="background:#25D366;color:#fff" onclick="avisarClientePronto(${p.id})" title="Avisar cliente via WhatsApp"><i class="fab fa-whatsapp"></i></button> <span style="color:#155724; font-weight:bold; font-size:0.9rem; margin-left:5px;"><i class="fas fa-motorcycle"></i> Aguardando Rota</span>`;
+          acoes = `${btnPrint} ${btnCancelar} <button class="btn btn-sm" style="background:#25D366;color:#fff" onclick="avisarClientePronto(${p.id})" title="Avisar al cliente por WhatsApp"><i class="fab fa-whatsapp"></i></button> <span style="color:#155724; font-weight:bold; font-size:0.9rem; margin-left:5px;"><i class="fas fa-motorcycle"></i> Aguardando Rota</span>`;
         } else {
           const icone =
             p.tipo_entrega === "balcao" ? "fa-store" : "fa-hand-holding";
           const tipo = p.tipo_entrega === "balcao" ? "BALCÃO" : "RETIRADA";
           checkbox = `<div style="text-align:center; color:#e67e22; font-size:1.2rem"><i class="fas ${icone}" title="${tipo}"></i></div>`;
-          acoes = `${btnPrint} ${btnCancelar} <button class="btn btn-sm" style="background:#25D366;color:#fff" onclick="avisarClientePronto(${p.id})" title="Avisar cliente via WhatsApp"><i class="fab fa-whatsapp"></i></button> <button class="btn btn-success btn-sm" onclick="finalizarMesa(${p.id})">Baixar</button>`;
+          acoes = `${btnPrint} ${btnCancelar} <button class="btn btn-sm" style="background:#25D366;color:#fff" onclick="avisarClientePronto(${p.id})" title="Avisar al cliente por WhatsApp"><i class="fab fa-whatsapp"></i></button> <button class="btn btn-success btn-sm" onclick="finalizarMesa(${p.id})">Baixar</button>`;
         }
       }
 
@@ -1245,7 +1245,7 @@ async function carregarPedidos(silencioso = false) {
       tbody.innerHTML += `
                 <tr style="${linhaCor}">
                     <td style="text-align:center; vertical-align: middle;">${checkbox}</td>
-                    <td><strong>${p.id}</strong></td>
+                    <td><strong>${p.uid_temporal || p.id}</strong></td>
                     <td>
                         <div style="font-weight:bold">${p.cliente_nome || "Cliente"}</div>
                         <div style="font-size:0.8rem; color:#666">${p.endereco_entrega || ""}</div>
@@ -1348,8 +1348,8 @@ async function carregarPedidos(silencioso = false) {
                     <div style="background:${cardBg}; border-radius:10px; padding:14px 16px; box-shadow:0 2px 8px rgba(0,0,0,0.07); border-left:4px solid ${p.status === "pendente" ? "#f59e0b" : p.status === "pronto_entrega" ? "#22c55e" : p.status === "saiu_entrega" ? "#3498db" : "#94a3b8"};">
                         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
                             <div>
-                                <div style="font-weight:700;font-size:1rem">${p.id} — ${p.cliente_nome || "Cliente"}</div>
-                                <div style="font-size:0.78rem;color:#666;margin-top:2px">${p.endereco_entrega || (p.tipo_entrega === "balcao" ? "🏪 Balcão" : "")}</div>
+                                <div style="font-weight:700;font-size:1rem">${p.uid_temporal || p.id} — ${p.cliente_nome || "Cliente"}</div>
+                                <div style="font-size:0.78rem;color:#666;margin-top:2px">${p.endereco_entrega || (p.tipo_entrega === "balcao" ? "🏪 Mostrador" : "")}</div>
                             </div>
                             <span class="status-badge st-${p.status}" style="font-size:0.7rem">${statusLabel}</span>
                         </div>
@@ -1366,10 +1366,10 @@ async function carregarPedidos(silencioso = false) {
     });
   } else {
     tbody.innerHTML =
-      '<tr><td colspan="6" style="text-align:center; padding:20px; color:#999;">Nenhum pedido ativo.</td></tr>';
+      '<tr><td colspan="6" style="text-align:center; padding:20px; color:#999;">Ningún pedido activo.</td></tr>';
     if (cardsDiv)
       cardsDiv.innerHTML =
-        '<div style="text-align:center;padding:30px;color:#aaa;font-size:0.95rem">Nenhum pedido ativo no momento.</div>';
+        '<div style="text-align:center;padding:30px;color:#aaa;font-size:0.95rem">Ningún pedido activo por el momento.</div>';
   }
 }
 
@@ -1392,7 +1392,7 @@ async function solicitarCancelamento(pedidoId) {
     .eq("id", pedidoId);
 
   if (error) {
-    alert("❌ Erro: " + error.message);
+    alert("❌ Error: " + error.message);
     return;
   }
 
@@ -1415,7 +1415,7 @@ async function solicitarCancelamento(pedidoId) {
 async function aprovarCancelamento(pedidoId) {
   if (
     !confirm(
-      "⚠️ Confirma o CANCELAMENTO deste pedido?\nEsta ação não pode ser desfeita.",
+      "⚠️ ¿Confirma la CANCELACIÓN de este pedido?\nEsta acción no se puede deshacer.",
     )
   )
     return;
@@ -1433,7 +1433,7 @@ async function aprovarCancelamento(pedidoId) {
     .eq("id", pedidoId);
 
   if (error) {
-    alert("❌ Erro: " + error.message);
+    alert("❌ Error: " + error.message);
     return;
   }
 
@@ -1500,8 +1500,8 @@ async function mudarStatus(id, novoStatus) {
 
   const { error } = await supa.from("pedidos").update(updateData).eq("id", id);
   if (error) {
-    console.error("Erro ao atualizar:", error);
-    alert("Erro ao mudar status");
+    console.error("Error al actualizar:", error);
+    alert("Error al cambiar estado");
     return;
   }
 
@@ -1555,7 +1555,7 @@ async function imprimirPedido(id) {
   if (!p) return;
 
   const dados = {
-    id: p.id,
+    id: p.uid_temporal || p.id,
     cliente: { nome: p.cliente_nome, tel: p.cliente_telefone },
     entrega: { tipo: p.tipo_entrega, ref: p.endereco_entrega },
     // Imprime apenas itens pendentes (sem status ou status 'pendente')
@@ -1631,7 +1631,7 @@ async function carregarCozinha() {
     if (!isNaN(horaPedido)) {
       minutos = Math.floor((agora - horaPedido) / 60000);
     } else {
-      console.warn(`Pedido ${p.id} com data inválida:`, dataOriginal);
+      console.warn(`Pedido ${p.id} con fecha inválida:`, dataOriginal);
     }
 
     let corTempo = "#2ecc71";
@@ -1747,48 +1747,48 @@ let _caixaState = {
   qtdPedidos: 0,
 };
 
-window._obterPeriodoFinanceiro = function() {
-  const elInicio = document.getElementById("fin-inicio");
-  const elFim    = document.getElementById("fin-fim");
-  const ehGestor = ["dono", "gerente", "adminMaster"].includes(perfilUsuario);
+// ─────────────────────────────────────────────────────────────
+// HORA DO SERVIDOR (Edge Function `server-time`)
+// Evita que o relógio do dispositivo (que pode estar errado, ou ser
+// manipulado) determine em que dia uma venda/abertura/fechamento é
+// contabilizada. Faz cache curto (10s) pra não bater na function toda hora.
+// ─────────────────────────────────────────────────────────────
+let _horaServidorCache = null;
 
-  let utcInicio, utcFim, usandoSessao = false;
-
-  // Se o usuário preencheu as datas manualmente, usá-las (prioridade máxima)
-  if (elInicio?.value && elFim?.value) {
-    const _tz = 3 * 60 * 60 * 1000;
-    utcInicio = new Date(new Date(elInicio.value + "T00:00:00").getTime() + _tz).toISOString();
-    utcFim    = new Date(new Date(elFim.value   + "T23:59:59").getTime() + _tz).toISOString();
-    // Marca como uso manual para não sobrescrever os campos
-    _finFiltroManualAtivo = true;
-    return { utcInicio, utcFim, usandoSessao: false };
+async function _obterHoraServidor() {
+  const AGORA_MS = Date.now();
+  if (_horaServidorCache && AGORA_MS - _horaServidorCache.buscadoEm < 10000) {
+    return _horaServidorCache;
   }
-
-  // Caso contrário, usa a sessão de caixa ativa
-  if (_sessaoCaixaAtiva) {
-    utcInicio = _sessaoCaixaAtiva.aberto_em;
-    utcFim    = _sessaoCaixaAtiva.fechado_em || new Date().toISOString();
-    usandoSessao = true;
-    // Preenche os campos com a data da sessão para feedback visual
-    const _tz = 3 * 60 * 60 * 1000;
-    if (elInicio && !elInicio.value) {
-      elInicio.value = new Date(new Date(utcInicio).getTime() - _tz).toISOString().split("T")[0];
-    }
-    if (elFim && !elFim.value) {
-      elFim.value = new Date(new Date(utcFim).getTime() - _tz).toISOString().split("T")[0];
-    }
-    return { utcInicio, utcFim, usandoSessao };
+  try {
+    const supaUrl =
+      window._SUPABASE_URL ||
+      (typeof _SUPABASE_URL !== "undefined" ? _SUPABASE_URL : "");
+    if (!supaUrl) throw new Error("Supabase URL indisponível");
+    const fnUrl =
+      supaUrl.replace("/rest/v1", "").replace(/\/+$/, "") +
+      "/functions/v1/server-time";
+    const resp = await fetch(fnUrl, { method: "GET" });
+    if (!resp.ok) throw new Error("HTTP " + resp.status);
+    const data = await resp.json();
+    _horaServidorCache = { ...data, buscadoEm: AGORA_MS };
+    return _horaServidorCache;
+  } catch (e) {
+    console.warn("⚠️ Falla al obtener hora del servidor, usando fallback local:", e.message);
+    const now = new Date();
+    const nowPy = new Date(now.getTime() - 3 * 60 * 60 * 1000);
+    const fallback = {
+      iso: now.toISOString(),
+      ts: now.getTime(),
+      date_py: nowPy.toISOString().slice(0, 10),
+      time_py: nowPy.toISOString().slice(11, 19),
+      buscadoEm: AGORA_MS,
+      _fallbackLocal: true,
+    };
+    _horaServidorCache = fallback;
+    return fallback;
   }
-
-  // Fallback: dia atual
-  const hoje = new Date().toISOString().split("T")[0];
-  const _tz = 3 * 60 * 60 * 1000;
-  utcInicio = new Date(new Date(hoje + "T00:00:00").getTime() + _tz).toISOString();
-  utcFim    = new Date(new Date(hoje + "T23:59:59").getTime() + _tz).toISOString();
-  if (elInicio && !elInicio.value) elInicio.value = hoje;
-  if (elFim && !elFim.value) elFim.value = hoje;
-  return { utcInicio, utcFim, usandoSessao: false };
-};
+}
 
 // Sessão de caixa ativa (carregada ao abrir a aba financeiro)
 let _sessaoCaixaAtiva = null;
@@ -1815,7 +1815,7 @@ function _finMarcarFiltroManual() {
 /**
  * Carrega a sessão de caixa ativa para o usuário corrente.
  * Gestores veem qualquer sessão aberta (ou a mais recente).
- * Funcionário vê apenas a sua própria.
+ * Empleado ve solo la suya.
  */
 async function _carregarSessaoCaixa() {
   const ehGestor   = ["dono", "gerente", "adminMaster"].includes(perfilUsuario);
@@ -1840,7 +1840,7 @@ async function _carregarSessaoCaixa() {
       const dAbr = new Date(_sessaoCaixaAtiva.aberto_em).toLocaleString("pt-BR", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" });
       elStatus.innerHTML = `<span style="color:#27ae60">🟢 Caixa aberto desde ${dAbr}</span>`;
     } else {
-      elStatus.innerHTML = `<span style="color:#e74c3c">🔴 Nenhum caixa aberto</span>`;
+      elStatus.innerHTML = `<span style="color:#e74c3c">🔴 Ninguna caja abierta</span>`;
     }
   }
 }
@@ -1867,12 +1867,16 @@ async function _abrirSessaoCaixa(valorAbertura, descricao) {
   const emailAtual = document.getElementById("user-email")?.innerText || "";
   const nome       = document.getElementById("user-nome-display")?.innerText || emailAtual;
 
+  // Usa hora do servidor (não o relógio do dispositivo) para o timestamp
+  // de abertura, evitando que alguém manipule o horário local do PC/celular.
+  const horaServ = await _obterHoraServidor();
+
   const { data, error } = await supa
     .from("sessoes_caixa")
     .insert([{
       usuario_email:  emailAtual,
       usuario_nome:   nome,
-      aberto_em:      new Date().toISOString(),
+      aberto_em:      horaServ.iso,
       valor_abertura: valorAbertura || 0,
       observacao:     descricao || null,
     }])
@@ -1906,7 +1910,7 @@ async function calcularFinanceiro() {
   const emailAtual = document.getElementById("user-email")?.innerText || "";
 
   await _carregarSessaoCaixa();
-  const { utcInicio, utcFim } = _obterPeriodoFinanceiro();
+  const { utcInicio, utcFim } = await _obterPeriodoFinanceiro();
 
   const elInicio = document.getElementById("fin-inicio");
   const elFim    = document.getElementById("fin-fim");
@@ -1993,7 +1997,7 @@ async function calcularFinanceiro() {
   peds.forEach((p) => {
     const pag = (p.forma_pagamento || "").toLowerCase();
     const isNaNota = pag === "nanota";
-    const isQuitado = (p.obs_pagamento || "").toLowerCase().includes("[quitado") || !!p.quitado_em;
+    const isQuitado = !!p.quitado_em || (p.obs_pagamento || "").toLowerCase().includes("[quitado");
 
     // NaNota NÃO quitado: não entra no faturamento, exibido em "Na Nota"
     if (isNaNota && !isQuitado) {
@@ -2080,6 +2084,9 @@ async function calcularFinanceiro() {
   if (typeof renderizarHistoricoCaixa === "function") {
     renderizarHistoricoCaixa(caixa, _sessaoCaixaAtiva);
   }
+  if (typeof carregarHistoricoFechamentos === "function") {
+    carregarHistoricoFechamentos();
+  }
 
   const badgeCaixa = document.getElementById("badge-caixa-operador");
   if (badgeCaixa) {
@@ -2102,12 +2109,12 @@ async function calcularFinanceiro() {
     const despesas = (caixa || []).filter((c) => c.tipo === "despesa");
     const _DLABELS = {
       despesas_gerais:"📦 Despesas Gerais", contas_fixas:"🏠 Contas Fixas",
-      pagamento_fornecedor:"🤝 Fornecedor",  pagamento_funcionario:"👷 Funcionário",
+      pagamento_fornecedor:"🤝 Fornecedor",  pagamento_funcionario:"👷 Empleado",
       pagamento_terceiros:"👥 Terceiros",    manutencao:"🔧 Manutenção",
       retirada:"💵 Retirada", motoboy:"🛵 Motoboy", outro:"✏️ Outro",
     };
     if (!despesas.length) {
-      tbD.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#999;padding:16px">Nenhuma despesa nesta sessão</td></tr>';
+      tbD.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#999;padding:16px">Ningún gasto en esta sesión</td></tr>';
     } else {
       tbD.innerHTML = despesas.map((d) => {
         const dt = new Date(d.created_at).toLocaleString("pt-BR", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" });
@@ -2133,7 +2140,7 @@ async function calcularFinanceiro() {
   if (tbM) {
     tbM.innerHTML = "";
     if (!Object.keys(motoMap).length) {
-      tbM.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#999">Nenhuma entrega nesta sessão</td></tr>';
+      tbM.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#999">Ninguna entrega en esta sesión</td></tr>';
     } else {
       for (const [nome, d] of Object.entries(motoMap)) {
         const semNome = nome === "Sem Motoboy";
@@ -2149,6 +2156,8 @@ async function calcularFinanceiro() {
     }
   }
 }
+
+
 
 // ============================================================
 //  RENDERIZA HISTÓRICO DE CAIXA (colapsável)
@@ -2166,7 +2175,7 @@ function renderizarHistoricoCaixa(movimentacoes, sessao) {
 
       const summary = document.createElement("summary");
       summary.style.cssText = "font-weight:700; font-size:1rem; cursor:pointer; color:var(--primary);";
-      summary.textContent = "📋 Histórico de Caixa";
+      summary.textContent = "📋 Historial de Caja";
       section.appendChild(summary);
 
       // Container da tabela
@@ -2188,7 +2197,7 @@ function renderizarHistoricoCaixa(movimentacoes, sessao) {
       // Adiciona ao placeholder
       placeholder.appendChild(section);
     } else {
-      console.warn("Elemento #historico-caixa-placeholder não encontrado. Histórico de caixa não será inserido.");
+      console.warn("Elemento #historico-caixa-placeholder no encontrado. El historial de caja no será insertado.");
       return;
     }
   }
@@ -2198,7 +2207,7 @@ function renderizarHistoricoCaixa(movimentacoes, sessao) {
   if (!container) return;
 
   if (!movimentacoes || movimentacoes.length === 0) {
-    container.innerHTML = '<div style="text-align:center; padding:20px; color:#aaa;">Nenhuma movimentação nesta sessão.</div>';
+    container.innerHTML = '<div style="text-align:center; padding:20px; color:#aaa;">Ningún movimiento en esta sesión.</div>';
     return;
   }
 
@@ -2220,7 +2229,7 @@ function renderizarHistoricoCaixa(movimentacoes, sessao) {
       <tr style="background:#f0f0f0;">
         <th style="text-align:left; padding:6px;">Data/Hora</th>
         <th style="text-align:left; padding:6px;">Tipo</th>
-        <th style="text-align:left; padding:6px;">Descrição</th>
+        <th style="text-align:left; padding:6px;">Descripción</th>
         <th style="text-align:right; padding:6px;">Valor (Gs)</th>
       </tr>
     </thead>
@@ -2251,7 +2260,7 @@ function renderizarHistoricoCaixa(movimentacoes, sessao) {
 function imprimirHistoricoCaixa() {
   const container = document.getElementById("historico-caixa-container");
   if (!container) {
-    alert("Nenhum histórico disponível para impressão.");
+    alert("Ningún historial disponible para impresión.");
     return;
   }
   // Abre uma janela com o conteúdo formatado para impressão
@@ -2261,10 +2270,10 @@ function imprimirHistoricoCaixa() {
     return;
   }
   const conteudo = container.innerHTML;
-  const titulo = NOME_RESTAURANTE || "Histórico de Caixa";
+  const titulo = NOME_RESTAURANTE || "Historial de Caja";
   win.document.write(`<!DOCTYPE html>
 <html>
-<head><meta charset="UTF-8"><title>Histórico de Caixa</title>
+<head><meta charset="UTF-8"><title>Historial de Caja</title>
 <style>
   body { font-family:Arial,sans-serif; font-size:12px; padding:20px; }
   h2 { text-align:center; }
@@ -2276,7 +2285,7 @@ function imprimirHistoricoCaixa() {
 </style>
 </head>
 <body>
-  <h2>${titulo} - Histórico de Caixa</h2>
+  <h2>${titulo} - Historial de Caja</h2>
   ${conteudo}
   <p style="text-align:center; margin-top:20px; font-size:10px; color:#888;">Impresso em ${new Date().toLocaleString("pt-BR")}</p>
   <script>
@@ -2285,6 +2294,297 @@ function imprimirHistoricoCaixa() {
 </body>
 </html>`);
   win.document.close();
+}
+
+// ============================================================
+//  HISTÓRICO DE FECHAMENTOS (dias/sessões passadas)
+//  Diferente de renderizarHistoricoCaixa() acima, que só mostra as
+//  movimentações da sessão ATUAL — esta lista sessões já FECHADAS,
+//  com um botão para reabrir o boletim completo de cada uma
+//  (lido de sessoes_caixa.resumo_fechamento, gravado no fechamento).
+// ============================================================
+async function carregarHistoricoFechamentos() {
+  // Cria a seção colapsável, reaproveitando o mesmo placeholder da
+  // sección "Historial de Caja" ya existente.
+  let section = document.getElementById("historico-fechamentos-section");
+  if (!section) {
+    const placeholder = document.getElementById("historico-caixa-placeholder");
+    if (!placeholder) {
+      console.warn("Elemento #historico-caixa-placeholder no encontrado. El historial de cierres no será insertado.");
+      return;
+    }
+    section = document.createElement("details");
+    section.id = "historico-fechamentos-section";
+    section.style.cssText = "margin-top:12px; border:1px solid #e0e0e0; border-radius:8px; padding:12px; background:#fafafa;";
+
+    const summary = document.createElement("summary");
+    summary.style.cssText = "font-weight:700; font-size:1rem; cursor:pointer; color:var(--primary);";
+    summary.textContent = "🗓️ Histórico de Fechamentos";
+    section.appendChild(summary);
+
+    const container = document.createElement("div");
+    container.style.cssText = "margin-top:12px; max-height:400px; overflow-y:auto;";
+    container.id = "historico-fechamentos-container";
+    section.appendChild(container);
+
+    placeholder.appendChild(section);
+  }
+
+  const container = document.getElementById("historico-fechamentos-container");
+  if (!container) return;
+  container.innerHTML = '<div style="text-align:center;padding:16px;color:#aaa;">Cargando...</div>';
+
+  const { data: sessoes, error } = await supa
+    .from("sessoes_caixa")
+    .select("id, usuario_nome, usuario_email, aberto_em, fechado_em, valor_fechamento, resumo_fechamento")
+    .not("fechado_em", "is", null)
+    .order("fechado_em", { ascending: false })
+    .limit(30);
+
+  if (error || !sessoes?.length) {
+    container.innerHTML = '<div style="text-align:center;padding:16px;color:#aaa;">Ningún cierre registrado todavía.</div>';
+    return;
+  }
+
+  const fmt = (n) => "Gs " + Math.round(n || 0).toLocaleString("es-PY");
+
+  container.innerHTML = sessoes.map((s) => {
+    const abertoFmt = new Date(s.aberto_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+    const fechadoFmt = new Date(s.fechado_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+    const temResumo = !!s.resumo_fechamento;
+    return `
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;padding:10px;border-bottom:1px solid #eee;">
+        <div>
+          <div style="font-weight:700;font-size:0.88rem;">${abertoFmt} → ${fechadoFmt}</div>
+          <div style="color:#888;font-size:0.76rem;">${s.usuario_nome || s.usuario_email || "—"} · Sessão #${s.id}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <strong style="color:#2d6a4f;font-size:0.9rem;">${fmt(s.valor_fechamento)}</strong>
+          <button onclick="abrirRelatorioFechamento(${s.id})"
+            style="background:#2c3e50;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:0.78rem;cursor:pointer;white-space:nowrap;">
+            📋 Ver Boletim${temResumo ? "" : " (resumido)"}
+          </button>
+        </div>
+      </div>`;
+  }).join("");
+}
+
+/**
+ * Abre o boletim de fechamento de uma sessão específica — lê
+ * sessoes_caixa.resumo_fechamento (gravado em fecharCaixaConfirmar)
+ * em vez de recalcular ao vivo, então funciona pra qualquer dia
+ * passado, mesmo muito depois do fechamento.
+ */
+/**
+ * Calcula o boletim de uma sessão "na hora", quando ela não tem
+ * resumo_fechamento salvo (sessões fechadas antes desse recurso
+ * existir). Faz suas próprias queries, restritas exatamente à janela
+ * [aberto_em, fechado_em] da sessão + movimentações vinculadas a ela —
+ * mesma lógica usada em fecharCaixaConfirmar(), só que rodando depois,
+ * sob demanda, sem gravar nada no banco (é só para exibição).
+ */
+async function _calcularResumoSessaoLegado(sessao) {
+  const { data: pedidosData } = await supa
+    .from("pedidos")
+    .select("*")
+    .neq("status", "cancelado")
+    .gte("created_at", sessao.aberto_em)
+    .lte("created_at", sessao.fechado_em);
+  const peds = pedidosData || [];
+
+  const { data: movsData } = await supa
+    .from("movimentacoes_caixa")
+    .select("*")
+    .eq("sessao_id", sessao.id);
+  const movs = movsData || [];
+
+  let faturamento = 0, totalEfetivo = 0, totalPix = 0, totalCartao = 0,
+    totalTransf = 0, totalQrCelular = 0, totalQrMaquina = 0, totalNaNota = 0,
+    custoEntregas = 0, qtdPedidos = 0;
+
+  peds.forEach((p) => {
+    const val = p.total_geral || 0;
+    const pag = (p.forma_pagamento || "").toLowerCase();
+    const isNaNota = pag === "nanota";
+    const isQuitado = !!p.quitado_em || (p.obs_pagamento || "").toLowerCase().includes("[quitado");
+
+    if (isNaNota && !isQuitado) { totalNaNota += val; return; }
+    if (pag === "mensalista") return;
+
+    faturamento += val;
+    qtdPedidos++;
+
+    if (isNaNota && isQuitado) {
+      let formaQuitacao = p.forma_pagamento_quitacao;
+      if (!formaQuitacao) {
+        const m = (p.obs_pagamento || "").match(/Forma:\s*([A-Za-zÀ-ú]+)/i);
+        if (m) formaQuitacao = m[1];
+      }
+      const m2 = (formaQuitacao || "").toLowerCase();
+      if (m2.includes("pix")) totalPix += val;
+      else if (m2.includes("transfer")) totalTransf += val;
+      else if (m2.includes("cartao") || m2.includes("cartão")) totalCartao += val;
+      else if (m2 === "qrmaquina" || m2 === "qrmarina") totalQrMaquina += val;
+      else if (m2.includes("qr")) totalQrCelular += val;
+      else totalEfetivo += val;
+    } else if (pag.includes("pix")) totalPix += val;
+    else if (pag.includes("transfer")) totalTransf += val;
+    else if (pag.includes("cartao") || pag.includes("cartão")) totalCartao += val;
+    else if (pag === "qrmaquina" || pag === "qrmarina") totalQrMaquina += val;
+    else if (pag.includes("qr")) totalQrCelular += val;
+    else if (pag.includes("efetivo") || pag.includes("dinheiro")) totalEfetivo += val;
+
+    if (p.tipo_entrega === "delivery") {
+      custoEntregas += p.frete_motoboy || TAXA_MOTOBOY || 0;
+    }
+  });
+
+  const totalSaidas = movs
+    .filter((m) => m.tipo === "despesa" || m.tipo === "sangria")
+    .reduce((a, m) => a + (parseFloat(m.valor) || 0), 0);
+  const totalEntradas = movs
+    .filter((m) => m.tipo === "entrada" || m.tipo === "suprimento")
+    .reduce((a, m) => a + (parseFloat(m.valor) || 0), 0);
+
+  const resultado = faturamento + totalEntradas - custoEntregas - totalSaidas;
+
+  return {
+    abertura_em: sessao.aberto_em,
+    fechamento_em: sessao.fechado_em,
+    valor_abertura: sessao.valor_abertura || 0,
+    faturamento,
+    qtd_pedidos: qtdPedidos,
+    custo_entregas: custoEntregas,
+    total_saidas: totalSaidas,
+    total_entradas: totalEntradas,
+    resultado_operacional: resultado,
+    dinheiro_na_gaveta: (sessao.valor_abertura || 0) + totalEfetivo - totalSaidas,
+    por_forma_pagamento: {
+      efetivo: totalEfetivo,
+      pix: totalPix,
+      cartao: totalCartao,
+      transferencia: totalTransf,
+      qr_celular: totalQrCelular,
+      qr_maquina: totalQrMaquina,
+      na_nota_quitado: totalNaNota,
+    },
+    _calculadoAgora: true, // marca que foi recalculado, não é o valor gravado no fechamento original
+  };
+}
+
+async function abrirRelatorioFechamento(sessaoId) {
+  const { data: sessao, error } = await supa
+    .from("sessoes_caixa")
+    .select("*")
+    .eq("id", sessaoId)
+    .single();
+
+  if (error || !sessao) {
+    alert("No fue posible cargar el boletín: " + (error?.message || "sesión no encontrada"));
+    return;
+  }
+
+  // Se a sessão não tem o boletim estruturado salvo (fechada antes desse
+  // recurso existir), calcula na hora em vez de mostrar só o resumo básico.
+  const r = sessao.resumo_fechamento || await _calcularResumoSessaoLegado(sessao);
+  const fmt = (n) => "Gs " + Math.round(n || 0).toLocaleString("es-PY");
+  const dataHora = (iso) =>
+    iso ? new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
+
+  const { data: movs } = await supa
+    .from("movimentacoes_caixa")
+    .select("*")
+    .eq("sessao_id", sessaoId)
+    .order("created_at", { ascending: true });
+
+  document.getElementById("modal-relatorio-fechamento")?.remove();
+
+  const overlay = document.createElement("div");
+  overlay.id = "modal-relatorio-fechamento";
+  overlay.style.cssText =
+    "position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px";
+  overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+
+  const modal = document.createElement("div");
+  modal.style.cssText =
+    "background:#fff;border-radius:16px;padding:0;max-width:480px;width:100%;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3)";
+
+  const foiCalculadoAgora = !!r._calculadoAgora; // sessões antigas sem resumo salvo — recalculado sob demanda
+
+  modal.innerHTML = `
+    <div style="padding:20px 22px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:#fff;border-radius:16px 16px 0 0;">
+      <h3 style="margin:0;font-size:1.1rem;">📋 Boletim de Fechamento</h3>
+      <button onclick="document.getElementById('modal-relatorio-fechamento').remove()"
+        style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:#999">✕</button>
+    </div>
+    <div style="padding:20px 22px;">
+      ${foiCalculadoAgora ? `
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 12px;font-size:0.82rem;color:#1e40af;margin-bottom:16px">
+          ℹ️ Esta sessão foi fechada antes do boletim ficar salvo automaticamente — os valores abaixo foram recalculados agora a partir dos pedidos e movimentações registrados naquele período.
+        </div>` : ""}
+      <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:6px;">
+        <span style="color:#888">Abertura</span><strong>${dataHora(sessao.aberto_em)}</strong>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:16px;">
+        <span style="color:#888">Fechamento</span><strong>${dataHora(sessao.fechado_em)}</strong>
+      </div>
+
+      <div style="background:#f8fafc;border-radius:10px;padding:14px;margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:6px;">
+          <span>🏦 Valor de Apertura</span><strong>${fmt(r.valor_abertura)}</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:6px;">
+          <span>💰 Facturación</span><strong>${fmt(r.faturamento)}</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:6px;">
+          <span>🏍️ Custo Entregas</span><strong>${fmt(r.custo_entregas)}</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:6px;">
+          <span>💸 Salidas (gastos/retiros)</span><strong>${fmt(r.total_saidas)}</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:6px;">
+          <span>➕ Entradas</span><strong>${fmt(r.total_entradas)}</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:6px;">
+          <span>📦 Qtd. Pedidos</span><strong>${r.qtd_pedidos}</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:0.95rem;margin-top:10px;padding-top:10px;border-top:1px solid #e2e8f0;">
+          <span style="font-weight:700">Resultado Operacional</span>
+          <strong style="color:#16a34a">${fmt(r.resultado_operacional)}</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:0.95rem;margin-top:6px;">
+          <span style="font-weight:700">💰 Dinheiro na Gaveta</span><strong>${fmt(r.dinheiro_na_gaveta)}</strong>
+        </div>
+      </div>
+
+      <div style="font-weight:700;font-size:0.85rem;margin-bottom:8px;">💳 Por Forma de Pagamento</div>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px">
+        ${[
+          ["💵 Efetivo", r.por_forma_pagamento?.efetivo],
+          ["💳 Cartão", r.por_forma_pagamento?.cartao],
+          ["📱 Pix", r.por_forma_pagamento?.pix],
+          ["🏦 Transferência", r.por_forma_pagamento?.transferencia],
+          ["📱 QR Celular", r.por_forma_pagamento?.qr_celular],
+          ["📱 QR Máquina", r.por_forma_pagamento?.qr_maquina],
+          ["📋 Na Nota (quitado)", r.por_forma_pagamento?.na_nota_quitado],
+        ].map(([label, val]) => `
+          <div style="display:flex;justify-content:space-between;font-size:0.85rem;background:#f9fafb;border-radius:6px;padding:8px 10px">
+            <span>${label}</span><strong>${fmt(val)}</strong>
+          </div>`).join("")}
+      </div>
+
+      <div style="font-weight:700;font-size:0.85rem;margin-bottom:8px;">📑 Movimientos de Caja</div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        ${(movs && movs.length) ? movs.map((m) => `
+          <div style="display:flex;justify-content:space-between;font-size:0.8rem;padding:8px 10px;border:1px solid #eee;border-radius:6px">
+            <span style="color:#555">${m.descricao || m.tipo}</span>
+            <strong style="color:${m.tipo === 'saida' || m.tipo === 'sangria' ? '#dc2626' : '#16a34a'}">${fmt(m.valor)}</strong>
+          </div>`).join("") : `<div style="color:#aaa;font-size:0.82rem;text-align:center;padding:12px">Ningún movimiento registrado.</div>`}
+      </div>
+    </div>
+  `;
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
 }
 
 // ── Verifica bloqueio por sangria limite ───────────────────────────
@@ -2416,12 +2716,12 @@ async function exportarFinanceiro() {
   const { data: pedidos, error } = await query;
 
   if (error) {
-    alert("Erro ao buscar dados: " + error.message);
+    alert("Error al buscar datos: " + error.message);
     return;
   }
 
   if (!pedidos || pedidos.length === 0) {
-    alert("Nenhum pedido encontrado no período selecionado.");
+    alert("Ningún pedido encontrado en el período seleccionado.");
     return;
   }
 
@@ -2473,7 +2773,7 @@ async function exportarFinanceiro() {
   document.body.removeChild(link);
 
   alert(
-    `✅ Relatório exportado com sucesso!\n\nTotal de pedidos: ${pedidosFiltrados.length}`,
+    `✅ ¡Reporte exportado con éxito!\n\nTotal de pedidos: ${pedidosFiltrados.length}`,
   );
 }
 
@@ -2485,7 +2785,7 @@ async function exportarFinanceiro() {
 async function exportarFinanceiroXLSX() {
   // Aviso: Requer biblioteca SheetJS
   if (typeof XLSX === "undefined") {
-    alert("Biblioteca XLSX não carregada. Usando CSV simples.");
+    alert("Biblioteca XLSX no cargada. Usando CSV simple.");
     exportarFinanceiro();
     return;
   }
@@ -2536,19 +2836,21 @@ async function carregarRelatorio() {
   const filtroInicio = document.getElementById("rel-filtro-inicio")?.value;
   const filtroFim = document.getElementById("rel-filtro-fim")?.value;
   const _tz = 3 * 60 * 60 * 1000; // UTC-3 PY
+  // Hora do servidor (não o relógio do dispositivo) para o padrão "hoje"
+  const _horaServRel = await _obterHoraServidor();
   const agora = new Date();
   const hojePY = new Date(agora.getTime() - _tz).toISOString().split("T")[0];
   let query = supa
     .from("pedidos")
     .select("*")
     .order("id", { ascending: false })
-    .limit(100);
+    .limit(2000);
   if (filtroNum) {
     query = query.eq("id", parseInt(filtroNum));
   } else {
     const ini = filtroInicio || hojePY;
     const fim = filtroFim || hojePY;
-    const _off = 4 * 60 * 60 * 1000;
+    const _off = 3 * 60 * 60 * 1000;
     const utcIni = new Date(
       new Date(ini + "T00:00:00").getTime() + _off,
     ).toISOString();
@@ -2762,7 +3064,7 @@ async function carregarRelatorio() {
   });
   if (!pedidos || pedidos.length === 0)
     tbody.innerHTML =
-      '<tr><td colspan="7" style="text-align:center;padding:40px;color:#aaa">Nenhum pedido encontrado.</td></tr>';
+      '<tr><td colspan="7" style="text-align:center;padding:40px;color:#aaa">Ningún pedido encontrado.</td></tr>';
   const el = document.getElementById("rel-total-count");
   if (el) el.textContent = (pedidos || []).length + " pedidos encontrados";
 }
@@ -2772,7 +3074,7 @@ function abrirModalCaixa(tipo) {
   document.getElementById("tipo-caixa").value = tipo;
 
   const titulos = {
-    abertura: "🟢 Abrir Caixa",
+    abertura: "🟢 Abrir Caja",
     suprimento: "➕ Suprimento",
     sangria: "💸 Sangria",
     despesa: "🧾 Despesa",
@@ -2794,7 +3096,7 @@ async function salvarMovimentacaoCaixa() {
   const valor = parseFloat(document.getElementById("valor-caixa").value);
   const desc  = document.getElementById("desc-caixa").value.trim();
 
-  if (!valor || valor <= 0) { alert("Digite um valor válido."); return; }
+  if (!valor || valor <= 0) { alert("Ingrese un valor válido."); return; }
 
   const emailAtual = document.getElementById("user-email")?.innerText || "";
 
@@ -2802,7 +3104,7 @@ async function salvarMovimentacaoCaixa() {
   const { data: cfg } = await supa.from("configuracoes").select("caixa_status").maybeSingle();
   const status = cfg?.caixa_status || {};
   if (status[emailAtual]?.bloqueado && tipo !== "sangria") {
-    alert("⛔ Caixa bloqueado por sangria. Solicite autorização de um gestor para reabrir.");
+    alert("⛔ Caja bloqueada por retiro. Solicite autorización de un gerente para reabrir.");
     return;
   }
 
@@ -2828,14 +3130,14 @@ async function salvarMovimentacaoCaixa() {
       }
       return;
     } catch (e) {
-      alert("Erro ao abrir caixa: " + e.message);
+      alert("Error al abrir caja: " + e.message);
       return;
     }
   }
 
   // ── Para outros tipos, verifica se há sessão aberta ───────────────
   if (!_sessaoCaixaAtiva) {
-    alert("⚠️ Nenhum caixa aberto. Abra o caixa antes de registrar movimentações.");
+    alert("⚠️ Ninguna caja abierta. Abra la caja antes de registrar movimientos.");
     return;
   }
 
@@ -2850,7 +3152,7 @@ async function salvarMovimentacaoCaixa() {
   };
 
   const { error } = await supa.from("movimentacoes_caixa").insert([insert]);
-  if (error) { alert("Erro: " + error.message); return; }
+  if (error) { alert("Error: " + error.message); return; }
 
   alert(t("alert.operacao_registrada"));
   fecharModal("modal-caixa");
@@ -2859,7 +3161,7 @@ async function salvarMovimentacaoCaixa() {
 
 async function fecharCaixaResumo() {
   if (!_sessaoCaixaAtiva) {
-    alert('Nenhum caixa aberto para fechar.');
+    alert('Ninguna caja abierta para cerrar.');
     return;
   }
 
@@ -2868,7 +3170,7 @@ async function fecharCaixaResumo() {
   // _sessaoCaixaAtiva é sempre "a sessão aberta mais recente, de
   // QUALQUER usuário" (ver pdvCarregarPainelCaixa/_carregarSessaoCaixa).
   // Isso significa que se um funcionário abriu o caixa dele às 19h e,
-  // depois, o dono/gerente abre o PDV e clica em "Fechar Dia" pensando
+  // depois, o dono/gerente abre o PDV e clica em "Cerrar Día" pensando
   // em rotina, o botão fecha SILENCIOSAMENTE o caixa do funcionário —
   // sem que ninguém tenha "mandado" fechar aquela sessão específica.
   // Essa confirmação obriga a conferir o operador antes de prosseguir.
@@ -2877,11 +3179,11 @@ async function fecharCaixaResumo() {
   const _abertoEmFmt = new Date(_sessaoCaixaAtiva.aberto_em).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
   if (_sessaoCaixaAtiva.usuario_email && _sessaoCaixaAtiva.usuario_email !== emailAtualFC) {
     const okOutraPessoa = confirm(
-      `⚠️ Este caixa foi aberto por OUTRA pessoa:\n\n` +
+      `⚠️ Esta caja fue abierta por OTRA persona:\n\n` +
       `Operador: ${donoDaSessao}\n` +
-      `Aberto em: ${_abertoEmFmt}\n\n` +
-      `Se essa pessoa ainda está trabalhando, fechar agora vai encerrar a sessão dela sem aviso.\n\n` +
-      `Confirma que quer mesmo fechar o caixa de ${donoDaSessao}?`
+      `Abierta a las: ${_abertoEmFmt}\n\n` +
+      `Si esa persona todavía está trabajando, cerrar ahora terminará su sesión sin aviso.\n\n` +
+      `¿Confirma que realmente quiere cerrar la caja de ${donoDaSessao}?`
     );
     if (!okOutraPessoa) return;
   }
@@ -2907,27 +3209,27 @@ async function fecharCaixaResumo() {
   modal.innerHTML = `
     <div style="background:#fff; border-radius:20px; width:100%; max-width:480px; max-height:90vh; overflow-y:auto; padding:24px; box-shadow:0 8px 32px rgba(0,0,0,0.3);">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-        <h3 style="margin:0; font-size:1.2rem;">📊 Fechamento de Caixa</h3>
+        <h3 style="margin:0; font-size:1.2rem;">📊 Cierre de Caja</h3>
         <button onclick="this.closest('#modal-fechamento-caixa').remove()" style="background:none; border:none; font-size:1.5rem; cursor:pointer;">&times;</button>
       </div>
       <div style="background:#f3f4f6;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:0.82rem;color:#374151">
-        👤 Sessão de <strong>${donoDaSessao}</strong> · aberta em ${_abertoEmFmt} (#${_sessaoCaixaAtiva.id})
+        👤 Sesión de <strong>${donoDaSessao}</strong> · aberta em ${_abertoEmFmt} (#${_sessaoCaixaAtiva.id})
       </div>
       <div style="font-family:monospace; font-size:0.9rem; line-height:1.8;">
-        <div style="display:flex; justify-content:space-between;"><span>Faturamento Total:</span><strong>${fmt(s.faturamento)}</strong></div>
+        <div style="display:flex; justify-content:space-between;"><span>Facturación Total:</span><strong>${fmt(s.faturamento)}</strong></div>
         <hr>
         <div style="font-weight:700; margin-top:6px;">💰 Por Método:</div>
         <div style="display:flex; justify-content:space-between; padding-left:12px;"><span>💵 Dinheiro:</span>${fmt(s.totalEfetivo)}</div>
         <div style="display:flex; justify-content:space-between; padding-left:12px;"><span>📱 Pix:</span>${fmt(s.totalPix)}</div>
-        <div style="display:flex; justify-content:space-between; padding-left:12px;"><span>💳 Cartão:</span>${fmt(s.totalCartao)}</div>
-        <div style="display:flex; justify-content:space-between; padding-left:12px;"><span>🏦 Transferência:</span>${fmt(s.totalTransf)}</div>
+        <div style="display:flex; justify-content:space-between; padding-left:12px;"><span>💳 Tarjeta:</span>${fmt(s.totalCartao)}</div>
+        <div style="display:flex; justify-content:space-between; padding-left:12px;"><span>🏦 Transferencia:</span>${fmt(s.totalTransf)}</div>
         <div style="display:flex; justify-content:space-between; padding-left:12px;"><span>📱 QR Celular:</span>${fmt(s.totalQrCelular || 0)}</div>
         <div style="display:flex; justify-content:space-between; padding-left:12px;"><span>📱 QR Maquina:</span>${fmt(s.totalQrMaquina || 0)}</div>
         <div style="display:flex; justify-content:space-between; padding-left:12px;"><span>📋 Na Nota (quitado):</span>${fmt(s.totalNaNota)}</div>
         <hr>
         <div style="display:flex; justify-content:space-between;"><span>📦 Pedidos:</span>${s.qtdPedidos}</div>
         <div style="display:flex; justify-content:space-between;"><span>🏍️ Custo Entregas:</span>${fmt(s.custoEntregas)}</div>
-        <div style="display:flex; justify-content:space-between;"><span>💸 Saídas (despesas):</span>${fmt(s.totalSaidas)}</div>
+        <div style="display:flex; justify-content:space-between;"><span>💸 Salidas (gastos):</span>${fmt(s.totalSaidas)}</div>
         <div style="display:flex; justify-content:space-between;"><span>➕ Entradas (incl. fundo):</span>${fmt(s.totalEntradas)}</div>
         <div style="display:flex; justify-content:space-between; padding-left:12px;"><span>└ Fundo de abertura:</span>${fmt(s.fundoAbertura)}</div>
         <hr>
@@ -2942,13 +3244,13 @@ async function fecharCaixaResumo() {
         </label>
         <div id="fecha-delivery-desp-box" style="display:none; margin-top:12px;">
           <div style="font-size:0.8rem; color:#666; margin-bottom:8px;">
-            Custo de entregas do período: <strong>${fmt(s.custoEntregas)}</strong> — ajuste se necessário.
+            Costo de entregas del período: <strong>${fmt(s.custoEntregas)}</strong> — ajuste si es necesario.
           </div>
           <div style="display:flex; gap:8px; flex-wrap:wrap;">
             <select id="fecha-delivery-forma-pag" style="flex:1; min-width:140px; padding:9px; border:1.5px solid #e0e0e0; border-radius:8px; font-size:0.85rem; font-weight:600;">
               <option value="Efetivo">💵 Efectivo</option>
               <option value="Cartao">💳 Tarjeta</option>
-              <option value="CartaoBR">💳🇧🇷 Cartão BR</option>
+              <option value="CartaoBR">💳🇧🇷 Tarjeta BR</option>
               <option value="Pix">🟢 Pix</option>
               <option value="Transferencia">🏦 Alias/Transferencia</option>
               <option value="QrPy">📱 QR Paraguay</option>
@@ -2964,7 +3266,7 @@ async function fecharCaixaResumo() {
 
       <div style="display:flex; gap:10px; margin-top:20px;">
         <button onclick="window.print()" style="flex:1; padding:12px; background:#1a7a2e; color:#fff; border:none; border-radius:8px; font-weight:700; cursor:pointer;">🖨️ Imprimir</button>
-        <button onclick="fecharCaixaConfirmar()" style="flex:1; padding:12px; background:#e74c3c; color:#fff; border:none; border-radius:8px; font-weight:700; cursor:pointer;">✅ Fechar Caixa</button>
+        <button onclick="fecharCaixaConfirmar()" style="flex:1; padding:12px; background:#e74c3c; color:#fff; border:none; border-radius:8px; font-weight:700; cursor:pointer;">✅ Cerrar Caja</button>
       </div>
     </div>
   `;
@@ -2979,26 +3281,52 @@ async function fecharCaixaResumo() {
 
   // Função de confirmação (será chamada pelo botão)
   window.fecharCaixaConfirmar = async function() {
+    const horaServ = await _obterHoraServidor();
+
+    // ⚠️ NOVO: grava o boletim inteiro em resumo_fechamento — sem isso,
+    // depois que o modal fecha, não sobra nada estruturado pra reabrir
+    // essa sessão e conferir os números de novo.
+    const resumoFechamento = {
+      abertura_em: _sessaoCaixaAtiva.aberto_em,
+      fechamento_em: horaServ.iso,
+      valor_abertura: _sessaoCaixaAtiva.valor_abertura || 0,
+      faturamento: s.faturamento,
+      resultado_operacional: lucro,
+      dinheiro_na_gaveta: dinheiroCaixa,
+      qtd_pedidos: s.qtdPedidos,
+      custo_entregas: s.custoEntregas,
+      total_saidas: s.totalSaidas,
+      total_entradas: s.totalEntradas,
+      por_forma_pagamento: {
+        efetivo: s.totalEfetivo,
+        pix: s.totalPix,
+        cartao: s.totalCartao,
+        transferencia: s.totalTransf,
+        qr_celular: s.totalQrCelular || 0,
+        qr_maquina: s.totalQrMaquina || 0,
+        na_nota_quitado: s.totalNaNota,
+      },
+    };
+
     try {
       await supa
         .from('sessoes_caixa')
         .update({
-          fechado_em: new Date().toISOString(),
+          fechado_em: horaServ.iso,
           valor_fechamento: lucro,
-          observacao: `Fat: ${fmt(s.faturamento)} | Res: ${fmt(lucro)}`
+          observacao: `Fat: ${fmt(s.faturamento)} | Res: ${fmt(lucro)}`,
+          resumo_fechamento: resumoFechamento,
         })
         .eq('id', _sessaoCaixaAtiva.id);
 
       await registrarMovimentacaoCaixa({
         tipo: 'fechamento',
         valor: lucro,
-        descricao: `Fechamento ${new Date().toLocaleDateString('pt-BR')} | Fat: ${fmt(s.faturamento)} | Res: ${fmt(lucro)}`,
+        descricao: `Fechamento ${new Date(horaServ.date_py + 'T' + horaServ.time_py).toLocaleDateString('pt-BR')} | Fat: ${fmt(s.faturamento)} | Res: ${fmt(lucro)}`,
         usuario_email: document.getElementById('user-email')?.innerText || 'admin',
         sessao_id: _sessaoCaixaAtiva.id
       });
 
-      // NOVO: se marcado, registra o pagamento do delivery/motoboy como
-      // despesa do caixa daquele dia, com a forma de pagamento escolhida.
       const incluirDelivery = document.getElementById('fecha-incluir-delivery-desp')?.checked;
       if (incluirDelivery) {
         const valorDelivery = parseFloat(document.getElementById('fecha-delivery-valor')?.value) || 0;
@@ -3007,7 +3335,7 @@ async function fecharCaixaResumo() {
           await registrarMovimentacaoCaixa({
             tipo: 'despesa',
             valor: valorDelivery,
-            descricao: `Pagamento de delivery/motoboys - ${new Date().toLocaleDateString('pt-BR')}`,
+            descricao: `Pagamento de delivery/motoboys - ${new Date(horaServ.date_py).toLocaleDateString('pt-BR')}`,
             usuario_email: document.getElementById('user-email')?.innerText || 'admin',
             sessao_id: _sessaoCaixaAtiva.id,
             forma_pagamento: formaDelivery,
@@ -3022,20 +3350,11 @@ async function fecharCaixaResumo() {
 
     _sessaoCaixaAtiva = null;
     pdvCarregarPainelCaixa();
-    ['card-faturamento','card-custo-moto','card-lucro','total-pix','total-transf',
-     'total-cartao','total-efetivo','total-nanota','total-qr','total-qrmaquina',
-     'total-fundo-abertura','card-ticket-medio'
-    ].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.innerText = 'Gs 0';
-    });
-    const qEl = document.getElementById('card-qtd-pedidos');
-    if (qEl) qEl.innerText = '0';
-    _caixaState = { faturamento:0, custoEntregas:0, totalSaidas:0, totalEntradas:0,
-                    totalPix:0, totalTransf:0, totalCartao:0, totalEfetivo:0,
-                    totalNaNota:0, totalQrCelular:0, totalQrMaquina:0, fundoAbertura:0, qtdPedidos:0 };
     document.getElementById('modal-fechamento-caixa')?.remove();
-    alert('✅ Caixa fechado com sucesso!');
+    // Recalcula (em vez de zerar manualmente) — assim os cards mostram
+    // o padrão correto (última sessão/hoje) em vez de "Gs 0" enganoso.
+    await calcularFinanceiro();
+    alert('✅ ¡Caja cerrada con éxito!');
   };
 }
 
@@ -3044,21 +3363,16 @@ async function fecharCaixaResumo() {
 // =========================================
 
 async function _buscarDadosRelatorio() {
-  const elI = document.getElementById("fin-inicio");
-  const elF = document.getElementById("fin-fim");
-  const hoje = new Date().toISOString().split("T")[0];
-  // UTC-3 PY (horario de verao permanente desde 2024)
-  const _tz = 3 * 60 * 60 * 1000;
-  const iniDate = elI?.value || hoje;
-  const fimDate = elF?.value || hoje;
-  const ini = new Date(new Date(iniDate + "T00:00:00").getTime() + _tz).toISOString();
-  const fim = new Date(new Date(fimDate + "T23:59:59").getTime() + _tz).toISOString();
+  // Usa exatamente a mesma janela de tempo que a tela do Financeiro
+  // (sessão de caixa / filtro manual / hoje via hora do servidor), pra
+  // o CSV/PDF exportado nunca divergir do que está na tela.
+  const { utcInicio, utcFim } = await _obterPeriodoFinanceiro();
   const { data } = await supa
     .from("pedidos")
     .select("*")
     .in("status", ["entregue", "em_preparo", "pronto_entrega", "saiu_entrega"])
-    .gte("created_at", ini)
-    .lte("created_at", fim);
+    .gte("created_at", utcInicio)
+    .lte("created_at", utcFim);
   return data || [];
 }
 
@@ -3066,7 +3380,7 @@ async function _buscarDadosRelatorio() {
 async function exportarCSVPowerBI() {
   const pedidos = await _buscarDadosRelatorio();
   if (!pedidos.length) {
-    alert("Nenhum pedido no período.");
+    alert("Ningún pedido en el período.");
     return;
   }
 
@@ -3159,7 +3473,7 @@ async function exportarCSVPowerBI() {
 async function exportarPDF() {
   const pedidos = await _buscarDadosRelatorio();
   if (!pedidos.length) {
-    alert("Nenhum pedido no período.");
+    alert("Ningún pedido en el período.");
     return;
   }
 
@@ -3229,13 +3543,13 @@ async function exportarPDF() {
   <div class="resumo">
     <div class="card"><div class="lbl">Total Faturado</div><div class="val">${fmt(total)}</div></div>
     <div class="card"><div class="lbl">Pedidos</div><div class="val">${pedidos.length}</div></div>
-    <div class="card"><div class="lbl">Ticket Médio</div><div class="val">${fmt(pedidos.length ? Math.round(total / pedidos.length) : 0)}</div></div>
+    <div class="card"><div class="lbl">Ticket Promedio</div><div class="val">${fmt(pedidos.length ? Math.round(total / pedidos.length) : 0)}</div></div>
     <div class="card"><div class="lbl">Pix</div><div class="val">${fmt(totalPix)}</div></div>
     <div class="card"><div class="lbl">Dinheiro</div><div class="val">${fmt(totalEfet)}</div></div>
-    <div class="card"><div class="lbl">Cartão</div><div class="val">${fmt(totalCard)}</div></div>
+    <div class="card"><div class="lbl">Tarjeta</div><div class="val">${fmt(totalCard)}</div></div>
   </div>
   <table>
-    <thead><tr><th>#</th><th>Data/Hora</th><th>Cliente</th><th>Itens</th><th>Pagamento</th><th>Total</th></tr></thead>
+    <thead><tr><th>#</th><th>Data/Hora</th><th>Cliente</th><th>Ítems</th><th>Pagamento</th><th>Total</th></tr></thead>
     <tbody>${rows}</tbody>
   </table>
   <div class="footer">${nomeRestaurante} &nbsp;·&nbsp; ${new Date().toLocaleDateString("pt-BR")} &nbsp;·&nbsp; ${pedidos.length} registros</div>
@@ -3395,7 +3709,7 @@ function enviarRotaZap() {
       const _freteM = parseFloat(p.frete_motoboy);
       taxaTotal += isNaN(_freteM) ? TAXA_MOTOBOY || 0 : _freteM;
     } catch (e) {
-      console.error("Erro ao processar pedido na rota:", e);
+      console.error("Error al procesar pedido en la ruta:", e);
     }
   });
 
@@ -3450,7 +3764,7 @@ async function exportarProdutos(formato = "json") {
       .order("nome");
 
     if (error) throw error;
-    if (!prods?.length) { alert("Nenhum produto encontrado para exportar."); return; }
+    if (!prods?.length) { alert("Ningún producto encontrado para exportar."); return; }
 
     const hoje = new Date();
     const stamp = `${hoje.getFullYear()}${String(hoje.getMonth()+1).padStart(2,"0")}${String(hoje.getDate()).padStart(2,"0")}`;
@@ -3496,11 +3810,11 @@ async function exportarProdutos(formato = "json") {
       a.download = `produtos_${stamp}.csv`;
       a.click();
       URL.revokeObjectURL(a.href);
-      alert(`✅ ${prods.length} produtos exportados em CSV.\n\nDica: use o CSV para visualização/edição. Para restauração use o JSON.`);
+      alert(`✅ ${prods.length} productos exportados en CSV.\n\nConsejo: use el CSV para visualización/edición. Para restauración use el JSON.`);
     }
   } catch (e) {
     console.error("exportarProdutos:", e);
-    alert("Erro ao exportar: " + (e.message || e));
+    alert("Error al exportar: " + (e.message || e));
   } finally {
     if (btnEl) { btnEl.disabled = false; btnEl.innerHTML = '<i class="fas fa-file-export"></i> Exportar'; }
   }
@@ -3533,7 +3847,7 @@ function importarProdutos() {
 
       // Aceita tanto { produtos: [...] } quanto [...]
       const lista = Array.isArray(payload) ? payload : (payload.produtos || []);
-      if (!lista.length) throw new Error("Nenhum produto encontrado no arquivo.");
+      if (!lista.length) throw new Error("Ningún producto encontrado en el archivo.");
 
       const confirmMsg =
         `📦 ${lista.length} produtos encontrados no arquivo.
@@ -3575,7 +3889,7 @@ function importarProdutos() {
       const ignorados = lista.length - paraInserir.length;
 
       if (!paraInserir.length) {
-        alert(`⚠️ Todos os ${lista.length} produtos já existem (mesmo nome). Nada foi inserido.`);
+        alert(`⚠️ Los ${lista.length} productos ya existen (mismo nombre). No se insertó nada.`);
         return;
       }
 
@@ -3597,7 +3911,7 @@ function importarProdutos() {
 
     } catch (e) {
       console.error("importarProdutos:", e);
-      alert("Erro na importação: " + (e.message || e));
+      alert("Error en la importación: " + (e.message || e));
     } finally {
       if (btnEl) { btnEl.disabled = false; btnEl.innerHTML = '<i class="fas fa-file-import"></i> Importar'; }
     }
@@ -3658,7 +3972,7 @@ function renderizarCardsProdutos(lista) {
 
   if (!lista || lista.length === 0) {
     grid.innerHTML =
-      '<p style="color:#bbb;font-size:0.9rem;padding:20px 0">Nenhum produto encontrado.</p>';
+      '<p style="color:#bbb;font-size:0.9rem;padding:20px 0">Ningún producto encontrado.</p>';
     return;
   }
 
@@ -3708,7 +4022,7 @@ function renderizarCardsProdutos(lista) {
       ? `<span class="badge-pausado">⏸ Pausado</span>`
       : "";
     const badgeBalcao = p.somente_balcao
-      ? `<span class="badge-balcao">🏪 Balcão</span>`
+      ? `<span class="badge-balcao">🏪 Mostrador</span>`
       : "";
     const badgeExtras =
       extrasQtd > 0
@@ -3758,7 +4072,7 @@ function renderizarCardsProdutos(lista) {
         <button class="btn btn-sm btn-primary" onclick="editarProdutoById(${p.id})">
           <i class="fas fa-edit"></i> Editar
         </button>
-        <button class="btn btn-sm btn-info" onclick="duplicarProduto(${p.id})" title="Duplicar produto">
+        <button class="btn btn-sm btn-info" onclick="duplicarProduto(${p.id})" title="Duplicar producto">
           <i class="fas fa-copy"></i>
         </button>
         <button class="btn btn-sm ${p.ativo ? "btn-warning" : "btn-success"}"
@@ -3811,7 +4125,7 @@ async function salvarProduto() {
       try {
         urlFinal = await uploadImageToImgbb(fileInput.files[0]);
       } catch (uploadErr) {
-        alert("❌ Falha no upload da imagem: " + uploadErr.message + "\nO produto não foi salvo.");
+        alert("❌ Falla en la subida de la imagen: " + uploadErr.message + "\nEl producto no fue guardado.");
         return;
       }
     }
@@ -3823,12 +4137,12 @@ async function salvarProduto() {
     // Valida campos obrigatórios
     const _nomeVal = document.getElementById("prod-nome").value.trim();
     if (!_nomeVal) {
-      alert("⚠️ O nome do produto é obrigatório.");
+      alert("⚠️ El nombre del producto es obligatorio.");
       return;
     }
     const _catVal = document.getElementById("prod-cat").value;
     if (!_catVal) {
-      alert("⚠️ Selecione uma categoria para o produto.");
+      alert("⚠️ Seleccione una categoría para el producto.");
       return;
     }
 
@@ -4102,7 +4416,7 @@ async function salvarProduto() {
     if (tipo === "combo_fechado") {
       const cfg = cfLerConfigBuilder();
       if (!cfg.limite_total || cfg.limite_total < 1) {
-        alert("⚠️ Informe o limite total de itens do combo.");
+        alert("⚠️ Ingrese el límite total de ítems del combo.");
         return;
       }
       if (cfg.sabores.length === 0) {
@@ -4163,7 +4477,7 @@ async function salvarProduto() {
           try {
             inventario_id = await _sincronizarEstoqueVariacao(inventario_id, nome, novaQtd, novoMin);
           } catch (e) {
-            console.warn(`Falha ao sincronizar estoque da variação "${nome}":`, e.message);
+            console.warn(`Falla al sincronizar stock de la variación "${nome}":`, e.message);
           }
         }
 
@@ -4178,7 +4492,7 @@ async function salvarProduto() {
       const precoKg =
         parseFloat(document.getElementById("prod-preco-kg")?.value) || 0;
       if (!precoKg) {
-        alert("⚠️ Informe o preço por kg!");
+        alert("⚠️ ¡Ingrese el precio por kg!");
         return;
       }
       configFinal = { __tipo: "kg", preco_kg: precoKg };
@@ -4223,8 +4537,8 @@ async function salvarProduto() {
         try {
           inventarioId = await _criarNovoItemInventario(nomeProdutoAtual, qtdNova, minNova);
         } catch (e) {
-          console.warn("Falha ao criar item de estoque automático:", e.message);
-          alert("⚠️ Não foi possível criar o item de estoque automaticamente: " + e.message + "\nO produto será salvo sem controle de estoque vinculado.");
+          console.warn("Falla al crear ítem de stock automático:", e.message);
+          alert("⚠️ No fue posible crear el ítem de stock automáticamente: " + e.message + "\nEl producto se guardará sin control de stock vinculado.");
         }
       }
     }
@@ -4270,7 +4584,7 @@ async function salvarProduto() {
     fecharModal("modal-produto");
     carregarProdutos();
   } catch (e) {
-    alert("Erro: " + e.message);
+    alert("Error: " + e.message);
   } finally {
     btn.innerText = "Salvar";
     btn.disabled = false;
@@ -4313,7 +4627,7 @@ function _renderSeletorTipoProduto(tipoAtual) {
   container.innerHTML = `
     <div style="margin-bottom:12px">
       <label style="font-size:0.8rem;font-weight:700;color:#666;display:block;margin-bottom:8px">
-        🏷️ Tipo de Produto
+        🏷️ Tipo de Producto
       </label>
       <div style="display:flex;flex-wrap:wrap;gap:6px">
         ${permitidos.map(([k, l]) => `
@@ -4375,7 +4689,7 @@ async function abrirModalProduto(produto = null, tipoInicial = null) {
   document.getElementById("pizza-borda-preco-box").style.display = "none";
   document.getElementById("pizza-tem-borda").checked = false;
   document.getElementById("pizza-sabores-lista").innerHTML =
-    '<p style="color:#aaa;font-size:0.82rem;text-align:center;margin:10px 0">Clique em "+ Sabor" para adicionar</p>';
+    '<p style="color:#aaa;font-size:0.82rem;text-align:center;margin:10px 0">Haga clic en "+ Sabor" para agregar</p>';
   // Reset açaí
   const _acaiT = document.getElementById("acai-tamanhos-lista");
   if (_acaiT) _acaiT.innerHTML = "";
@@ -4715,7 +5029,7 @@ function toggleBuilder() {
 function addBuilderStep(t = "", m = 1, i = []) {
   const div = document.createElement("div");
   div.className = "etapa-item";
-  div.innerHTML = `<div class="etapa-header"><input type="text" class="form-control step-titulo" value="${t}" placeholder="Título da etapa (ex: Escolha a base)"><input type="number" class="form-control step-max" value="${m}" style="width:70px" title="Máx. seleções"><button class="btn btn-sm btn-danger" onclick="this.parentElement.parentElement.remove()">X</button></div><textarea class="etapa-ingredientes step-itens" placeholder="Itens separados por vírgula. Ex: Arroz, Atum, Salmão, Tofu">${Array.isArray(i) ? i.join(", ") : i}</textarea>`;
+  div.innerHTML = `<div class="etapa-header"><input type="text" class="form-control step-titulo" value="${t}" placeholder="Título de la etapa (ej: Elija la base)"><input type="number" class="form-control step-max" value="${m}" style="width:70px" title="Máx. selecciones"><button class="btn btn-sm btn-danger" onclick="this.parentElement.parentElement.remove()">X</button></div><textarea class="etapa-ingredientes step-itens" placeholder="Ítems separados por coma. Ej: Arroz, Atún, Salmón, Tofu">${Array.isArray(i) ? i.join(", ") : i}</textarea>`;
   document.getElementById("builder-steps").appendChild(div);
 }
 
@@ -4733,15 +5047,15 @@ function addVariacao(dados = {}) {
   const estoqueAtivo = document.getElementById("variacoes-estoque-ativo")?.checked || false;
   row.innerHTML = `
     <div style="display:flex;flex-direction:column;gap:6px">
-      <input data-f="vnome" class="form-control" value="${dados.nome || ""}" placeholder="Nome da variação (ex: Ex: Variação Premium)" style="font-weight:600">
+      <input data-f="vnome" class="form-control" value="${dados.nome || ""}" placeholder="Nombre de la variación (ej: Variación Premium)" style="font-weight:600">
       <div style="display:flex;gap:8px;align-items:center">
         <span style="font-size:0.8rem;color:#777;white-space:nowrap">Gs</span>
         <input data-f="vpreco" type="number" class="form-control" value="${dados.preco || ""}" placeholder="Preço" style="max-width:140px">
       </div>
-      <input data-f="vimg" class="form-control" value="${dados.img || ""}" placeholder="URL da foto (opcional — usa foto do produto por padrão)" style="font-size:0.8rem;color:#888">
+      <input data-f="vimg" class="form-control" value="${dados.img || ""}" placeholder="URL de la foto (opcional — usa la foto del producto por defecto)" style="font-size:0.8rem;color:#888">
       <div class="variacao-estoque-input" style="display:${estoqueAtivo ? "flex" : "none"};gap:8px;align-items:center;margin-top:4px;">
         <div style="flex:1;">
-          <label style="font-size:0.7rem;color:#555;font-weight:600;">Estoque</label>
+          <label style="font-size:0.7rem;color:#555;font-weight:600;">Stock</label>
           <input data-f="vestoque" type="number" class="form-control" placeholder="Qtd" min="0" step="1" style="max-width:100px;">
         </div>
         <div style="flex:1;">
@@ -4870,7 +5184,7 @@ function addPizzaBorda(dados = {}) {
       <input data-f="bnome" class="form-control" value="${dados.nome || ""}" placeholder="Ex: Cheddar, Catupiry, Chocolate">
     </div>
     <div style="flex:2">
-      <label style="font-size:0.72rem;color:#888">Preço (Gs)</label>
+      <label style="font-size:0.72rem;color:#888">Precio (Gs)</label>
       <input data-f="bpreco" type="number" class="form-control" value="${dados.preco || ""}" placeholder="0" min="0" step="500">
     </div>
     <button class="btn btn-sm btn-danger" onclick="this.closest('.pizza-borda-row').remove()" style="align-self:flex-end;margin-bottom:2px">✕</button>
@@ -4948,10 +5262,10 @@ function addPizzaSabor(dados = {}) {
       </button>
       <button type="button" class="btn btn-sm btn-danger" onclick="this.closest('.pizza-sabor-row').remove()">✕</button>
     </div>
-    <textarea data-f="sdesc" class="form-control" rows="1" placeholder="Descrição (opcional)" style="margin-bottom:6px">${dados.desc || ""}</textarea>
+    <textarea data-f="sdesc" class="form-control" rows="1" placeholder="Descripción (opcional)" style="margin-bottom:6px">${dados.desc || ""}</textarea>
     <div style="display:flex;gap:8px;align-items:center">
       ${imgSrc ? `<img src="${imgSrc}" style="width:40px;height:40px;border-radius:6px;object-fit:cover;flex-shrink:0">` : ""}
-      <input data-f="simg" type="text" class="form-control" value="${imgSrc}" placeholder="URL da imagem (opcional)" style="flex:1;font-size:0.8rem">
+      <input data-f="simg" type="text" class="form-control" value="${imgSrc}" placeholder="URL de la imagen (opcional)" style="flex:1;font-size:0.8rem">
       <label style="cursor:pointer;background:#e8f4fd;border:1px solid #3498db;border-radius:6px;padding:5px 8px;font-size:0.75rem;white-space:nowrap">
         📷 <input type="file" accept="image/*" style="display:none" onchange="uploadSaborImagem(this, this.closest('.pizza-sabor-row'))">
       </label>
@@ -5037,7 +5351,7 @@ async function uploadSaborImagem(fileInput, row) {
       prev.style.display = "block";
     }
   } catch (e) {
-    alert("Erro ao enviar imagem: " + e.message);
+    alert("Error al enviar imagen: " + e.message);
   } finally {
     fileInput.disabled = false;
     if (labelBtn && originalLabel) labelBtn.innerHTML = originalLabel;
@@ -5053,10 +5367,10 @@ function addAcaiTamanho(dados = {}) {
   const img = dados.img || "";
   row.innerHTML = `
     <div class="bir-fields">
-      <div><label class="bir-label">Nome</label><input data-f="nome" class="form-control" value="${dados.nome || ""}" placeholder="Ex: 300ml, Médio, G"></div>
-      <div><label class="bir-label">Preço (Gs)</label><input data-f="preco" type="number" class="form-control" value="${dados.preco || ""}" placeholder="0" min="0" step="500"></div>
+      <div><label class="bir-label">Nome</label><input data-f="nome" class="form-control" value="${dados.nome || ""}" placeholder="Ej: 300ml, Mediano, G"></div>
+      <div><label class="bir-label">Precio (Gs)</label><input data-f="preco" type="number" class="form-control" value="${dados.preco || ""}" placeholder="0" min="0" step="500"></div>
       <div style="position:relative">
-        <label class="bir-label">Imagem</label>
+        <label class="bir-label">Imagen</label>
         <div style="display:flex;gap:4px">
           <input data-f="img" type="text" class="form-control" value="${img}" placeholder="URL ou 📷">
           <label style="cursor:pointer;background:#e8f4fd;border:1px solid #3498db;border-radius:6px;padding:5px 8px;font-size:0.75rem;white-space:nowrap">
@@ -5078,9 +5392,9 @@ function addAcaiAcompanhamento(dados = {}) {
   row.innerHTML = `
     <div class="bir-fields">
       <div><label class="bir-label">Nome</label><input data-f="nome" class="form-control" value="${dados.nome || ""}" placeholder="Ex: Granola, Leite Condensado"></div>
-      <div><label class="bir-label">Preço extra (Gs)</label><input data-f="preco" type="number" class="form-control" value="${dados.preco || 0}" placeholder="0 = incluído" min="0" step="100"></div>
+      <div><label class="bir-label">Precio extra (Gs)</label><input data-f="preco" type="number" class="form-control" value="${dados.preco || 0}" placeholder="0 = incluido" min="0" step="100"></div>
       <div>
-        <label class="bir-label">Imagem</label>
+        <label class="bir-label">Imagen</label>
         <div style="display:flex;gap:4px">
           <input data-f="img" type="text" class="form-control" value="${img}" placeholder="URL ou 📷">
           <label style="cursor:pointer;background:#e8f4fd;border:1px solid #3498db;border-radius:6px;padding:5px 8px;font-size:0.75rem;white-space:nowrap">
@@ -5101,11 +5415,11 @@ function addAcaiEtapa(titulo = "", max = 1, itens = []) {
   const itensStr = Array.isArray(itens) ? itens.join(", ") : itens;
   div.innerHTML = `
     <div class="etapa-header">
-      <input type="text" class="form-control step-titulo" value="${titulo}" placeholder="Título da etapa (ex: Frutas)">
-      <input type="number" class="form-control step-max" value="${max}" style="width:70px" title="Máx. seleções">
+      <input type="text" class="form-control step-titulo" value="${titulo}" placeholder="Título de la etapa (ej: Frutas)">
+      <input type="number" class="form-control step-max" value="${max}" style="width:70px" title="Máx. selecciones">
       <button class="btn btn-sm btn-danger" onclick="this.parentElement.parentElement.remove()">✕</button>
     </div>
-    <textarea class="etapa-ingredientes step-itens" placeholder="Itens separados por vírgula. Ex: Morango, Banana, Uva">${itensStr}</textarea>`;
+    <textarea class="etapa-ingredientes step-itens" placeholder="Ítems separados por coma. Ej: Frutilla, Banana, Uva">${itensStr}</textarea>`;
   container.appendChild(div);
 }
 
@@ -5118,7 +5432,7 @@ function addSucoTamanho(dados = {}) {
   row.innerHTML = `
     <div class="bir-fields">
       <div><label class="bir-label">Nome</label><input data-f="nome" class="form-control" value="${dados.nome || ""}" placeholder="Ex: 300ml, 500ml, Grande"></div>
-      <div><label class="bir-label">Preço (Gs)</label><input data-f="preco" type="number" class="form-control" value="${dados.preco || ""}" placeholder="0" min="0" step="500"></div>
+      <div><label class="bir-label">Precio (Gs)</label><input data-f="preco" type="number" class="form-control" value="${dados.preco || ""}" placeholder="0" min="0" step="500"></div>
     </div>
     <button class="btn btn-sm btn-danger bir-remove" onclick="this.closest('.suco-tamanho-row').remove()">✕</button>`;
   lista.appendChild(row);
@@ -5131,11 +5445,11 @@ function addSucoEtapa(titulo = "", max = 1, itens = []) {
   const itensStr = Array.isArray(itens) ? itens.join(", ") : itens;
   div.innerHTML = `
     <div class="etapa-header">
-      <input type="text" class="form-control step-titulo" value="${titulo}" placeholder="Título da etapa (ex: Fruta principal)">
-      <input type="number" class="form-control step-max" value="${max}" style="width:70px" title="Máx. seleções">
+      <input type="text" class="form-control step-titulo" value="${titulo}" placeholder="Título de la etapa (ej: Fruta principal)">
+      <input type="number" class="form-control step-max" value="${max}" style="width:70px" title="Máx. selecciones">
       <button class="btn btn-sm btn-danger" onclick="this.parentElement.parentElement.remove()">✕</button>
     </div>
-    <textarea class="etapa-ingredientes step-itens" placeholder="Ex: Laranja, Limão, Maracujá">${itensStr}</textarea>`;
+    <textarea class="etapa-ingredientes step-itens" placeholder="Ej: Naranja, Limón, Maracuyá">${itensStr}</textarea>`;
   container.appendChild(div);
 }
 
@@ -5149,7 +5463,7 @@ function addSorveteTamanho(dados = {}) {
     <div class="bir-fields">
       <div><label class="bir-label">Nome</label><input data-f="nome" class="form-control" value="${dados.nome || ""}" placeholder="Ex: 1 Bola, Duplo, 3 Bolas"></div>
       <div><label class="bir-label">Qtd. Bolas</label><input data-f="qtd_bolas" type="number" class="form-control" value="${dados.qtd_bolas || ""}" placeholder="1" min="1"></div>
-      <div><label class="bir-label">Preço (Gs)</label><input data-f="preco" type="number" class="form-control" value="${dados.preco || ""}" placeholder="0" min="0" step="500"></div>
+      <div><label class="bir-label">Precio (Gs)</label><input data-f="preco" type="number" class="form-control" value="${dados.preco || ""}" placeholder="0" min="0" step="500"></div>
     </div>
     <button class="btn btn-sm btn-danger bir-remove" onclick="this.closest('.sorvete-tamanho-row').remove()">✕</button>`;
   lista.appendChild(row);
@@ -5163,9 +5477,9 @@ function addSorveteSabor(dados = {}) {
   row.innerHTML = `
     <div class="bir-fields">
       <div><label class="bir-label">Sabor</label><input data-f="nome" class="form-control" value="${dados.nome || ""}" placeholder="Ex: Chocolate, Morango, Baunilha"></div>
-      <div><label class="bir-label">Preço extra (Gs)</label><input data-f="preco" type="number" class="form-control" value="${dados.preco || 0}" placeholder="0 = incluído" min="0" step="100"></div>
+      <div><label class="bir-label">Precio extra (Gs)</label><input data-f="preco" type="number" class="form-control" value="${dados.preco || 0}" placeholder="0 = incluido" min="0" step="100"></div>
       <div>
-        <label class="bir-label">Imagem</label>
+        <label class="bir-label">Imagen</label>
         <div style="display:flex;gap:4px">
           <input data-f="img" type="text" class="form-control" value="${img}" placeholder="URL ou 📷">
           <label style="cursor:pointer;background:#e8f4fd;border:1px solid #3498db;border-radius:6px;padding:5px 8px;font-size:0.75rem">
@@ -5186,8 +5500,8 @@ function addSorveteEtapa(titulo = "", max = 1, itens = []) {
   const itensStr = Array.isArray(itens) ? itens.join(", ") : itens;
   div.innerHTML = `
     <div class="etapa-header">
-      <input type="text" class="form-control step-titulo" value="${titulo}" placeholder="Título da etapa (ex: Cobertura)">
-      <input type="number" class="form-control step-max" value="${max}" style="width:70px" title="Máx. seleções">
+      <input type="text" class="form-control step-titulo" value="${titulo}" placeholder="Título de la etapa (ej: Cobertura)">
+      <input type="number" class="form-control step-max" value="${max}" style="width:70px" title="Máx. selecciones">
       <button class="btn btn-sm btn-danger" onclick="this.parentElement.parentElement.remove()">✕</button>
     </div>
     <textarea class="etapa-ingredientes step-itens" placeholder="Ex: Calda de Chocolate, Caramelo, Granulado">${itensStr}</textarea>`;
@@ -5204,7 +5518,7 @@ function addVariacaoSimples(dados = {}, listaId) {
   row.innerHTML = `
     <div class="bir-fields">
       <div><label class="bir-label">Nome</label><input data-f="vnome" class="form-control" value="${dados.nome || ""}" placeholder="Ex: Tradicional, Premium"></div>
-      <div><label class="bir-label">Preço extra (Gs)</label><input data-f="vpreco" type="number" class="form-control" value="${dados.preco || 0}" placeholder="0" min="0" step="100"></div>
+      <div><label class="bir-label">Precio extra (Gs)</label><input data-f="vpreco" type="number" class="form-control" value="${dados.preco || 0}" placeholder="0" min="0" step="100"></div>
     </div>
     <button class="btn btn-sm btn-danger bir-remove" onclick="this.closest('.variacao-acai-row').remove()">✕</button>`;
   lista.appendChild(row);
@@ -5216,7 +5530,7 @@ async function _carregarComboSelect() {
   const container = document.getElementById("combo-produtos-selecionados");
   if (!container) return;
   container.innerHTML =
-    '<div style="text-align:center;padding:10px;color:#aaa;font-size:0.82rem">Carregando produtos...</div>';
+    '<div style="text-align:center;padding:10px;color:#aaa;font-size:0.82rem">Cargando productos...</div>';
   const { data } = await supa
     .from("produtos")
     .select("id, nome, preco, categoria_slug")
@@ -5224,7 +5538,7 @@ async function _carregarComboSelect() {
     .order("nome");
   if (!data || !data.length) {
     container.innerHTML =
-      '<div style="color:#aaa;font-size:0.82rem">Nenhum produto cadastrado.</div>';
+      '<div style="color:#aaa;font-size:0.82rem">Ningún producto registrado.</div>';
     return;
   }
   const presel = window._comboItensPresel || [];
@@ -5256,7 +5570,7 @@ function cfAdicionarSabor(nome = "") {
            value="${nome.replace(/"/g, "&quot;")}"
            oninput="cfAtualizarPreview()"
            style="flex:1;padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:7px;font-size:0.88rem;outline:none">
-    <button type="button" class="cf-remove-sabor" title="Remover sabor"
+    <button type="button" class="cf-remove-sabor" title="Quitar sabor"
             onclick="cfRemoverSabor('${id}')">×</button>
   `;
   lista.appendChild(row);
@@ -5315,7 +5629,7 @@ function cfCarregarNoBuilder(cfg) {
 async function duplicarProduto(id) {
   if (
     !confirm(
-      'Duplicar este produto? Uma cópia será criada com o nome "(Cópia) ..."',
+      '¿Duplicar este producto? Se creará una copia con el nombre "(Copia) ..."',
     )
   )
     return;
@@ -5325,7 +5639,7 @@ async function duplicarProduto(id) {
     .eq("id", id)
     .single();
   if (error || !p) {
-    alert("Erro ao buscar produto.");
+    alert("Error al buscar producto.");
     return;
   }
   const copia = { ...p };
@@ -5337,7 +5651,7 @@ async function duplicarProduto(id) {
   _normalizarMontagemConfig(copia); // evita duplicar montagem_config corrompido (string dupla)
   const { error: errIns } = await supa.from("produtos").insert([copia]);
   if (errIns) {
-    alert("Erro ao duplicar: " + errIns.message);
+    alert("Error al duplicar: " + errIns.message);
     return;
   }
   alert(t("alert.produto_duplicado"));
@@ -5357,7 +5671,7 @@ function addExtra(dados = {}) {
   row.className = "extra-row";
   row.innerHTML = `
     <input data-f="enome" class="form-control" value="${dados.nome || ""}" placeholder="Ex: Wasabi, Ovo Frito">
-    <input data-f="epreco" type="number" class="form-control" value="${dados.preco || ""}" placeholder="Preço (Gs)">
+    <input data-f="epreco" type="number" class="form-control" value="${dados.preco || ""}" placeholder="Precio (Gs)">
     <button class="btn btn-sm btn-danger" onclick="this.closest('.extra-row').remove()" title="Remover">✕</button>
   `;
   lista.appendChild(row);
@@ -5376,7 +5690,7 @@ function addOpcaoPreparo(valor = "") {
   const row = document.createElement("div");
   row.className = "extra-row preparo-row-admin";
   row.innerHTML = `
-    <input class="form-control preparo-opcao-input" value="${valor}" placeholder="Ex: Salmão Flambado, Batata Frita">
+    <input class="form-control preparo-opcao-input" value="${valor}" placeholder="Ej: Salmón Flambeado, Papas Fritas">
     <button class="btn btn-sm btn-danger" onclick="this.closest('.preparo-row-admin').remove()" title="Remover">✕</button>
   `;
   lista.appendChild(row);
@@ -5390,7 +5704,7 @@ function addExtraGlobal(dados = {}) {
   row.style.marginBottom = "8px";
   row.innerHTML = `
     <input data-f="gnome" class="form-control" value="${dados.nome || ""}" placeholder="Ex: Ex: Adicional Extra">
-    <input data-f="gpreco" type="number" class="form-control" value="${dados.preco || 0}" placeholder="Preço (0 = Grátis)">
+    <input data-f="gpreco" type="number" class="form-control" value="${dados.preco || 0}" placeholder="Precio (0 = Gratis)">
     <button class="btn btn-sm btn-danger" onclick="this.closest('.extra-row').remove()" title="Remover">✕</button>
   `;
   lista.appendChild(row);
@@ -5422,7 +5736,7 @@ async function salvarExtrasGlobais() {
     })
     .gt("id", 0);
   if (error) {
-    alert("Erro ao salvar adicionais globais: " + error.message);
+    alert("Error al guardar adicionales globales: " + error.message);
     return;
   }
   alert("✅ Adicionais globais salvos!");
@@ -5438,7 +5752,7 @@ async function carregarExtrasGlobaisAdmin() {
       .select("extras_globais, extras_globais_categorias")
       .single();
     if (error) {
-      console.warn("Extras globais:", error.message);
+      console.warn("Extras globales:", error.message);
       return;
     }
     if (data?.extras_globais && Array.isArray(data.extras_globais))
@@ -5499,21 +5813,21 @@ async function avisarEncerramentoDelivery() {
   overlay.innerHTML = `
     <div style="background:#fff;border-radius:16px;padding:24px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
-        <h3 style="margin:0;font-size:1.1rem;color:#c0392b">🚫 Encerrar Delivery</h3>
+        <h3 style="margin:0;font-size:1.1rem;color:#c0392b">🚫 Cerrar Delivery</h3>
         <button onclick="this.closest('#modal-encerramento-delivery').remove()" 
                 style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:#999">✕</button>
       </div>
 
       <p style="color:#555;font-size:0.9rem;margin-bottom:16px">
-        Isso vai <strong>fechar o delivery imediatamente</strong> e exibir um aviso para os clientes no site.
+        Esto va a <strong>cerrar el delivery inmediatamente</strong> y mostrar un aviso a los clientes en el sitio.
       </p>
 
       <label style="font-weight:600;font-size:0.85rem;color:#333;display:block;margin-bottom:6px">
-        Mensagem para os clientes (opcional):
+        Mensaje para los clientes (opcional):
       </label>
       <textarea id="aviso-encerramento-texto" rows="3"
         style="width:100%;padding:10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:0.9rem;resize:vertical;box-sizing:border-box;margin-bottom:16px"
-        placeholder="Ex: Delivery encerrado por hoje. Voltamos amanhã às 18h! 🍣"></textarea>
+        placeholder="Ej: Delivery cerrado por hoy. ¡Volvemos mañana a las 18h! 🍣"></textarea>
 
       <div style="display:flex;gap:10px">
         <button onclick="this.closest('#modal-encerramento-delivery').remove()"
@@ -5522,7 +5836,7 @@ async function avisarEncerramentoDelivery() {
         </button>
         <button onclick="_confirmarEncerramentoDelivery()"
                 style="flex:1;padding:12px;background:#e74c3c;color:white;border:none;border-radius:8px;font-weight:700;cursor:pointer">
-          🚫 Fechar Agora
+          🚫 Cerrar Ahora
         </button>
       </div>
     </div>`;
@@ -5552,9 +5866,9 @@ async function _confirmarEncerramentoDelivery() {
     });
     if (e2) {
       alert(
-        "Erro ao encerrar delivery: " +
+        "Error al cerrar delivery: " +
           e2.message +
-          "\n\n💡 Execute no Supabase:\nALTER TABLE configuracoes ADD COLUMN IF NOT EXISTS delivery_aberto BOOLEAN DEFAULT true;\nALTER TABLE configuracoes ADD COLUMN IF NOT EXISTS aviso_delivery TEXT DEFAULT '';",
+          "\n\n💡 Ejecute en Supabase:\nALTER TABLE configuracoes ADD COLUMN IF NOT EXISTS delivery_aberto BOOLEAN DEFAULT true;\nALTER TABLE configuracoes ADD COLUMN IF NOT EXISTS aviso_delivery TEXT DEFAULT '';",
       );
       return;
     }
@@ -5583,7 +5897,7 @@ async function reabrirDelivery() {
     .gt("id", 0);
 
   if (error) {
-    alert("Erro: " + error.message);
+    alert("Error: " + error.message);
     return;
   }
 
@@ -5626,17 +5940,17 @@ function abrirModalEstenderHorario() {
   overlay.innerHTML = `
     <div style="background:#fff;border-radius:16px;padding:24px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
-        <h3 style="margin:0;font-size:1.1rem;color:#2980b9">⏰ Estender Horário Hoje</h3>
+        <h3 style="margin:0;font-size:1.1rem;color:#2980b9">⏰ Extender Horario Hoy</h3>
         <button onclick="this.closest('#modal-estender-horario').remove()"
                 style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:#999">✕</button>
       </div>
 
       <p style="color:#555;font-size:0.88rem;margin-bottom:18px">
-        Adicione minutos extras ao horário de hoje. O site aceitará pedidos por mais tempo.
+        Agregue minutos extra al horario de hoy. El sitio aceptará pedidos por más tiempo.
       </p>
 
       <label style="font-weight:600;font-size:0.85rem;color:#333;display:block;margin-bottom:10px">
-        Quantos minutos a mais?
+        ¿Cuántos minutos más?
       </label>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px">
         ${[15, 30, 45, 60, 90, 120]
@@ -5652,7 +5966,7 @@ function abrirModalEstenderHorario() {
       </div>
 
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
-        <label style="font-size:0.85rem;color:#666;white-space:nowrap">Ou digite:</label>
+        <label style="font-size:0.85rem;color:#666;white-space:nowrap">O ingrese:</label>
         <input type="number" id="input-minutos-extra" min="1" max="480" placeholder="ex: 45"
                oninput="document.querySelectorAll('[data-min]').forEach(b => b.style.background='#f8f9fa')"
                style="flex:1;padding:10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:0.95rem;font-weight:700">
@@ -5692,7 +6006,7 @@ async function _confirmarEstenderHorario() {
   const inp = document.getElementById("input-minutos-extra");
   const minutos = parseInt(inp?.value || "0");
   if (!minutos || minutos < 1) {
-    alert("Escolha quantos minutos deseja adicionar.");
+    alert("Elija cuántos minutos desea agregar.");
     return;
   }
 
@@ -5712,25 +6026,25 @@ async function _confirmarEstenderHorario() {
     });
     if (e2) {
       alert(
-        "Erro ao salvar: " +
+        "Error al guardar: " +
           e2.message +
-          "\n\n💡 Execute no Supabase:\nALTER TABLE configuracoes ADD COLUMN IF NOT EXISTS horario_extra_hoje JSONB DEFAULT NULL;",
+          "\n\n💡 Ejecute en Supabase:\nALTER TABLE configuracoes ADD COLUMN IF NOT EXISTS horario_extra_hoje JSONB DEFAULT NULL;",
       );
       return;
     }
   }
 
   document.getElementById("modal-estender-horario")?.remove();
-  alert(`✅ Horário estendido em +${minutos} minutos hoje!`);
+  alert(`✅ ¡Horario extendido en +${minutos} minutos hoy!`);
 }
 
 async function removerExtensaoHorario() {
-  if (!confirm("Remover a extensão de horário de hoje?")) return;
+  if (!confirm("¿Quitar la extensión de horario de hoy?")) return;
   await supa
     .from("configuracoes")
     .update({ horario_extra_hoje: null })
     .gt("id", 0);
-  alert("✅ Extensão removida.");
+  alert("✅ Extensión eliminada.");
 }
 
 // Carrega status do delivery no painel (chamado no DOMContentLoaded / showTab)
@@ -5790,8 +6104,8 @@ async function carregarCategorias() {
     grid.innerHTML = `
       <div class="cat-empty">
         <i class="fas fa-tags" style="font-size:3rem;color:#ddd;margin-bottom:12px;display:block"></i>
-        <p>Nenhuma categoria criada ainda.</p>
-        <button class="btn btn-primary" onclick="abrirModalCategoria()"><i class="fas fa-plus"></i> Criar primeira categoria</button>
+        <p>Ninguna categoría creada todavía.</p>
+        <button class="btn btn-primary" onclick="abrirModalCategoria()"><i class="fas fa-plus"></i> Crear primera categoría</button>
       </div>`;
     carregarSelectCategorias();
     return;
@@ -5819,7 +6133,7 @@ async function carregarCategorias() {
     const horarioBadge =
       c.hora_inicio && c.hora_fim
         ? `<span class="cat-badge cat-badge-horario">🕐 ${c.hora_inicio}–${c.hora_fim}${Array.isArray(c.dias_semana) && c.dias_semana.length ? " (" + c.dias_semana.join(",") + ")" : ""}</span>`
-        : `<span class="cat-badge cat-badge-sempre">✅ Sempre visível</span>`;
+        : `<span class="cat-badge cat-badge-sempre">✅ Siempre visible</span>`;
 
     const card = document.createElement("div");
     card.className = "cat-card";
@@ -5846,10 +6160,10 @@ async function carregarCategorias() {
         <button class="cat-btn cat-btn-sub" onclick="abrirPainelSubcategorias('${c.slug}')" title="Gerenciar Subcategorias">
           <i class="fas fa-layer-group"></i><span>Sub</span>
         </button>
-        <button class="cat-btn cat-btn-edit" onclick='editarCategoria(${cJson})' title="Editar Categoria">
+        <button class="cat-btn cat-btn-edit" onclick='editarCategoria(${cJson})' title="Editar Categoría">
           <i class="fas fa-pen"></i><span>Editar</span>
         </button>
-        <button class="cat-btn cat-btn-del" onclick="deletarCat('${c.slug}')" title="Excluir Categoria">
+        <button class="cat-btn cat-btn-del" onclick="deletarCat('${c.slug}')" title="Eliminar Categoría">
           <i class="fas fa-trash"></i>
         </button>
       </div>
@@ -5997,8 +6311,8 @@ async function salvarOrdemCategorias(grid) {
       toast.style.display = "none";
     }, 2500);
   } catch (err) {
-    console.error("Erro ao salvar ordem:", err);
-    alert("Erro ao salvar nova ordem. Tente novamente.");
+    console.error("Error al guardar orden:", err);
+    alert("Error al guardar el nuevo orden. Intente nuevamente.");
   }
 }
 
@@ -6011,7 +6325,7 @@ async function carregarSelectCategorias(valorAtual = null) {
   // Preserva seleção atual se não foi passado valorAtual
   const valorPreservar = valorAtual || sel.value;
 
-  sel.innerHTML = '<option value="">— Sem categoria —</option>';
+  sel.innerHTML = '<option value="">— Sin categoría —</option>';
   if (data) {
     data.forEach(
       (c) =>
@@ -6051,7 +6365,7 @@ async function carregarSelectSubcategorias(
       .order("ordem");
 
     if (error) {
-      console.warn("Subcategorias indisponíveis:", error.message);
+      console.warn("Subcategorías no disponibles:", error.message);
       // Mostra o box mesmo assim (com só a opção "sem subcategoria")
       if (box) box.style.display = "block";
       return;
@@ -6068,7 +6382,7 @@ async function carregarSelectSubcategorias(
       if (valorAtual) sel.value = valorAtual;
     }
   } catch (e) {
-    console.warn("Erro ao buscar subcategorias:", e);
+    console.warn("Error al buscar subcategorías:", e);
     // Mostra mesmo assim — melhor mostrar vazio do que esconder sem avisar
     if (box) box.style.display = "block";
   }
@@ -6105,7 +6419,7 @@ async function carregarSubcategorias(categoriaSlag) {
 
     if (!data || data.length === 0) {
       html +=
-        '<p style="color:#aaa;padding:10px 0">Nenhuma subcategoria criada ainda.</p>';
+        '<p style="color:#aaa;padding:10px 0">Ninguna subcategoría creada todavía.</p>';
     } else {
       html +=
         '<table class="table"><thead><tr><th>Slug</th><th>Nome</th><th>Ordem</th><th></th></tr></thead><tbody>';
@@ -6127,8 +6441,8 @@ async function carregarSubcategorias(categoriaSlag) {
     }
   } catch (e) {
     html += `<div style="background:#fff3cd;padding:12px;border-radius:8px;color:#856404;font-size:0.85rem">
-      ⚠️ A tabela <strong>subcategorias</strong> ainda não existe no banco.<br>
-      Execute o SQL abaixo no Supabase para ativá-la:<br><br>
+      ⚠️ La tabla <strong>subcategorias</strong> todavía no existe en la base de datos.<br>
+      Ejecute el siguiente SQL en Supabase para activarla:<br><br>
       <code style="background:#f8f9fa;padding:4px 8px;border-radius:4px;font-size:0.8rem;display:block;white-space:pre-wrap">
 CREATE TABLE subcategorias (
   id SERIAL PRIMARY KEY,
@@ -6158,7 +6472,7 @@ function abrirModalSubcat(subcat = null) {
         <input type="hidden" id="subcat-modo" value="${isEdit ? "sim" : "nao"}">
         <input type="hidden" id="subcat-slug-original" value="${slugVal}">
         <div class="form-group">
-          <label>Nome Exibição</label>
+          <label>Nombre a Mostrar</label>
           <input type="text" id="subcat-nome" class="form-control" value="${nomeVal}" oninput="autoSlugFromSubcatNome()">
         </div>
         <div class="form-group">
@@ -6171,7 +6485,7 @@ function abrirModalSubcat(subcat = null) {
           <input type="number" id="subcat-ordem" class="form-control" value="${ordemVal}">
         </div>
         <div class="modal-actions">
-          <button class="btn btn-primary" onclick="salvarSubcat()">Salvar</button>
+          <button class="btn btn-primary" onclick="salvarSubcat()">Guardar</button>
           <button class="btn btn-secondary" onclick="document.getElementById('modal-subcat').remove()">Cancelar</button>
         </div>
       </div>
@@ -6221,7 +6535,7 @@ async function salvarSubcat() {
   }
 
   if (erro) {
-    alert("Erro ao salvar: " + erro.message);
+    alert("Error al guardar: " + erro.message);
   } else {
     document.getElementById("modal-subcat")?.remove();
     carregarSubcategorias(_catSlugAtualSubcat);
@@ -6231,7 +6545,7 @@ async function salvarSubcat() {
 async function deletarSubcat(slug) {
   if (
     !confirm(
-      `Deletar a subcategoria "${slug}"?\n\nOs produtos vinculados ficarão sem subcategoria.`,
+      `¿Eliminar la subcategoría "${slug}"?\n\nLos productos vinculados quedarán sin subcategoría.`,
     )
   )
     return;
@@ -6243,7 +6557,7 @@ async function deletarSubcat(slug) {
     .eq("subcategoria_slug", slug);
 
   const { error } = await supa.from("subcategorias").delete().eq("slug", slug);
-  if (error) alert("Erro: " + error.message);
+  if (error) alert("Error: " + error.message);
   else carregarSubcategorias(_catSlugAtualSubcat);
 }
 
@@ -6261,7 +6575,7 @@ function gerarSlug(texto) {
 
 // Abre Modal de Edição (Recebe o objeto c inteiro)
 function editarCategoria(c) {
-  document.getElementById("titulo-modal-cat").innerText = "Editar Categoria";
+  document.getElementById("titulo-modal-cat").innerText = "Editar Categoría";
   document.getElementById("cat-modo-edicao").value = "sim";
 
   const slugInput = document.getElementById("cat-slug");
@@ -6332,7 +6646,7 @@ async function salvarCategoria() {
         },
       ]);
       if (insErr) {
-        alert("Erro ao salvar: " + insErr.message);
+        alert("Error al guardar: " + insErr.message);
         return;
       }
 
@@ -6395,7 +6709,7 @@ async function salvarCategoria() {
     erro = error;
   }
 
-  if (erro) alert("Erro ao salvar: " + erro.message);
+  if (erro) alert("Error al guardar: " + erro.message);
   else {
     fecharModal("modal-cat");
     carregarCategorias();
@@ -6435,36 +6749,36 @@ async function abrirModalCategoria() {
 
 async function deletarProduto(id) {
   const confirmar = confirm(
-    "⚠️ ATENÇÃO: Deletar este produto?\n\nEsta ação não pode ser desfeita. O produto será removido permanentemente do sistema.",
+    "⚠️ ATENCIÓN: ¿Eliminar este producto?\n\nEsta acción no se puede deshacer. El producto será eliminado permanentemente del sistema.",
   );
   if (!confirmar) return;
 
   try {
     const { error } = await supa.from("produtos").delete().eq("id", id);
     if (error) {
-      alert("❌ Erro ao deletar: " + error.message);
+      alert("❌ Error al eliminar: " + error.message);
     } else {
       alert(t("alert.produto_excluido"));
       carregarProdutos();
     }
   } catch (e) {
-    alert("❌ Erro inesperado: " + e.message);
+    alert("❌ Error inesperado: " + e.message);
   }
 }
 
 async function pausarProduto(id, ativoAtual) {
   const novoStatus = !ativoAtual;
   const acao = novoStatus ? "reativar" : "pausar";
-  if (!confirm(`Deseja ${acao} este produto?`)) return;
+  if (!confirm(`¿Desea ${acao} este producto?`)) return;
 
   const { error } = await supa
     .from("produtos")
     .update({ ativo: novoStatus })
     .eq("id", id);
   if (error) {
-    alert("❌ Erro: " + error.message);
+    alert("❌ Error: " + error.message);
   } else {
-    alert(novoStatus ? "✅ Produto reativado!" : "⏸️ Produto pausado!");
+    alert(novoStatus ? "✅ ¡Producto reactivado!" : "⏸️ ¡Producto pausado!");
     carregarProdutos();
   }
 }
@@ -6503,13 +6817,13 @@ async function deletarCat(slug) {
     // Terceiro: deleta a categoria
     const { error } = await supa.from("categorias").delete().eq("slug", slug);
     if (error) {
-      alert("❌ Erro ao deletar: " + error.message);
+      alert("❌ Error al eliminar: " + error.message);
     } else {
-      alert("✅ Categoria deletada com sucesso!");
+      alert("✅ ¡Categoría eliminada con éxito!");
       carregarCategorias();
     }
   } catch (e) {
-    alert("❌ Erro inesperado: " + e.message);
+    alert("❌ Error inesperado: " + e.message);
   }
 }
 
@@ -6533,7 +6847,7 @@ function autoSlugFromNome() {
 
 async function deletarMotoboy(id) {
   const confirmar = confirm(
-    "⚠️ ATENÇÃO: Deletar este motoboy?\n\nEsta ação não pode ser desfeita.",
+    "⚠️ ATENCIÓN: ¿Eliminar este repartidor?\n\nEsta acción no se puede deshacer.",
   );
   if (!confirmar) return;
 
@@ -6545,18 +6859,18 @@ async function deletarMotoboy(id) {
         (error.message && error.message.includes("foreign key"))
       ) {
         alert(
-          "❌ Não é possível excluir este motoboy pois ele possui pedidos vinculados.\n\nDica: Você pode desativar o motoboy em vez de excluir.",
+          "❌ No es posible eliminar este repartidor porque tiene pedidos vinculados.\n\nConsejo: puede desactivar al repartidor en lugar de eliminarlo.",
         );
       } else {
-        alert("❌ Erro ao deletar: " + error.message);
+        alert("❌ Error al eliminar: " + error.message);
       }
     } else {
-      alert("✅ Motoboy deletado com sucesso!");
+      alert("✅ ¡Repartidor eliminado con éxito!");
       carregarMotoboys();
       carregarMotoboysSelect();
     }
   } catch (e) {
-    alert("❌ Erro inesperado: " + e.message);
+    alert("❌ Error inesperado: " + e.message);
   }
 }
 async function carregarMotoboys() {
@@ -6596,7 +6910,7 @@ async function carregarMotoboys() {
                     </div>
                     <div class="mobile-card-body">
                         <div class="mobile-card-row">
-                            <span class="mobile-card-label">Telefone:</span>
+                            <span class="mobile-card-label">Teléfono:</span>
                             <span class="mobile-card-value">${m.telefone || "-"}</span>
                         </div>
                     </div>
@@ -6613,7 +6927,7 @@ async function carregarMotoboys() {
       });
     } else {
       container.innerHTML =
-        '<p style="text-align:center;padding:20px;color:#999">Nenhum motoboy cadastrado.</p>';
+        '<p style="text-align:center;padding:20px;color:#999">Ningún repartidor registrado.</p>';
     }
 
     // Esconde tabela desktop no mobile
@@ -6632,16 +6946,16 @@ async function carregarMotoboys() {
 
   const tbody = document.getElementById("lista-motos");
   if (!tbody) {
-    console.error("❌ Elemento lista-motos não encontrado!");
+    console.error("❌ ¡Elemento lista-motos no encontrado!");
     return;
   }
 
   tbody.innerHTML = "";
 
   if (error) {
-    console.error("❌ Erro ao carregar motoboys:", error);
+    console.error("❌ Error al cargar repartidores:", error);
     tbody.innerHTML =
-      '<tr><td colspan="3" style="text-align:center;color:red">Erro ao carregar motoboys</td></tr>';
+      '<tr><td colspan="3" style="text-align:center;color:red">Error al cargar repartidores</td></tr>';
     return;
   }
 
@@ -6667,7 +6981,7 @@ async function carregarMotoboys() {
     });
   } else {
     tbody.innerHTML =
-      '<tr><td colspan="3" style="text-align:center">Nenhum motoboy cadastrado.</td></tr>';
+      '<tr><td colspan="3" style="text-align:center">Ningún repartidor registrado.</td></tr>';
   }
 }
 
@@ -6694,7 +7008,7 @@ async function salvarMotoboy() {
   const id = document.getElementById("moto-id").value;
 
   if (!dados.nome || !dados.nome.trim()) {
-    alert("❌ Nome do motoboy é obrigatório!");
+    alert("❌ ¡El nombre del repartidor es obligatorio!");
     return;
   }
 
@@ -6712,7 +7026,7 @@ async function salvarMotoboy() {
     carregarMotoboys();
     carregarMotoboysSelect(); // Atualiza o select da Rota
   } catch (e) {
-    alert("❌ Erro ao salvar: " + e.message);
+    alert("❌ Error al guardar: " + e.message);
   }
 }
 
@@ -6720,7 +7034,7 @@ async function carregarMotoboysSelect() {
   const { data } = await supa.from("motoboys").select("*");
   const sel = document.getElementById("sel-motoboy");
   if (!sel) return;
-  sel.innerHTML = '<option value="">Selecione...</option>';
+  sel.innerHTML = '<option value="">Seleccione...</option>';
   if (data) {
     data.forEach((m) => {
       sel.innerHTML += `<option value="${m.id}" data-tel="${m.telefone}" data-nome="${m.nome}">${m.nome}</option>`;
@@ -6754,7 +7068,7 @@ function _renderGradeSemanal(horariosSalvos = {}) {
   applyBar.style.cssText =
     "display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:10px 12px;background:var(--color-background-secondary);border-radius:10px;flex-wrap:wrap";
   applyBar.innerHTML = `
-    <span style="font-size:0.82rem;font-weight:600;color:var(--color-text-secondary)">⚡ Aplicar horário a todos os dias:</span>
+    <span style="font-size:0.82rem;font-weight:600;color:var(--color-text-secondary)">⚡ Aplicar horario a todos los días:</span>
     <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
       <input type="time" id="apply-all-abre" style="padding:5px 8px;border:1.5px solid var(--color-border-secondary);border-radius:6px;font-size:0.85rem">
       <span style="font-size:0.8rem;color:var(--color-text-secondary)">→</span>
@@ -6792,7 +7106,7 @@ function _renderGradeSemanal(horariosSalvos = {}) {
       .map(
         (t, i) => `
       <div class="gs-turno-row" data-idx="${i}">
-        <span class="gs-turno-label">${i === 0 ? "🕐 Abertura" : "🕑 2º Turno"}</span>
+        <span class="gs-turno-label">${i === 0 ? "🕐 Abertura" : "🕑 2do Turno"}</span>
         <div class="gs-turno-inputs">
           <div class="gs-time-group">
             <span class="gs-time-label">Das</span>
@@ -6800,10 +7114,10 @@ function _renderGradeSemanal(horariosSalvos = {}) {
           </div>
           <span class="gs-time-sep">→</span>
           <div class="gs-time-group">
-            <span class="gs-time-label">Até</span>
+            <span class="gs-time-label">Hasta</span>
             <input type="time" class="gs-time-input turno-fecha" value="${t.fecha || ""}">
           </div>
-          ${i > 0 ? `<button class="gs-btn-rm" onclick="removerTurno(this)" title="Remover turno">✕</button>` : '<div style="width:28px"></div>'}
+          ${i > 0 ? `<button class="gs-btn-rm" onclick="removerTurno(this)" title="Quitar turno">✕</button>` : '<div style="width:28px"></div>'}
         </div>
       </div>`,
       )
@@ -6828,7 +7142,7 @@ function _renderGradeSemanal(horariosSalvos = {}) {
       <div class="gs-dia-turnos" style="${fechado ? "display:none" : ""}">
         <div class="gs-turnos-lista">${turnosHtml}</div>
         <button class="gs-btn-add-turno btn-add-turno" onclick="adicionarTurno(this)">
-          <i class="fas fa-plus"></i> Adicionar 2º turno
+          <i class="fas fa-plus"></i> Agregar 2do turno
         </button>
       </div>
     `;
@@ -6863,14 +7177,14 @@ function adicionarTurno(btn) {
   const lista = btn.previousElementSibling;
   const idx = lista.querySelectorAll(".gs-turno-row").length;
   if (idx >= 2) {
-    alert("Máximo de 2 turnos por dia.");
+    alert("Máximo de 2 turnos por día.");
     return;
   }
   const div = document.createElement("div");
   div.className = "gs-turno-row";
   div.dataset.idx = idx;
   div.innerHTML = `
-    <span class="gs-turno-label">🕑 2º Turno</span>
+    <span class="gs-turno-label">🕑 2do Turno</span>
     <div class="gs-turno-inputs">
       <div class="gs-time-group">
         <span class="gs-time-label">Das</span>
@@ -6878,10 +7192,10 @@ function adicionarTurno(btn) {
       </div>
       <span class="gs-time-sep">→</span>
       <div class="gs-time-group">
-        <span class="gs-time-label">Até</span>
+        <span class="gs-time-label">Hasta</span>
         <input type="time" class="gs-time-input turno-fecha">
       </div>
-      <button class="gs-btn-rm btn-rm-turno" onclick="removerTurno(this)" title="Remover turno">✕</button>
+      <button class="gs-btn-rm btn-rm-turno" onclick="removerTurno(this)" title="Quitar turno">✕</button>
     </div>
   `;
   lista.appendChild(div);
@@ -6895,7 +7209,7 @@ function _aplicarHorarioTodos() {
   const abre = document.getElementById("apply-all-abre")?.value;
   const fecha = document.getElementById("apply-all-fecha")?.value;
   if (!abre || !fecha) {
-    alert("Preencha os horários de abertura e fechamento.");
+    alert("Complete los horarios de apertura y cierre.");
     return;
   }
   document.querySelectorAll(".gs-dia-card").forEach((row) => {
@@ -6916,7 +7230,7 @@ function _aplicarHorarioTodos() {
     if (turnoFecha) turnoFecha.value = fecha;
   });
   alert(
-    "✅ Horário aplicado a todos os dias. Clique em Salvar para confirmar.",
+    "✅ Horario aplicado a todos los días. Haga clic en Guardar para confirmar.",
   );
 }
 
@@ -6940,7 +7254,7 @@ function addShakeTamanho(dados = {}) {
       <input data-f="sml" type="number" class="form-control" value="${dados.ml || ""}" placeholder="400">
     </div>
     <div style="flex:2">
-      <label style="font-size:0.72rem;color:#888">Preço (Gs)</label>
+      <label style="font-size:0.72rem;color:#888">Precio (Gs)</label>
       <input data-f="spreco" type="number" class="form-control" value="${dados.preco || ""}" placeholder="15000">
     </div>
     <button onclick="this.closest('.shake-tamanho-row').remove()" style="background:none;border:none;color:#e74c3c;font-size:1.2rem;cursor:pointer;padding:0 4px;flex-shrink:0">✕</button>
@@ -6961,7 +7275,7 @@ function addShakeSabor(dados = {}) {
       <input data-f="snome" class="form-control" value="${dados.nome || ""}" placeholder="Ex: Morango, Chocolate">
     </div>
     <div style="flex:2">
-      <label style="font-size:0.72rem;color:#888">Preço extra (Gs)</label>
+      <label style="font-size:0.72rem;color:#888">Precio extra (Gs)</label>
       <input data-f="spreco" type="number" class="form-control" value="${dados.preco || ""}" placeholder="0">
     </div>
     <div style="flex:2">
@@ -7182,7 +7496,7 @@ async function salvarConfiguracoes() {
   if (dados.cotacao_real) COTACAO_REAL = Number(dados.cotacao_real);
 
   const { error } = await supa.from("configuracoes").update(dados).gt("id", 0);
-  if (error) alert("Erro: " + error.message);
+  if (error) alert("Error: " + error.message);
   else alert(t("alert.cfg_salvas"));
 }
 
@@ -7210,7 +7524,7 @@ async function salvarBanner(num = 1) {
     null;
 
   if (!prodId) {
-    alert("Informe o ID do produto para o banner.");
+    alert("Ingrese el ID del producto para el banner.");
     return;
   }
 
@@ -7228,13 +7542,13 @@ async function salvarBanner(num = 1) {
       try {
         urlFinal = await uploadImageToImgbb(file);
       } catch (uploadErr) {
-        alert("❌ Falha no upload do banner: " + uploadErr.message + "\nO banner não foi salvo.");
+        alert("❌ Falla en la subida del banner: " + uploadErr.message + "\nEl banner no fue guardado.");
         return;
       }
     }
 
     if (!urlFinal) {
-      alert("Selecione uma foto ou informe a URL do banner.");
+      alert("Seleccione una foto o ingrese la URL del banner.");
       return;
     }
 
@@ -7255,7 +7569,7 @@ async function salvarBanner(num = 1) {
 
     alert(`✅ Banner ${num} ativado!`);
   } catch (e) {
-    alert("Erro: " + e.message);
+    alert("Error: " + e.message);
   } finally {
     btn.innerHTML = '<i class="fas fa-upload"></i> Salvar Banner';
     btn.disabled = false;
@@ -7407,7 +7721,7 @@ async function salvarTabelaFrete() {
     .update(updateData)
     .gt("id", 0);
   if (error) {
-    alert("Erro ao salvar: " + error.message);
+    alert("Error al guardar: " + error.message);
     return;
   }
   TABELA_FRETE_ADMIN = tabela;
@@ -7426,7 +7740,7 @@ async function _carregarMaquininhas() {
   container.innerHTML = "";
   if (!lista.length) {
     container.innerHTML =
-      '<p style="color:var(--color-text-secondary);font-size:0.82rem;padding:8px 0">Nenhuma maquininha cadastrada.</p>';
+      '<p style="color:var(--color-text-secondary);font-size:0.82rem;padding:8px 0">Ningún posnet registrado.</p>';
     return;
   }
   lista.forEach((m, idx) => _renderMaquininha(m, idx, container));
@@ -7492,7 +7806,7 @@ async function salvarMaquininhas() {
     .update({ maquininhas_cartao: maquininhas })
     .gt("id", 0);
   if (error) {
-    alert("Erro: " + error.message);
+    alert("Error: " + error.message);
     return;
   }
   alert("✅ Maquininhas salvas!");
@@ -7531,7 +7845,7 @@ async function salvarPersonalizacao() {
       try {
         iconeUrl = await uploadImageToImgbb(iconeFile);
       } catch (uploadErr) {
-        alert("❌ Falha no upload do ícone: " + uploadErr.message + "\nA personalização não foi salva.");
+        alert("❌ Falla en la subida del ícono: " + uploadErr.message + "\nLa personalización no fue guardada.");
         return;
       }
       dados.icone_url = iconeUrl;
@@ -7559,10 +7873,10 @@ async function salvarPersonalizacao() {
     }
     if (dados.nome_restaurante) NOME_RESTAURANTE = dados.nome_restaurante;
     alert(
-      "✅ Personalização salva! Recarregue o cardápio para ver as mudanças.",
+      "✅ ¡Personalización guardada! Recargue el menú para ver los cambios.",
     );
   } catch (e) {
-    alert("Erro: " + e.message);
+    alert("Error: " + e.message);
   } finally {
     btn.innerHTML = '<i class="fas fa-paint-brush"></i> Salvar Personalização';
     btn.disabled = false;
@@ -7591,7 +7905,7 @@ async function _uploadLogoIdentidade(input) {
     if (img) img.src = url;
     if (preview) preview.style.display = "block";
   } catch (e) {
-    alert("Erro ao enviar imagem: " + e.message);
+    alert("Error al enviar imagen: " + e.message);
   } finally {
     if (btn) btn.innerHTML = originalHtml;
   }
@@ -7603,13 +7917,13 @@ async function _uploadLogoIdentidade(input) {
 async function carregarDashboard() {
   // Saudação
   const hora = new Date().getHours();
-  const saudacao = hora < 12 ? "Bom dia" : hora < 18 ? "Boa tarde" : "Boa noite";
+  const saudacao = hora < 12 ? "Buenos días" : hora < 18 ? "Buenas tardes" : "Buenas noches";
   const elGreet = document.getElementById("dash-greeting");
   if (elGreet) elGreet.textContent = saudacao + " 👋";
 
   const elDate = document.getElementById("dash-date");
   if (elDate) {
-    elDate.textContent = new Date().toLocaleDateString("pt-BR", {
+    elDate.textContent = new Date().toLocaleDateString("es-PY", {
       weekday: "long", day: "numeric", month: "long"
     });
   }
@@ -7618,7 +7932,7 @@ async function carregarDashboard() {
   await _carregarSessaoCaixa();
 
   // 2. Obtém o período via helper (usado para os KPIs e para passar aos rankings)
-  const { utcInicio, utcFim, usandoSessao } = _obterPeriodoFinanceiro();
+  const { utcInicio, utcFim, usandoSessao } = await _obterPeriodoFinanceiro();
 
   // 3. Atualiza o aviso sobre a sessão (sem ocultar os filtros)
   const avisoRank = document.getElementById("dash-ranking-aviso");
@@ -7646,7 +7960,7 @@ async function carregarDashboard() {
   const pedsFiltrados = (pedidos || []).filter((p) => {
     const pag = (p.forma_pagamento || "").toLowerCase();
     const isNaNota = pag === "nanota";
-    const isQuitado = (p.obs_pagamento || "").toLowerCase().includes("[quitado");
+    const isQuitado = !!p.quitado_em || (p.obs_pagamento || "").toLowerCase().includes("[quitado");
     if ((isNaNota && !isQuitado) || pag === "mensalista") return false;
     return true;
   });
@@ -7692,11 +8006,16 @@ async function carregarDashboard() {
 // ============================================================
 //  HELPER — obter período com base na sessão ou filtro manual
 // ============================================================
-function _obterPeriodoFinanceiro() {
+async function _obterPeriodoFinanceiro() {
   // Retorna { utcInicio, utcFim, usandoSessao }
   const elInicio = document.getElementById("fin-inicio");
   const elFim    = document.getElementById("fin-fim");
   const ehGestor = ["dono", "gerente", "adminMaster"].includes(perfilUsuario);
+
+  // Hora do servidor — nunca confia no relógio do dispositivo para
+  // decidir "que dia é hoje" (pode estar errado, ou já ter virado o dia
+  // em UTC enquanto ainda é "hoje" em Assunção, à noite).
+  const horaServ = await _obterHoraServidor();
 
   let utcInicio, utcFim, usandoSessao = false;
 
@@ -7706,10 +8025,10 @@ function _obterPeriodoFinanceiro() {
     utcFim    = new Date(new Date(elFim.value   + "T23:59:59").getTime() + _tz).toISOString();
   } else if (_sessaoCaixaAtiva) {
     utcInicio = _sessaoCaixaAtiva.aberto_em;
-    utcFim    = _sessaoCaixaAtiva.fechado_em || new Date().toISOString();
+    utcFim    = _sessaoCaixaAtiva.fechado_em || horaServ.iso;
     usandoSessao = true;
   } else {
-    const hoje = new Date().toISOString().split("T")[0];
+    const hoje = horaServ.date_py;
     const _tz = 3 * 60 * 60 * 1000;
     utcInicio = new Date(new Date(hoje + "T00:00:00").getTime() + _tz).toISOString();
     utcFim    = new Date(new Date(hoje + "T23:59:59").getTime() + _tz).toISOString();
@@ -7764,7 +8083,7 @@ async function carregarRankingProdutos(inicio = null, fim = null) {
   if (!el) return;
 
   if (!ranking.length) {
-    el.innerHTML = '<div class="rank-vazio">Nenhuma venda no período</div>';
+    el.innerHTML = '<div class="rank-vazio">Ninguna venta en el período</div>';
     return;
   }
 
@@ -7835,7 +8154,7 @@ async function carregarRankingClientes(inicio = null, fim = null) {
   if (!el) return;
 
   if (!top.length) {
-    el.innerHTML = '<div class="rank-vazio">Nenhum cliente no período</div>';
+    el.innerHTML = '<div class="rank-vazio">Ningún cliente en el período</div>';
     return;
   }
 
@@ -7980,7 +8299,7 @@ function pdvIniciarTabs() {
 
 async function logout() {
   const { error } = await supa.auth.signOut();
-  if (error) alert("Erro ao sair: " + error.message);
+  if (error) alert("Error al salir: " + error.message);
   else window.location.href = "login.html";
 }
 
@@ -8002,8 +8321,8 @@ function abrirModalAlterarSenha() {
           <div style="display:flex;align-items:center;gap:12px">
             <div style="background:rgba(255,255,255,0.12);border-radius:12px;padding:10px;font-size:22px">🔐</div>
             <div>
-              <div style="color:#fff;font-size:1.1rem;font-weight:700">Alterar Senha</div>
-              <div style="color:rgba(255,255,255,0.55);font-size:0.78rem;margin-top:2px">Escolha uma senha forte</div>
+              <div style="color:#fff;font-size:1.1rem;font-weight:700">Cambiar Contraseña</div>
+              <div style="color:rgba(255,255,255,0.55);font-size:0.78rem;margin-top:2px">Elija una contraseña segura</div>
             </div>
           </div>
         </div>
@@ -8011,9 +8330,9 @@ function abrirModalAlterarSenha() {
         <div style="padding:22px 24px 18px">
           <div style="margin-bottom:16px">
             <label style="font-size:0.75rem;font-weight:600;color:#64748b;text-transform:uppercase;
-              letter-spacing:.4px;display:block;margin-bottom:6px">Nova senha</label>
+              letter-spacing:.4px;display:block;margin-bottom:6px">Nueva contraseña</label>
             <div style="position:relative">
-              <input type="password" id="wl-nova-senha" placeholder="Digite a nova senha"
+              <input type="password" id="wl-nova-senha" placeholder="Ingrese la nueva contraseña"
                 autocomplete="new-password" oninput="_wlAvaliarSenha(this.value)"
                 style="width:100%;padding:10px 42px 10px 13px;border:2px solid #e2e8f0;
                 border-radius:10px;font-size:0.9rem;outline:none;box-sizing:border-box"
@@ -8036,15 +8355,15 @@ function abrirModalAlterarSenha() {
             <div style="margin-top:9px;display:grid;grid-template-columns:1fr 1fr;gap:3px 10px">
               <div id="wl-c1" style="font-size:.72rem;color:#bbb;transition:color .25s">✗ Mín. 8 caracteres</div>
               <div id="wl-c2" style="font-size:.72rem;color:#bbb;transition:color .25s">✗ Número</div>
-              <div id="wl-c3" style="font-size:.72rem;color:#bbb;transition:color .25s">✗ Maiúscula</div>
+              <div id="wl-c3" style="font-size:.72rem;color:#bbb;transition:color .25s">✗ Mayúscula</div>
               <div id="wl-c4" style="font-size:.72rem;color:#bbb;transition:color .25s">✗ Caractere especial</div>
             </div>
           </div>
           <div style="margin-bottom:6px">
             <label style="font-size:0.75rem;font-weight:600;color:#64748b;text-transform:uppercase;
-              letter-spacing:.4px;display:block;margin-bottom:6px">Confirmar senha</label>
+              letter-spacing:.4px;display:block;margin-bottom:6px">Confirmar contraseña</label>
             <div style="position:relative">
-              <input type="password" id="wl-conf-senha" placeholder="Repita a nova senha"
+              <input type="password" id="wl-conf-senha" placeholder="Repita la nueva contraseña"
                 autocomplete="new-password" oninput="_wlVerificarMatch()"
                 style="width:100%;padding:10px 42px 10px 13px;border:2px solid #e2e8f0;
                 border-radius:10px;font-size:0.9rem;outline:none;box-sizing:border-box"
@@ -8066,7 +8385,7 @@ function abrirModalAlterarSenha() {
           <button id="wl-btn-salvar-senha" onclick="wlSalvarNovaSenha()"
             style="flex:2;padding:11px;background:linear-gradient(135deg,#1a7a2e,#145a22);
             color:#fff;border:none;border-radius:10px;font-size:0.88rem;font-weight:700;cursor:pointer">
-            🔒 Salvar Nova Senha
+            🔒 Guardar Nueva Contraseña
           </button>
         </div>
       </div>
@@ -8134,7 +8453,7 @@ async function wlSalvarNovaSenha() {
 
   const { error } = await supa.auth.updateUser({ password: nova });
 
-  if (btn) { btn.disabled = false; btn.textContent = "🔒 Salvar Nova Senha"; btn.style.opacity = "1"; }
+  if (btn) { btn.disabled = false; btn.textContent = "🔒 Guardar Nueva Contraseña"; btn.style.opacity = "1"; }
 
   if (error) {
     showErr("Erro: " + error.message);
@@ -8326,16 +8645,16 @@ async function pdvCarregarPainelCaixa() {
       <div style="background:#fff3cd;border:1.5px solid #f0a500;border-radius:12px;
         padding:14px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
         <div style="flex:1;min-width:200px">
-          <div style="font-weight:700;color:#7a5100;font-size:0.92rem">⚠️ Caixa não aberto</div>
+          <div style="font-weight:700;color:#7a5100;font-size:0.92rem">⚠️ Caja no abierta</div>
           <div style="font-size:0.8rem;color:#9a6400;margin-top:2px">
-            Abra o caixa para as vendas serem contabilizadas nesta sessão.
+            Abra la caja para que las ventas se contabilicen en esta sesión.
           </div>
         </div>
         <button onclick="abrirModalCaixa('abertura')"
           style="background:#27ae60;color:#fff;border:none;border-radius:9px;
             padding:10px 20px;font-weight:700;cursor:pointer;font-size:0.88rem;
             white-space:nowrap;box-shadow:0 2px 8px rgba(39,174,96,.3)">
-          <i class="fas fa-door-open"></i> Abrir Caixa
+          <i class="fas fa-door-open"></i> Abrir Caja
         </button>
       </div>`;
   } else {
@@ -8369,7 +8688,7 @@ async function pdvCarregarPainelCaixa() {
           <button onclick="fecharCaixaResumo()"
             style="background:#2c3e50;color:#fff;border:none;border-radius:8px;
               padding:8px 14px;font-weight:600;cursor:pointer;font-size:0.82rem">
-            <i class="fas fa-calculator"></i> Fechar Dia
+            <i class="fas fa-calculator"></i> Cerrar Día
           </button>` : ""}
         </div>
       </div>`;
@@ -8452,7 +8771,7 @@ function renderizarGridPDV(filtroNome = "") {
       row.appendChild(_criarCardPDV(p));
     });
     if (produtos.length === 0) {
-      row.innerHTML = `<p style="color:#aaa;grid-column:1/-1;text-align:center;padding:20px">Nenhum produto encontrado</p>`;
+      row.innerHTML = `<p style="color:#aaa;grid-column:1/-1;text-align:center;padding:20px">Ningún producto encontrado</p>`;
     }
     grid.appendChild(row);
     return;
@@ -8655,14 +8974,14 @@ function adicionarItemPDV(p) {
   if (tipo === "variacoes" && cfg.variacoes?.length > 0) {
     const ativas = cfg.variacoes.filter((v) => v.ativo !== false);
     if (!ativas.length) {
-      alert("⏸️ Todas as variações estão pausadas.");
+      alert("⏸️ Todas las variaciones están pausadas.");
       return;
     }
     // Consulta estoque atual de cada variação vinculada a um item de inventário
     // e bloqueia (oculta) as que estiverem zeradas.
     _filtrarVariacoesComEstoque(ativas).then((disponiveis) => {
       if (!disponiveis.length) {
-        alert("📦 Todas as variações estão sem estoque no momento.");
+        alert("📦 Todas las variaciones están sin stock por el momento.");
         return;
       }
       const cfgComEstoque = { ...cfg, variacoes: disponiveis };
@@ -8752,12 +9071,12 @@ function _mostrarModalOpcoesPDV(produto, tipo) {
     </div>
     <div id="_pdv-modal-corpo"></div>
     <div id="_pdv-obs-row" style="margin-top:12px">
-      <label style="font-size:0.8rem;font-weight:600;color:#555">Observações</label>
+      <label style="font-size:0.8rem;font-weight:600;color:#555">Observaciones</label>
       <input type="text" id="_pdv-obs-input" class="form-control" placeholder="Ex: sem cebola, bem passado..." style="margin-top:4px">
     </div>
     <button id="_pdv-modal-add" onclick="_pdvModalConfirmar('${cacheKey}')"
       style="width:100%;padding:14px;background:var(--primary,#1a7a2e);color:#fff;border:none;border-radius:12px;font-size:1rem;font-weight:800;cursor:pointer;margin-top:16px">
-      ✅ Adicionar ao Pedido
+      ✅ Agregar al Pedido
     </button>`;
 
   const corpo = () => modal.querySelector("#_pdv-modal-corpo");
@@ -8765,7 +9084,7 @@ function _mostrarModalOpcoesPDV(produto, tipo) {
   // ── VARIAÇÕES ────────────────────────────────────────────────
   if (tipo === "variacoes") {
     const ativas = (cfg.variacoes || []).filter((v) => v.ativo !== false);
-    corpo().innerHTML = `<p style="font-size:0.82rem;color:#555;margin-bottom:10px;font-weight:600">Escolha a variação:</p>
+    corpo().innerHTML = `<p style="font-size:0.82rem;color:#555;margin-bottom:10px;font-weight:600">Elija la variación:</p>
       <div style="display:flex;flex-direction:column;gap:8px">
         ${ativas
           .map(
@@ -8879,7 +9198,7 @@ function _mostrarModalOpcoesPDV(produto, tipo) {
     }
 
     html += `<div id="_pdv_pizza_preco_box" style="background:#fff5f5;border:1.5px solid #fca5a5;border-radius:10px;padding:10px 14px;text-align:center;margin-bottom:8px">
-      <div style="font-size:0.78rem;color:#888;margin-bottom:2px">★ Prevalece o preço do tipo mais caro entre os sabores</div>
+      <div style="font-size:0.78rem;color:#888;margin-bottom:2px">★ Prevalece el precio del tipo más caro entre los sabores</div>
       <div style="font-size:0.8rem;color:#888">Total estimado:</div>
       <div id="_pdv_pizza_preco_val" style="font-size:1.4rem;font-weight:800;color:#e74c3c">Gs —</div>
     </div>`;
@@ -8984,7 +9303,7 @@ function _mostrarModalOpcoesPDV(produto, tipo) {
             .map((it) => {
               const nome = it.nome || it;
               return `<label style="border:1.5px solid #e5e7eb;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:0.83rem;font-weight:600;transition:all .15s"
-              onclick="var cb=this.querySelector('input');if(!cb.checked){var m=${et.max};var ch=this.closest('div').querySelectorAll('input:checked').length;if(ch>=m){alert('Máx. '+m+' itens');return;}cb.checked=true;this.style.borderColor='#7c3aed';this.style.background='#f5f3ff';}else{cb.checked=false;this.style.borderColor='#e5e7eb';this.style.background='';}">
+              onclick="var cb=this.querySelector('input');if(!cb.checked){var m=${et.max};var ch=this.closest('div').querySelectorAll('input:checked').length;if(ch>=m){alert('Máx. '+m+' ítems');return;}cb.checked=true;this.style.borderColor='#7c3aed';this.style.background='#f5f3ff';}else{cb.checked=false;this.style.borderColor='#e5e7eb';this.style.background='';}">
               <input type="checkbox" value="${nome}" style="display:none">${nome}
             </label>`;
             })
@@ -9058,7 +9377,7 @@ function _mostrarModalOpcoesPDV(produto, tipo) {
             .map((it) => {
               const nome = it.nome || it;
               return `<label style="border:1.5px solid #e5e7eb;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:0.83rem;font-weight:600;transition:all .15s"
-              onclick="var cb=this.querySelector('input');if(!cb.checked){var m=${et.max};var ch=this.closest('div').querySelectorAll('input:checked').length;if(ch>=m){alert('Máx. '+m+' itens');return;}cb.checked=true;this.style.borderColor='#f59e0b';this.style.background='#fffbeb';}else{cb.checked=false;this.style.borderColor='#e5e7eb';this.style.background='';}">
+              onclick="var cb=this.querySelector('input');if(!cb.checked){var m=${et.max};var ch=this.closest('div').querySelectorAll('input:checked').length;if(ch>=m){alert('Máx. '+m+' ítems');return;}cb.checked=true;this.style.borderColor='#f59e0b';this.style.background='#fffbeb';}else{cb.checked=false;this.style.borderColor='#e5e7eb';this.style.background='';}">
               <input type="checkbox" value="${nome}" style="display:none">${nome}
             </label>`;
             })
@@ -9072,7 +9391,7 @@ function _mostrarModalOpcoesPDV(produto, tipo) {
   else if (tipo === "sorvete") {
     let html = "";
     if (cfg.tamanhos?.length) {
-      html += `<p style="font-size:0.82rem;font-weight:700;color:#0ea5e9;margin-bottom:6px">🍦 Quantidade de Bolas:</p>
+      html += `<p style="font-size:0.82rem;font-weight:700;color:#0ea5e9;margin-bottom:6px">🍦 Cantidad de Bochas:</p>
         <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
           ${cfg.tamanhos
             .map(
@@ -9125,7 +9444,7 @@ function _mostrarModalOpcoesPDV(produto, tipo) {
             .map((it) => {
               const nome = it.nome || it;
               return `<label style="border:1.5px solid #e5e7eb;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:0.83rem;font-weight:600;transition:all .15s"
-              onclick="var cb=this.querySelector('input');if(!cb.checked){var m=${et.max};var ch=this.closest('div').querySelectorAll('input:checked').length;if(ch>=m){alert('Máx. '+m+' itens');return;}cb.checked=true;this.style.borderColor='#0ea5e9';this.style.background='#f0f9ff';}else{cb.checked=false;this.style.borderColor='#e5e7eb';this.style.background='';}">
+              onclick="var cb=this.querySelector('input');if(!cb.checked){var m=${et.max};var ch=this.closest('div').querySelectorAll('input:checked').length;if(ch>=m){alert('Máx. '+m+' ítems');return;}cb.checked=true;this.style.borderColor='#0ea5e9';this.style.background='#f0f9ff';}else{cb.checked=false;this.style.borderColor='#e5e7eb';this.style.background='';}">
               <input type="checkbox" value="${nome}" style="display:none">${nome}
             </label>`;
             })
@@ -9146,7 +9465,7 @@ function _mostrarModalOpcoesPDV(produto, tipo) {
               const nome = it.nome || it;
               const preco = it.preco || 0;
               return `<label style="border:1.5px solid #e5e7eb;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:0.83rem;font-weight:600;transition:all .15s"
-              onclick="var cb=this.querySelector('input');if(!cb.checked){var m=${et.max};var ch=this.closest('div').querySelectorAll('input:checked').length;if(ch>=m){alert('Máx. '+m+' itens');return;}cb.checked=true;this.style.borderColor='#e67e22';this.style.background='#fff8f0';}else{cb.checked=false;this.style.borderColor='#e5e7eb';this.style.background='';}">
+              onclick="var cb=this.querySelector('input');if(!cb.checked){var m=${et.max};var ch=this.closest('div').querySelectorAll('input:checked').length;if(ch>=m){alert('Máx. '+m+' ítems');return;}cb.checked=true;this.style.borderColor='#e67e22';this.style.background='#fff8f0';}else{cb.checked=false;this.style.borderColor='#e5e7eb';this.style.background='';}">
               <input type="checkbox" value="${nome}" style="display:none">${nome}${preco ? ` (+Gs ${preco.toLocaleString("es-PY")})` : ""}
             </label>`;
             })
@@ -9155,7 +9474,7 @@ function _mostrarModalOpcoesPDV(produto, tipo) {
     });
     corpo().innerHTML =
       html ||
-      '<p style="color:#aaa;font-size:0.85rem">Nenhuma etapa configurada.</p>';
+      '<p style="color:#aaa;font-size:0.85rem">Ninguna etapa configurada.</p>';
   }
 
   // ── COMBO FECHADO ─────────────────────────────────────────────
@@ -9460,7 +9779,7 @@ async function _abrirGavetaDC335(contexto = "") {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     console.log(`[Gaveta] ✅ Aberta${contexto ? " — " + contexto : ""}`);
   } catch (err) {
-    console.warn(`[Gaveta] ⚠️ Bridge offline ou gaveta inacessível${contexto ? " (" + contexto + ")" : ""}: ${err.message}`);
+    console.warn(`[Gaveta] ⚠️ Bridge fuera de línea o caja inaccesible${contexto ? " (" + contexto + ")" : ""}: ${err.message}`);
   }
 }
 
@@ -9474,16 +9793,16 @@ async function _abrirGavetaDC335(contexto = "") {
 // ──────────────────────────────────────────────────────────────────────────────
 async function _kgIniciarLeituraBalanca() {
   if (!_toledoPort) {
-    console.warn("[Balança] _kgIniciarLeituraBalanca: _toledoPort é null");
+    console.warn("[Balanza] _kgIniciarLeituraBalanca: _toledoPort es null");
     return;
   }
   if (_toledoLeituraAtiva) {
-    console.log("[Balança] Leitura já ativa — ignorando chamada duplicada");
+    console.log("[Balanza] Lectura ya activa — ignorando llamada duplicada");
     return;
   }
 
   _toledoLeituraAtiva = true;
-  console.log("[Balança] Iniciando leitura contínua...");
+  console.log("[Balanza] Iniciando lectura continua...");
 
   const txtBal = document.getElementById("_kg-balanca-txt");
   const btnBal = document.getElementById("_kg-btn-balanca");
@@ -9493,12 +9812,12 @@ async function _kgIniciarLeituraBalanca() {
   try {
     _toledoReader = _toledoPort.readable.getReader();
   } catch (e) {
-    console.warn("[Balança] Readable locked — aguardando 200ms e tentando novamente:", e.message);
+    console.warn("[Balanza] Readable locked — esperando 200ms e intentando nuevamente:", e.message);
     await new Promise(r => setTimeout(r, 200));
     try {
       _toledoReader = _toledoPort.readable.getReader();
     } catch (e2) {
-      console.error("[Balança] Falha ao obter reader (porta em uso?):", e2.message);
+      console.error("[Balanza] Falla al obtener reader (¿puerto en uso?):", e2.message);
       _toledoLeituraAtiva = false;
       if (txtBal) txtBal.textContent = "⚠️ Porta ocupada — reconecte a balança";
       return;
@@ -9558,7 +9877,7 @@ async function _kgIniciarLeituraBalanca() {
       // Log bruto nos primeiros 10 chunks para diagnóstico (desativa após)
       if (contEstavel === 0 && buffer.length <= 200) {
         const hex = Array.from(value).map(b => b.toString(16).padStart(2,"0")).join(" ");
-        console.log(`[Balança] RAW HEX: ${hex}  |  TEXT: ${JSON.stringify(chunk)}`);
+        console.log(`[Balanza] RAW HEX: ${hex}  |  TEXT: ${JSON.stringify(chunk)}`);
       }
 
       // Descarta dados antigos — janela deslizante de 128 chars
@@ -9606,7 +9925,7 @@ async function _kgIniciarLeituraBalanca() {
       // ── Peso estável → injeta no input ──────────────────────────────────────
       const inp = document.getElementById("_kg-input-g");
       if (inp && parseInt(inp.value || "0") !== grama) {
-        console.log(`[Balança] Peso confirmado: ${grama}g`);
+        console.log(`[Balanza] Peso confirmado: ${grama}g`);
         inp.value = grama > 0 ? grama : "";
         window._kgAtualizarPreview?.();
         inp.style.borderColor = "#16a34a";
@@ -9618,7 +9937,7 @@ async function _kgIniciarLeituraBalanca() {
     }
   } catch (e) {
     if (e.name !== "AbortError") {
-      console.error("[Balança] Erro durante leitura:", e.name, e.message);
+      console.error("[Balanza] Error durante lectura:", e.name, e.message);
       if (txtBal) txtBal.textContent = "🔴 Balança desconectada — clique para reconectar";
       if (btnBal) {
         btnBal.style.background    = "#fff";
@@ -9628,13 +9947,13 @@ async function _kgIniciarLeituraBalanca() {
       }
       _toledoPort = null;
     } else {
-      console.log("[Balança] Leitura encerrada (AbortError — desconexão intencional)");
+      console.log("[Balanza] Lectura finalizada (AbortError — desconexión intencional)");
     }
   } finally {
     try { _toledoReader.releaseLock(); } catch (_) {}
     _toledoReader       = null;
     _toledoLeituraAtiva = false;
-    console.log("[Balança] Reader liberado.");
+    console.log("[Balanza] Reader liberado.");
   }
 }
 
@@ -9683,7 +10002,7 @@ function _mostrarModalPesoPDV(produto, precoKg) {
     <!-- Input gramas -->
     <div style="margin-bottom:12px">
       <label style="font-size:0.8rem;font-weight:700;color:#555;display:block;margin-bottom:6px">
-        Digite o peso em gramas:
+        Ingrese el peso en gramos:
       </label>
       <div style="display:flex;align-items:center;gap:8px">
         <input type="number" id="_kg-input-g" min="1" step="1" placeholder="Ex: 300"
@@ -9692,7 +10011,7 @@ function _mostrarModalPesoPDV(produto, precoKg) {
         <span style="font-size:1rem;font-weight:700;color:#888;white-space:nowrap">g</span>
       </div>
       <div style="font-size:0.73rem;color:#888;margin-top:4px;text-align:center">
-        Acima de 1000g é convertido automaticamente para kg
+        Por encima de 1000 g se convierte automáticamente a kg
       </div>
     </div>
 
@@ -9708,14 +10027,14 @@ function _mostrarModalPesoPDV(produto, precoKg) {
     <!-- Botão balança Toledo -->
     <button id="_kg-btn-balanca" onclick="_kgConectarBalanca()"
       style="width:100%;padding:10px;background:#fff;border:2px dashed #0891b2;border-radius:10px;color:#0891b2;font-weight:700;font-size:0.85rem;cursor:pointer;margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:8px">
-      🔌 <span id="_kg-balanca-txt">Conectar Balança (Toledo Prix 3)</span>
+      🔌 <span id="_kg-balanca-txt">Conectar Balanza (Toledo Prix 3)</span>
     </button>
 
     <!-- Confirmar -->
     <button id="_kg-btn-ok" onclick="_kgConfirmar()"
       disabled
       style="width:100%;padding:14px;background:#0891b2;color:#fff;border:none;border-radius:12px;font-size:1rem;font-weight:800;cursor:pointer;opacity:0.5;transition:all 0.2s">
-      ✅ Adicionar ao Pedido
+      ✅ Agregar al Pedido
     </button>
   `;
 
@@ -9801,7 +10120,7 @@ function _mostrarModalPesoPDV(produto, precoKg) {
     // Web Serial API check
     if (!navigator.serial) {
       alert(
-        "⚠️ Web Serial API não suportada neste navegador.\nUse Google Chrome ou Edge para conectar a balança.",
+        "⚠️ Web Serial API no soportada en este navegador.\nUse Google Chrome o Edge para conectar la balanza.",
       );
       return;
     }
@@ -9813,7 +10132,7 @@ function _mostrarModalPesoPDV(produto, precoKg) {
       _toledoPort           = null;
       _toledoReader         = null;
       _toledoLeituraAtiva   = false;
-      if (txt) txt.textContent = "Conectar Balança (Toledo Prix 3)";
+      if (txt) txt.textContent = "Conectar Balanza (Toledo Prix 3)";
       if (btn) {
         btn.style.background  = "#fff";
         btn.style.borderStyle = "dashed";
@@ -9850,9 +10169,9 @@ function _mostrarModalPesoPDV(produto, precoKg) {
       _kgIniciarLeituraBalanca();
 
     } catch (e) {
-      if (txt) txt.textContent = "Conectar Balança (Toledo Prix 3)";
+      if (txt) txt.textContent = "Conectar Balanza (Toledo Prix 3)";
       if (e.name !== "NotFoundError") {
-        console.error("Erro balança:", e);
+        console.error("Error balanza:", e);
       }
     }
   };
@@ -9886,7 +10205,7 @@ function _mostrarModalVariacaoPDV(produto, variacoes) {
   header.style.cssText =
     "display:flex;justify-content:space-between;align-items:center;margin-bottom:16px";
   header.innerHTML = `
-    <h4 style="margin:0;font-size:1rem;color:#333">🎨 Escolha a variação</h4>
+    <h4 style="margin:0;font-size:1rem;color:#333">🎨 Elija la variación</h4>
     <button id="_pdv-var-close" style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:#999">✕</button>`;
   modal.appendChild(header);
   modal.querySelector("#_pdv-var-close").onclick = () => overlay.remove();
@@ -9995,7 +10314,7 @@ function _mostrarUpsellExtrasPDV(produto, extras) {
 
   hdr.innerHTML = `
     <div>
-      <div style="font-weight:700;font-size:0.85rem;color:var(--color-text-primary)">➕ Adicionar ao pedido?</div>
+      <div style="font-weight:700;font-size:0.85rem;color:var(--color-text-primary)">➕ ¿Agregar al pedido?</div>
       <div style="font-size:0.73rem;color:var(--color-text-secondary);margin-top:1px">${subtitleTxt}</div>
     </div>`;
   const btnX = document.createElement("button");
@@ -10106,7 +10425,7 @@ function pdvEditarObs(idx) {
 
 // ── Limpa carrinho e reseta todos os campos do PDV ──────────────
 function limparCarrinhoPDV() {
-  if (carrinhoPDV.length > 0 && !confirm("Cancelar o pedido atual?")) return;
+  if (carrinhoPDV.length > 0 && !confirm("¿Cancelar el pedido actual?")) return;
 
   carrinhoPDV = [];
   window._mesaAbertaId   = null;
@@ -10162,7 +10481,7 @@ function pdvAlterarQtd(idx, delta) {
   if (!carrinhoPDV[idx]) return;
   const novaQtd = carrinhoPDV[idx].qtd + delta;
   if (novaQtd <= 0) {
-    if (!confirm("Remover este item do pedido?")) return;
+    if (!confirm("¿Quitar este ítem del pedido?")) return;
     carrinhoPDV.splice(idx, 1);
   } else {
     carrinhoPDV[idx].qtd = novaQtd;
@@ -10257,7 +10576,7 @@ function atualizarCarrinhoPDV() {
         sub = "⚖️ " + _fmtPeso(item.peso_gramas || 0);
         precoUnit = null;
         acoes = `<button class="pdv-card-btn pdv-card-btn-edit" onclick="pdvEditarObs(${idx})">✏️ Editar</button>
-                 <button class="pdv-card-btn pdv-card-btn-del" onclick="removerItemPDV(${idx})">🗑️ Excluir</button>`;
+                 <button class="pdv-card-btn pdv-card-btn-del" onclick="removerItemPDV(${idx})">🗑️ Eliminar</button>`;
       } else {
         sub = null;
         precoUnit = item._precoUnitario !== undefined ? item._precoUnitario : item.preco / item.qtd;
@@ -10268,7 +10587,7 @@ function atualizarCarrinhoPDV() {
             <button class="pdv-card-qtd-btn" onclick="pdvAlterarQtd(${idx},+1)">+</button>
           </div>
           <button class="pdv-card-btn pdv-card-btn-edit" onclick="pdvEditarObs(${idx})">✏️ Editar</button>
-          <button class="pdv-card-btn pdv-card-btn-del" onclick="removerItemPDV(${idx})">🗑️ Excluir</button>`;
+          <button class="pdv-card-btn pdv-card-btn-del" onclick="removerItemPDV(${idx})">🗑️ Eliminar</button>`;
       }
 
       lista.appendChild(_criarCard(item.nome + obsHtml, sub, precoUnit, item.preco * item.qtd, acoes));
@@ -10377,7 +10696,7 @@ function atualizarInfoPagPDV(total) {
           ? ((total / _cotacaoPDV) * (1 + taxa / 100)).toFixed(2)
           : "---";
       infoBox.innerHTML = `
-        <div style="font-size:0.78rem;font-weight:700;margin-bottom:6px">💳🇧🇷 Cartão Brasileiro</div>
+        <div style="font-size:0.78rem;font-weight:700;margin-bottom:6px">💳🇧🇷 Tarjeta Brasileña</div>
         <div style="display:flex;gap:6px;margin-bottom:8px">
           <button type="button" onclick="_setPDVBRTipo('debito')"
             style="flex:1;padding:6px 4px;border-radius:6px;font-weight:700;cursor:pointer;font-size:0.75rem;
@@ -10461,7 +10780,7 @@ function pdvFiltrarMensalistas() {
 function pdvRenderMensalistas(lista) {
   const cont = document.getElementById('pdv-mens-lista');
   if (!cont) return;
-  if (!lista.length) { cont.innerHTML = '<div style="font-size:0.78rem;color:#aaa;text-align:center;padding:6px">Nenhum plano ativo encontrado</div>'; return; }
+  if (!lista.length) { cont.innerHTML = '<div style="font-size:0.78rem;color:#aaa;text-align:center;padding:6px">Ningún plan activo encontrado</div>'; return; }
   const isKg = (p) => (p.produto_nome || '').toLowerCase().includes('kg');
   cont.innerHTML = lista.map(p => {
     const saldo = isKg(p)
@@ -10518,7 +10837,7 @@ function pdvFiltrarClientesNota() {
 function pdvRenderClientesNota(lista) {
   const cont = document.getElementById('pdv-nota-lista');
   if (!cont) return;
-  if (!lista.length) { cont.innerHTML = '<div style="font-size:0.78rem;color:#aaa;text-align:center;padding:6px">Nenhum cliente encontrado</div>'; return; }
+  if (!lista.length) { cont.innerHTML = '<div style="font-size:0.78rem;color:#aaa;text-align:center;padding:6px">Ningún cliente encontrado</div>'; return; }
   cont.innerHTML = lista.map(c => `
     <button onclick="pdvSelecionarClienteNota(${c.id})"
       style="text-align:left;background:#faf5ff;border:1.5px solid #c4b5fd;border-radius:7px;padding:6px 9px;cursor:pointer;font-size:0.78rem;width:100%">
@@ -10546,9 +10865,9 @@ function pdvDeselecionarNota() {
 async function pdvCadastrarClienteNota() {
   const nome = document.getElementById('pdv-nota-novo-nome')?.value.trim();
   const tel  = document.getElementById('pdv-nota-novo-tel')?.value.trim();
-  if (!nome || !tel) { alert('Informe nome e telefone.'); return; }
+  if (!nome || !tel) { alert('Ingrese nombre y teléfono.'); return; }
   const { data, error } = await supa.from('clientes').insert([{ nome, telefone: tel }]).select('id, nome, telefone').single();
-  if (error) { alert('Erro ao cadastrar: ' + error.message); return; }
+  if (error) { alert('Error al registrar: ' + error.message); return; }
   _pdvClientesNota.push(data);
   _pdvClientesNota.sort((a, b) => a.nome.localeCompare(b.nome));
   document.getElementById('pdv-nota-novo-nome').value = '';
@@ -10583,7 +10902,7 @@ function adicionarPartePagamentoPDV() {
   const opts = [
     { v: "Efetivo", l: "💵 Efectivo" },
     { v: "Cartao", l: "💳 Tarjeta" },
-    { v: "CartaoBR", l: "💳🇧🇷 Cartão BR" },
+    { v: "CartaoBR", l: "💳🇧🇷 Tarjeta BR" },
     { v: "Pix", l: "🟢 Pix" },
     { v: "Transferencia", l: "🏦 Alias" },
     { v: "QrPy", l: "📱 QR Paraguay" },
@@ -10694,7 +11013,7 @@ async function salvarPedidoBalcao() {
   if (carrinhoPDV.length === 0 && !window._mesaAbertaId)
     return alert(t("alert.carrinho_vazio"));
   if (carrinhoPDV.length === 0 && window._mesaAbertaId)
-    return alert("Adicione ao menos 1 novo item antes de lançar.");
+    return alert("Agregue al menos 1 ítem nuevo antes de lanzar.");
 
   const _soKg = carrinhoPDV.length > 0 && carrinhoPDV.every((i) => i._isKg);
 
@@ -10763,7 +11082,7 @@ async function salvarPedidoBalcao() {
     const somaPartes = partesPDV.reduce((a, p) => a + p.valor, 0);
     if (Math.abs(somaPartes - totalPedido) > 1) {
       alert(
-        `⚠️ Total das formas (Gs ${somaPartes.toLocaleString("es-PY")}) não bate com o total do pedido (Gs ${totalPedido.toLocaleString("es-PY")}).`,
+        `⚠️ El total de las formas (Gs ${somaPartes.toLocaleString("es-PY")}) no coincide con el total del pedido (Gs ${totalPedido.toLocaleString("es-PY")}).`,
       );
       return;
     }
@@ -10772,7 +11091,7 @@ async function salvarPedidoBalcao() {
 
   // ── Validação Mensalista ──────────────────────────────────────
   if (pag === "Mensalista") {
-    if (!_pdvMensalistaSel) { alert("Selecione um mensalista antes de finalizar."); return; }
+    if (!_pdvMensalistaSel) { alert("Seleccione un mensualista antes de finalizar."); return; }
     const total = parseInt(document.getElementById("balcao-total")?.innerText.replace(/\D/g, "") || "0");
     const saldoVal = Math.round(_pdvMensalistaSel.valor_restante || 0);
     if (total > saldoVal) {
@@ -10784,7 +11103,7 @@ async function salvarPedidoBalcao() {
 
   // ── Validação Na Nota ─────────────────────────────────────────
   if (pag === "NaNota") {
-    if (!_pdvClienteNotaSel) { alert("Selecione o cliente para colocar na nota."); return; }
+    if (!_pdvClienteNotaSel) { alert("Seleccione el cliente para poner en la cuenta."); return; }
     obsPagPDV = `Na Nota: ${_pdvClienteNotaSel.nome} (${_pdvClienteNotaSel.telefone || ""})`;
   }
 
@@ -10837,7 +11156,7 @@ async function salvarPedidoBalcao() {
       .eq("id", window._mesaAbertaId);
 
     if (error) {
-      alert("Erro ao atualizar mesa: " + error.message);
+      alert("Error al actualizar mesa: " + error.message);
       return;
     }
     // Descontar estoque dos novos itens adicionados
@@ -10918,10 +11237,10 @@ async function salvarPedidoBalcao() {
   const { data: novoPedido, error } = await supa
     .from("pedidos")
     .insert([pedido])
-    .select("id")
+    .select("id, uid_temporal")
     .single();
   if (error) {
-    alert("Erro: " + error.message);
+    alert("Error: " + error.message);
     return;
   }
   // Descontar estoque imediatamente (PDV não passa por mudarStatus)
@@ -10955,7 +11274,7 @@ async function salvarPedidoBalcao() {
     quantidade: isKg
       ? novosItens.filter(i => i._isKg).reduce((s, i) => s + (i.peso_gramas || 0), 0)
       : novosItens.filter(i => !i._isKg).reduce((s, i) => s + (i.qtd || 1), 0),
-    observacoes: `PDV #${novoPedido.id}`,
+    observacoes: `PDV #${novoPedido.uid_temporal || novoPedido.id}`,
     itens_extras: novosItens.length > 0 ? novosItens : null,
     valor_extras: Math.round(subtotalLiquido), // ou null
   }]);
@@ -10980,7 +11299,7 @@ async function salvarPedidoBalcao() {
   // que contenha ao menos um desses meios. pix e similares não abrem gaveta.
   // Falha silenciosamente — venda NÃO é bloqueada se a gaveta não responder.
   if (_gavetaDeveAbrir(pag, obsPagPDV)) {
-    _abrirGavetaDC335(`venda #${novoPedido?.id ?? "PDV"} — ${pag}`);
+    _abrirGavetaDC335(`venda #${novoPedido?.uid_temporal ?? novoPedido?.id ?? "PDV"} — ${pag}`);
   }
 
   if (_pdvCashbackUsando && tel) {
@@ -11000,7 +11319,7 @@ async function salvarPedidoBalcao() {
   if (novoPedido?.id) {
     // Monta dados direto (sem segunda busca no banco)
     const dadosImpressao = {
-      id: novoPedido.id,
+      id: novoPedido.uid_temporal || novoPedido.id,
       cliente: { nome: nomeFinal, tel: tel },
       entrega: { tipo: tipoEntregaPDV, ref: pedido.endereco_entrega },
       itens: novosItens.map((i) => ({
@@ -11252,7 +11571,7 @@ async function carregarMonitorMesas() {
   div.innerHTML = "";
 
   if (!data || data.length === 0) {
-    div.innerHTML = '<p class="mesa-monitor-vazio">Nenhum pedido ativo.</p>';
+    div.innerHTML = '<p class="mesa-monitor-vazio">Ningún pedido activo.</p>';
     return;
   }
 
@@ -11340,7 +11659,7 @@ async function baixarItemMesa(pedidoId, itemIdx) {
     .eq("id", pedidoId)
     .single();
   if (errFetch || !p) {
-    alert("Erro ao buscar comanda.");
+    alert("Error al buscar comanda.");
     return;
   }
 
@@ -11356,7 +11675,7 @@ async function baixarItemMesa(pedidoId, itemIdx) {
     .eq("id", pedidoId);
 
   if (error) {
-    alert("Erro ao baixar item: " + error.message);
+    alert("Error al descargar ítem: " + error.message);
     return;
   }
 
@@ -11371,7 +11690,7 @@ async function baixarItemMesa(pedidoId, itemIdx) {
 
 // Função para dar baixa na mesa (Muda status para 'entregue' e sai da lista)
 async function finalizarMesa(id) {
-  if (confirm("Confirmar entrega e pagamento desta mesa?")) {
+  if (confirm("¿Confirmar entrega y pago de esta mesa?")) {
     await supa
       .from("pedidos")
       .update({
@@ -11450,7 +11769,7 @@ async function carregarEquipe() {
         if (ehFuncionario || ehGarcom) {
           acaoCargo = `<button class="btn btn-sm btn-success" onclick="promoverUsuario('${u.id}', 'gerente')" title="Promover a Gerente"><i class="fas fa-arrow-up"></i> Gerente</button>`;
         } else if (ehGerente) {
-          acaoCargo = `<button class="btn btn-sm btn-warning" onclick="promoverUsuario('${u.id}', 'funcionario')" title="Rebaixar a Funcionário"><i class="fas fa-arrow-down"></i> Funcionário</button>`;
+          acaoCargo = `<button class="btn btn-sm btn-warning" onclick="promoverUsuario('${u.id}', 'funcionario')" title="Rebajar a Empleado"><i class="fas fa-arrow-down"></i> Empleado</button>`;
         }
         if (perfilUsuario === "adminMaster" && !ehDono) {
           acaoCargo += ` <button class="btn btn-sm btn-primary" onclick="promoverUsuario('${u.id}', 'dono')" title="Tornar Dono"><i class="fas fa-crown"></i> Dono</button>`;
@@ -11467,8 +11786,8 @@ async function carregarEquipe() {
           : ehGerente
             ? "👔 Gerente"
             : ehGarcom
-              ? "🍽️ Garçom"
-              : "👷 Funcionário";
+              ? "🍽️ Mozo"
+              : "👷 Empleado";
       tbody.innerHTML += `<tr>
                 <td><strong>${u.nome_display || "—"}</strong></td>
                 <td>${u.email}</td>
@@ -11484,7 +11803,7 @@ async function promoverUsuario(id, novoCargo) {
   const msg =
     novoCargo === "gerente"
       ? "Promover este usuário a Gerente?"
-      : "Rebaixar este usuário a Funcionário?";
+      : "¿Rebajar este usuario a Empleado?";
   if (!confirm(msg)) return;
 
   const { error } = await supa
@@ -11492,7 +11811,7 @@ async function promoverUsuario(id, novoCargo) {
     .update({ cargo: novoCargo })
     .eq("id", id);
   if (error) {
-    alert("❌ Erro: " + error.message);
+    alert("❌ Error: " + error.message);
   } else {
     alert(`✅ Cargo alterado para ${novoCargo}!`);
     carregarEquipe();
@@ -11502,16 +11821,16 @@ async function promoverUsuario(id, novoCargo) {
 async function excluirUsuario(id, email) {
   if (
     !confirm(
-      `⚠️ Excluir o usuário "${email}"?\n\nEsta ação remove apenas o perfil. O acesso de autenticação pode precisar ser revogado no Supabase Dashboard.`,
+      `⚠️ ¿Eliminar el usuario "${email}"?\n\nEsta acción solo elimina el perfil. El acceso de autenticación puede necesitar ser revocado en el Supabase Dashboard.`,
     )
   )
     return;
 
   const { error } = await supa.from("perfis_acesso").delete().eq("id", id);
   if (error) {
-    alert("❌ Erro ao excluir: " + error.message);
+    alert("❌ Error al eliminar: " + error.message);
   } else {
-    alert("✅ Usuário excluído com sucesso!");
+    alert("✅ ¡Usuario eliminado con éxito!");
     carregarEquipe();
   }
 }
@@ -11527,7 +11846,7 @@ async function amCriarUsuario() {
   const senha = document.getElementById("am-senha")?.value;
   const cargo = document.getElementById("am-cargo")?.value || "dono";
   if (!email || !nome || !senha || senha.length < 6)
-    return alert("Preencha email, nome e senha (mín. 6 caracteres).");
+    return alert("Complete email, nombre y contraseña (mín. 6 caracteres).");
   const btn = event?.target;
   if (btn) {
     btn.disabled = true;
@@ -11536,7 +11855,7 @@ async function amCriarUsuario() {
   try {
     const { data, error } = await supa.auth.signUp({ email, password: senha });
     if (error) {
-      alert("❌ Erro: " + error.message);
+      alert("❌ Error: " + error.message);
       return;
     }
     if (data.user) {
@@ -11546,17 +11865,17 @@ async function amCriarUsuario() {
           onConflict: "id",
         });
       if (ep) {
-        alert("⚠️ Auth criado mas erro no perfil: " + ep.message);
+        alert("⚠️ Auth creado pero error en el perfil: " + ep.message);
         return;
       }
       const cargoBadge = {
         dono: "Dono",
         gerente: "Gerente",
-        funcionario: "Funcionário",
+        funcionario: "Empleado",
         garcom: "Garçom",
       };
       alert(
-        `✅ Usuário "${nome}" criado como ${cargoBadge[cargo] || cargo}!\nSolicite que confirme o email antes de fazer login.`,
+        `✅ ¡Usuario "${nome}" creado como ${cargoBadge[cargo] || cargo}!\nSolicite que confirme el email antes de iniciar sesión.`,
       );
       document.getElementById("am-email").value = "";
       document.getElementById("am-nome").value = "";
@@ -11564,7 +11883,7 @@ async function amCriarUsuario() {
       amCarregarUsuarios();
     }
   } catch (e) {
-    alert("❌ Erro: " + e.message);
+    alert("❌ Error: " + e.message);
   } finally {
     if (btn) {
       btn.disabled = false;
@@ -11586,7 +11905,7 @@ async function amCarregarUsuarios() {
   const tbody = document.getElementById("am-lista-usuarios");
   if (!tbody) return;
   tbody.innerHTML =
-    '<tr><td colspan="4" style="text-align:center;padding:16px"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>';
+    '<tr><td colspan="4" style="text-align:center;padding:16px"><i class="fas fa-spinner fa-spin"></i> Cargando...</td></tr>';
 
   const { data, error } = await supa
     .from("perfis_acesso")
@@ -11599,7 +11918,7 @@ async function amCarregarUsuarios() {
 
   if (!data || !data.length) {
     tbody.innerHTML =
-      '<tr><td colspan="4" style="text-align:center;color:#aaa">Nenhum usuário cadastrado</td></tr>';
+      '<tr><td colspan="4" style="text-align:center;color:#aaa">Ningún usuario registrado</td></tr>';
     return;
   }
 
@@ -11610,9 +11929,9 @@ async function amCarregarUsuarios() {
     gerente:
       '<span style="background:#2980b9;color:#fff;padding:2px 8px;border-radius:10px;font-size:0.75rem">👔 Gerente</span>',
     funcionario:
-      '<span style="background:#7f8c8d;color:#fff;padding:2px 8px;border-radius:10px;font-size:0.75rem">👷 Funcionário</span>',
+      '<span style="background:#7f8c8d;color:#fff;padding:2px 8px;border-radius:10px;font-size:0.75rem">👷 Empleado</span>',
     garcom:
-      '<span style="background:#27ae60;color:#fff;padding:2px 8px;border-radius:10px;font-size:0.75rem">🍽️ Garçom</span>',
+      '<span style="background:#27ae60;color:#fff;padding:2px 8px;border-radius:10px;font-size:0.75rem">🍽️ Mozo</span>',
   };
 
   tbody.innerHTML = data
@@ -11637,7 +11956,7 @@ async function amCarregarUsuarios() {
         <i class="fas fa-trash"></i>
       </button>`;
       return `<tr>
-      <td><strong>${u.nome_display || "—"}</strong>${isMe ? ' <span style="font-size:0.7rem;color:#27ae60">(você)</span>' : ""}</td>
+      <td><strong>${u.nome_display || "—"}</strong>${isMe ? ' <span style="font-size:0.7rem;color:#27ae60">(usted)</span>' : ""}</td>
       <td style="font-size:0.85rem">${u.email}</td>
       <td>${cargoBadges[u.cargo] || u.cargo}</td>
       <td>${acoes}</td>
@@ -11656,7 +11975,7 @@ async function amAlterarCargo(id, novoCargo) {
     .from("perfis_acesso")
     .update({ cargo: novoCargo })
     .eq("id", id);
-  if (error) alert("❌ Erro: " + error.message);
+  if (error) alert("❌ Error: " + error.message);
   else {
     amCarregarUsuarios();
     carregarEquipe();
@@ -11667,14 +11986,14 @@ async function amExcluirUsuario(id, email) {
   if (perfilUsuario !== "adminMaster") return;
   if (
     !confirm(
-      `⚠️ Excluir o usuário "${email}"?\n\nIsso remove o perfil do banco. O acesso de autenticação pode precisar ser revogado no Supabase Dashboard.`,
+      `⚠️ ¿Eliminar el usuario "${email}"?\n\nEsto elimina el perfil de la base de datos. El acceso de autenticación puede necesitar ser revocado en el Supabase Dashboard.`,
     )
   )
     return;
   const { error } = await supa.from("perfis_acesso").delete().eq("id", id);
-  if (error) alert("❌ Erro: " + error.message);
+  if (error) alert("❌ Error: " + error.message);
   else {
-    alert("✅ Usuário excluído.");
+    alert("✅ Usuario eliminado.");
     amCarregarUsuarios();
     carregarEquipe();
   }
@@ -11688,12 +12007,12 @@ async function cadastrarUsuario() {
   const cargo = document.getElementById("novo-user-cargo")?.value;
 
   if (!email || !senha || senha.length < 6)
-    return alert("Email e senha (mín. 6 caracteres) são obrigatórios");
-  if (!nomeDisplay) return alert("O nome de exibição é obrigatório");
+    return alert("Email y contraseña (mín. 6 caracteres) son obligatorios");
+  if (!nomeDisplay) return alert("El nombre a mostrar es obligatorio");
 
   // Apenas adminMaster pode criar dono
   if (cargo === "dono" && perfilUsuario !== "adminMaster")
-    return alert("Apenas o Admin Master pode criar usuários com cargo Dono.");
+    return alert("Solo el Admin Master puede crear usuarios con cargo Dueño.");
 
   const btn = event?.target;
   if (btn) {
@@ -11706,7 +12025,7 @@ async function cadastrarUsuario() {
     const { data, error } = await supa.auth.signUp({ email, password: senha });
 
     if (error) {
-      alert("❌ Erro ao criar usuário: " + error.message);
+      alert("❌ Error al crear usuario: " + error.message);
       return;
     }
 
@@ -11721,12 +12040,12 @@ async function cadastrarUsuario() {
 
       if (errPerfil) {
         alert(
-          "⚠️ Usuário de autenticação criado, mas erro ao salvar perfil: " +
+          "⚠️ Usuario de autenticación creado, pero error al guardar perfil: " +
             errPerfil.message,
         );
       } else {
         alert(
-          "✅ Usuário cadastrado com sucesso!\n\nO usuário receberá um email de confirmação.",
+          "✅ ¡Usuario registrado con éxito!\n\nEl usuario recibirá un email de confirmación.",
         );
         document.getElementById("novo-user-email").value = "";
         document.getElementById("novo-user-nome").value = "";
@@ -11734,10 +12053,10 @@ async function cadastrarUsuario() {
         carregarEquipe();
       }
     } else {
-      alert("⚠️ Usuário criado. Aguardando confirmação de email para ativar.");
+      alert("⚠️ Usuario creado. Esperando confirmación de email para activar.");
     }
   } catch (e) {
-    alert("❌ Erro inesperado: " + e.message);
+    alert("❌ Error inesperado: " + e.message);
   } finally {
     if (btn) {
       btn.disabled = false;
@@ -11751,7 +12070,7 @@ function adicionarItem(etapaIndex) {
   const itemDiv = document.createElement("div");
   itemDiv.className = "item-row";
   itemDiv.innerHTML = `
-        <input type="text" class="input-modern" placeholder="Nome do item">
+        <input type="text" class="input-modern" placeholder="Nombre del ítem">
         <button type="button" class="btn-remove-item" 
                 onclick="this.parentElement.remove()">
             <i class="fas fa-times"></i>
@@ -11784,7 +12103,7 @@ async function carregarCupons() {
       c.tipo === "fixo" ? `Gs ${(c.valor || 0).toLocaleString("es-PY")}` :
       "Frete Grátis";
     const statusBadge = c.ativo
-      ? '<span class="badge badge-success">Ativo</span>'
+      ? '<span class="badge badge-success">Activo</span>'
       : '<span class="badge badge-danger">Inativo</span>';
 
     // Uso / limite
@@ -11904,7 +12223,7 @@ async function salvarCupom() {
   };
 
   if (!dados.codigo) {
-    alert("Digite um código para o cupom");
+    alert("Ingrese un código para el cupón");
     return;
   }
 
@@ -11916,9 +12235,9 @@ async function salvarCupom() {
   }
 
   if (error) {
-    alert("Erro: " + error.message);
+    alert("Error: " + error.message);
   } else {
-    alert("✅ Cupom salvo com sucesso!");
+    alert("✅ ¡Cupón guardado con éxito!");
     document.getElementById("modal-cupom").classList.remove("active"); // Fecha o modal
     document.getElementById("modal-cupom").style.display = "none";
     carregarCupons();
@@ -11929,12 +12248,12 @@ async function salvarCupom() {
 async function deletarCupom(id) {
   if (confirm("Deletar este cupom?")) {
     const { error } = await supa.from("cupons").delete().eq("id", id);
-    if (error) alert("Erro: " + error.message);
+    if (error) alert("Error: " + error.message);
     else carregarCupons();
   }
 }
 
-// ── Avisar cliente via WhatsApp que o pedido está pronto ──────────
+// ── Avisar al cliente por WhatsApp que o pedido está pronto ──────────
 async function avisarClientePronto(pedidoId) {
   const { data: p } = await supa
     .from("pedidos")
@@ -11942,13 +12261,13 @@ async function avisarClientePronto(pedidoId) {
     .eq("id", pedidoId)
     .single();
   if (!p) {
-    alert("Pedido não encontrado.");
+    alert("Pedido no encontrado.");
     return;
   }
 
   const tel = (p.cliente_telefone || "").replace(/\D/g, "");
   if (!tel) {
-    alert("Este pedido não tem número de telefone registrado.");
+    alert("Este pedido no tiene número de teléfono registrado.");
     return;
   }
 
@@ -11979,7 +12298,7 @@ async function avisarClientePronto(pedidoId) {
         <button onclick="this.closest('[style]').remove()" style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:#999">✕</button>
       </div>
       <p style="font-size:0.85rem;color:#555;margin-bottom:14px">Pedido <strong>#${numPedido}</strong> — <strong>${nomeCliente}</strong></p>
-      <p style="font-size:0.8rem;font-weight:600;color:#333;margin-bottom:10px">Escolha o idioma da mensagem:</p>
+      <p style="font-size:0.8rem;font-weight:600;color:#333;margin-bottom:10px">Elija el idioma del mensaje:</p>
       <div style="display:flex;flex-direction:column;gap:8px">
         ${Object.entries({
           pt: "🇧🇷 Português",
@@ -12002,7 +12321,7 @@ async function avisarClientePronto(pedidoId) {
 }
 
 async function confirmarEntregaFuncionario(pedidoId) {
-  if (!confirm("Confirmar que este pedido foi entregue ao cliente?")) {
+  if (!confirm("¿Confirmar que este pedido fue entregado al cliente?")) {
     return;
   }
 
@@ -12018,11 +12337,11 @@ async function confirmarEntregaFuncionario(pedidoId) {
 
     if (error) throw error;
 
-    alert("✅ Entrega confirmada com sucesso!");
+    alert("✅ ¡Entrega confirmada con éxito!");
     carregarPedidos();
   } catch (err) {
-    console.error("Erro ao confirmar entrega:", err);
-    alert("Erro ao confirmar entrega");
+    console.error("Error al confirmar entrega:", err);
+    alert("Error al confirmar entrega");
   }
 }
 
@@ -12033,14 +12352,14 @@ async function fecharTodasMesas() {
     .in("status", ["pendente", "em_preparo", "pronto_entrega", "saiu_entrega"])
     .in("tipo_entrega", ["balcao", "retirada", "local"]);
   if (error || !data || data.length === 0) {
-    alert("Nenhum pedido de Mesa/Retirada/Local em aberto.");
+    alert("Ningún pedido de Mesa/Retiro/Local abierto.");
     return;
   }
   const lista = data
     .map((p) => `#${p.id} — ${p.cliente_nome || "Mesa"} (${p.tipo_entrega})`)
     .join("\n");
   if (
-    !confirm(`Baixar ${data.length} pedido(s) Mesa/Retirada/Local?\n\n${lista}`)
+    !confirm(`¿Descargar ${data.length} pedido(s) Mesa/Retiro/Local?\n\n${lista}`)
   )
     return;
   const now = new Date().toISOString();
@@ -12052,10 +12371,10 @@ async function fecharTodasMesas() {
       data.map((p) => p.id),
     );
   if (err) {
-    alert("Erro: " + err.message);
+    alert("Error: " + err.message);
     return;
   }
-  alert(`✅ ${data.length} pedido(s) baixado(s)!`);
+  alert(`✅ ¡${data.length} pedido(s) descargado(s)!`);
   carregarPedidos();
   carregarMonitorMesas();
   if (typeof calcularFinanceiro === "function") calcularFinanceiro();
@@ -12068,13 +12387,13 @@ async function baixarTodosNaoDelivery() {
     .in("status", ["saiu_entrega", "pronto_entrega"])
     .eq("tipo_entrega", "delivery");
   if (error || !data || data.length === 0) {
-    alert("Nenhum delivery para confirmar entrega.");
+    alert("Ningún delivery para confirmar entrega.");
     return;
   }
   const lista = data
     .map((p) => `#${p.id} — ${p.cliente_nome || "Cliente"}`)
     .join("\n");
-  if (!confirm(`Confirmar entrega de ${data.length} delivery(s)?\n\n${lista}`))
+  if (!confirm(`¿Confirmar entrega de ${data.length} delivery(s)?\n\n${lista}`))
     return;
   const now = new Date().toISOString();
   const { error: err } = await supa
@@ -12090,7 +12409,7 @@ async function baixarTodosNaoDelivery() {
       data.map((p) => p.id),
     );
   if (err) {
-    alert("Erro: " + err.message);
+    alert("Error: " + err.message);
     return;
   }
   alert(`✅ ${data.length} delivery(s) confirmado(s)!`);
@@ -12104,7 +12423,7 @@ let graficoInstance = null;
 function abrirGraficos() {
   const modal = document.getElementById("modal-graficos");
   if (!modal) {
-    console.error("Modal de gráficos não encontrado");
+    console.error("Modal de gráficos no encontrado");
     return;
   }
   modal.style.display = "flex";
@@ -12146,8 +12465,8 @@ async function carregarDadosGrafico(dias) {
     // Processa dados
     processarDadosGrafico(pedidos, dias);
   } catch (err) {
-    console.error("Erro ao carregar dados do gráfico:", err);
-    alert("Erro ao carregar gráfico");
+    console.error("Error al cargar datos del gráfico:", err);
+    alert("Error al cargar gráfico");
   }
 }
 
@@ -12208,7 +12527,7 @@ function processarDadosGrafico(pedidos, dias) {
 function renderizarGrafico(labels, data, cores) {
   const canvas = document.getElementById("canvas-grafico");
   if (!canvas) {
-    console.error("Canvas do gráfico não encontrado");
+    console.error("Canvas del gráfico no encontrado");
     return;
   }
 
@@ -12577,7 +12896,7 @@ function _renderInventarioCards() {
   if (!container) return;
   if (!_inventarioItems.length) {
     container.innerHTML =
-      '<div style="text-align:center;padding:40px;color:#aaa">Nenhum item. Clique em "+ Novo Item".</div>';
+      '<div style="text-align:center;padding:40px;color:#aaa">Ningún ítem. Haga clic en "+ Nuevo Ítem".</div>';
     return;
   }
   const hoje = new Date();
@@ -12706,7 +13025,7 @@ async function abrirModalInventario(id = null) {
   if (valA) valA.style.display = "none";
   document.getElementById("inv-unidade").value = "un";
   document.getElementById("inv-produto-id").innerHTML =
-    '<option value="">— Sem vínculo —</option>';
+    '<option value="">— Sin vínculo —</option>';
   document.getElementById("modal-inv-titulo").textContent = id
     ? "✏️ Editar Item"
     : "📦 Novo Item de Estoque";
@@ -12757,7 +13076,7 @@ async function salvarInventario() {
   const id = document.getElementById("inv-id").value;
   const nome = document.getElementById("inv-nome").value.trim();
   if (!nome) {
-    alert("Informe o nome do item.");
+    alert("Ingrese el nombre del ítem.");
     return;
   }
   const perecivel = document.getElementById("inv-perecivel")?.checked || false;
@@ -12780,7 +13099,7 @@ async function salvarInventario() {
     ? await supa.from("inventario").update(dados).eq("id", id)
     : await supa.from("inventario").insert([dados]);
   if (error) {
-    alert("Erro: " + error.message);
+    alert("Error: " + error.message);
     return;
   }
   fecharModal("modal-inventario");
@@ -12788,7 +13107,7 @@ async function salvarInventario() {
 }
 
 async function excluirInventario(id) {
-  if (!confirm("Excluir este item?")) return;
+  if (!confirm("¿Eliminar este ítem?")) return;
   await supa.from("inventario").delete().eq("id", id);
   carregarInventario();
 }
@@ -12823,7 +13142,7 @@ async function confirmarAjuste() {
   const id = document.getElementById("ajuste-inv-id").value;
   const qtd = parseFloat(document.getElementById("ajuste-qtd").value);
   if (isNaN(qtd) || qtd < 0) {
-    alert("Quantidade inválida.");
+    alert("Cantidad inválida.");
     return;
   }
   const item = _inventarioItems.find((i) => i.id == id);
@@ -12839,7 +13158,7 @@ async function confirmarAjuste() {
     .update({ quantidade: nova })
     .eq("id", id);
   if (error) {
-    alert("Erro: " + error.message);
+    alert("Error: " + error.message);
     return;
   }
   const motivo = document.getElementById("ajuste-motivo").value.trim();
@@ -12864,7 +13183,7 @@ async function confirmarAjuste() {
 async function _carregarSelectInventario(selectedId = null) {
   const sel = document.getElementById("prod-inventario-id");
   if (!sel) return;
-  sel.innerHTML = '<option value="">— Selecione o item —</option>';
+  sel.innerHTML = '<option value="">— Seleccione el ítem —</option>';
   const { data } = await supa
     .from("inventario")
     .select("id, nome, quantidade, unidade")
@@ -13260,7 +13579,7 @@ const _OB_STEPS = [
     dica: `<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:12px;margin-top:12px;font-size:0.83rem">
       💡 <strong>Como pegar as coordenadas:</strong><br>
       Abra <a href="https://maps.google.com" target="_blank" style="color:#2980b9">Google Maps</a>,
-      clique com o botão direito no seu endereço e copie os números que aparecem (Ex: -25.286, -57.647).
+      haga clic derecho en su dirección y copie los números que aparecen (Ej: -25.286, -57.647).
     </div>`,
   },
   {
@@ -13317,7 +13636,7 @@ const _OB_STEPS = [
             style="width:100%;padding:10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:1rem">
         </div>
       </div>
-      <p style="font-size:0.78rem;color:#999;margin-top:8px">Este horário será aplicado a todos os dias da semana.</p>
+      <p style="font-size:0.78rem;color:#999;margin-top:8px">Este horario se aplicará a todos los días de la semana.</p>
     `,
   },
 ];
@@ -13466,7 +13785,7 @@ function _obPrev() {
 function _obSkip() {
   if (
     !confirm(
-      "Pular a configuração inicial? Você pode configurar depois em Configurações.",
+      "¿Omitir la configuración inicial? Puede configurar después en Configuración.",
     )
   )
     return;
@@ -13516,7 +13835,7 @@ async function _obSalvar() {
 
     // Toast de sucesso
     _pdvToast?.("✅ Configuração salva! O app já reflete os dados.") ||
-      alert("✅ Configuração inicial salva com sucesso!");
+      alert("✅ ¡Configuración inicial guardada con éxito!");
 
     // Recarrega a aba de configurações se estiver aberta
     if (
@@ -13532,7 +13851,7 @@ async function _obSalvar() {
       NOME_RESTAURANTE = payload.nome_restaurante;
     }
   } catch (e) {
-    alert("Erro ao salvar: " + e.message);
+    alert("Error al guardar: " + e.message);
     if (btn) {
       btn.disabled = false;
       btn.textContent = "✅ Salvar & Concluir";
@@ -13586,7 +13905,7 @@ function abrirEditarDespesa(dadosEncoded) {
     }
     document.getElementById("modal-editar-despesa").style.display = "flex";
   } catch (e) {
-    alert("Erro ao abrir edição: " + e.message);
+    alert("Error al abrir edición: " + e.message);
   }
 }
 
@@ -13622,7 +13941,7 @@ async function salvarEdicaoDespesa() {
     .eq("id", id);
 
   if (error) {
-    alert("Erro ao salvar: " + error.message);
+    alert("Error al guardar: " + error.message);
     return;
   }
   fecharModal("modal-editar-despesa");
@@ -13630,14 +13949,14 @@ async function salvarEdicaoDespesa() {
 }
 
 async function excluirDespesa(id) {
-  if (!confirm("Excluir esta despesa? Esta ação não pode ser desfeita."))
+  if (!confirm("¿Eliminar este gasto? Esta acción no se puede deshacer."))
     return;
   const { error } = await supa
     .from("movimentacoes_caixa")
     .delete()
     .eq("id", id);
   if (error) {
-    alert("Erro ao excluir: " + error.message);
+    alert("Error al eliminar: " + error.message);
     return;
   }
   calcularFinanceiro();
@@ -13684,7 +14003,7 @@ function _admMostrarContratoOverlay(session) {
   const overlay = document.getElementById("contrato-admin-overlay");
   if (!overlay) {
     // Fallback se o HTML não foi atualizado
-    alert("Você precisa aceitar o contrato de serviços para continuar.");
+    alert("Necesita aceptar el contrato de servicios para continuar.");
     supa.auth.signOut().then(() => {
       window.location.href = "login.html";
     });
@@ -13826,9 +14145,9 @@ async function admAceitarContrato() {
 
     const overlay = document.getElementById("contrato-admin-overlay");
     if (overlay) overlay.style.display = "none";
-    console.log("✅ Contrato aceito com sucesso.");
+    console.log("✅ Contrato aceptado con éxito.");
   } catch (e) {
-    alert("Erro ao registrar assinatura: " + e.message);
+    alert("Error al registrar firma: " + e.message);
     if (btn) {
       btn.disabled = false;
       btn.textContent = "✍️ ASSINAR E CONTINUAR";
@@ -13860,11 +14179,11 @@ async function registrarMovimentacaoCaixa({
   descricao_outro = null
 }) {
   if (!sessao_id) {
-    console.error('registrarMovimentacaoCaixa: sessao_id é obrigatório');
+    console.error('registrarMovimentacaoCaixa: sessao_id es obligatorio');
     return false;
   }
   if (!valor || valor <= 0) {
-    console.error('registrarMovimentacaoCaixa: valor deve ser > 0');
+    console.error('registrarMovimentacaoCaixa: el valor debe ser > 0');
     return false;
   }
   if (!usuario_email) {
@@ -13889,7 +14208,7 @@ async function registrarMovimentacaoCaixa({
     .insert([payload]);
 
   if (error) {
-    console.error('Erro ao registrar movimentação:', error);
+    console.error('Error al registrar movimiento:', error);
     return false;
   }
   return true;
@@ -13904,11 +14223,11 @@ async function registrarMovimentacaoCaixa({
   descricao_outro = null
 }) {
   if (!sessao_id) {
-    console.error('registrarMovimentacaoCaixa: sessao_id é obrigatório');
+    console.error('registrarMovimentacaoCaixa: sessao_id es obligatorio');
     return false;
   }
   if (!valor || valor <= 0) {
-    console.error('registrarMovimentacaoCaixa: valor deve ser > 0');
+    console.error('registrarMovimentacaoCaixa: el valor debe ser > 0');
     return false;
   }
   if (!usuario_email) {
@@ -13932,7 +14251,7 @@ async function registrarMovimentacaoCaixa({
     .insert([payload]);
 
   if (error) {
-    console.error('Erro ao registrar movimentação:', error);
+    console.error('Error al registrar movimiento:', error);
     return false;
   }
   return true;
@@ -13950,7 +14269,7 @@ function pdvToggleFactura() {
 async function abrirEdicaoPedidoRelatorio(pedidoId) {
   // Verifica permissão (gerente, dono ou adminMaster)
   if (!['gerente', 'dono', 'adminMaster'].includes(perfilUsuario)) {
-    alert('Acesso negado. Apenas gerentes e donos podem editar.');
+    alert('Acceso denegado. Solo gerentes y dueños pueden editar.');
     return;
   }
 
@@ -14010,7 +14329,7 @@ async function abrirEdicaoPedidoRelatorio(pedidoId) {
     document.getElementById('modal-editar-pedido').dataset.pedidoId = pedidoId;
 
   } catch (err) {
-    alert('Erro ao carregar pedido: ' + err.message);
+    alert('Error al cargar pedido: ' + err.message);
   }
 }
 
@@ -14025,7 +14344,7 @@ async function salvarEdicaoPedidoRelatorio() {
   // Coleta novo total
   const novoTotal = parseFloat(document.getElementById('edit-pedido-total').value);
   if (isNaN(novoTotal) || novoTotal < 0) {
-    alert('Informe um total válido.');
+    alert('Ingrese un total válido.');
     return;
   }
 
@@ -14049,7 +14368,7 @@ async function salvarEdicaoPedidoRelatorio() {
     .single();
 
   if (errFetch || !pedido) {
-    alert('Erro ao buscar pedido para atualização.');
+    alert('Error al buscar pedido para actualización.');
     return;
   }
 
@@ -14098,11 +14417,11 @@ async function salvarEdicaoPedidoRelatorio() {
     .eq('id', pedidoId);
 
   if (errUpdate) {
-    alert('Erro ao salvar: ' + errUpdate.message);
+    alert('Error al guardar: ' + errUpdate.message);
     return;
   }
 
-  alert('✅ Pedido atualizado com sucesso!');
+  alert('✅ ¡Pedido actualizado con éxito!');
   fecharModal('modal-editar-pedido');
   // Recarrega o relatório para refletir as alterações
   carregarRelatorio();

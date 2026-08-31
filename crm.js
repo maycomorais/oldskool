@@ -44,7 +44,7 @@ async function crmCarregarClientes() {
       .from('clientes')
       .select('*')
       .order('nome');
-    if (error) { console.warn('crmCarregarClientes (rode a migração SQL):', error.message); return; }
+    if (error) { console.warn('crmCarregarClientes (ejecute la migración SQL):', error.message); return; }
     _crm_clientes = data || [];
     _crmExpirarCashback();
     crmRenderClientes();
@@ -428,12 +428,12 @@ async function _pdvCadastrarClienteAuto() {
       saldo_cashback: 0,
       total_gasto: 0,
     }]);
-    if (error) { console.warn("Cadastro automático de cliente falhou:", error.message); return; }
+    if (error) { console.warn("Registro automático de cliente falló:", error.message); return; }
 
     console.log(`✅ Cliente cadastrado automaticamente: ${nome} (${tel})`);
     if (typeof crmCarregarClientes === "function") crmCarregarClientes();
   } catch (e) {
-    console.warn("Cadastro automático de cliente — erro:", e.message);
+    console.warn("Registro automático de cliente — error:", e.message);
   }
 }
 

@@ -25,6 +25,7 @@ const ADMIN_LANGS = {
     'sidebar.turnos':       'Turnos',
     'sidebar.sair':         'Sair',
     'sidebar.facturacion': 'Faturação',
+    'sidebar.na_nota':      'Na Nota',
 
     // ── Dashboard ──────────────────────────────────────────
     'dash.title':           'Painel de Controle',
@@ -105,6 +106,7 @@ const ADMIN_LANGS = {
     'fin.transferencia':    'Transferência',
     'fin.cartao':           'Cartão',
     'fin.dinheiro':         'Dinheiro',
+    'fin.na_nota':          'Na Nota',
     'fin.motoboys':         '🏍️ Relatório Motoboys',
     'fin.filtrar':          'Filtrar',
     'fin.exportar_csv':     '📊 CSV / Power BI',
@@ -362,6 +364,7 @@ const ADMIN_LANGS = {
     'sidebar.mensalistas':  'Mensalistas',
     'sidebar.motoboys':     'Motoboys',
     'sidebar.produtos':     'Produtos',
+    'sidebar.na_nota':      'Na Nota',
 
     // ── Produtos (chaves faltando) ─────────────────────────────────
     'prod.produtos_title':  'Produtos',
@@ -1153,8 +1156,9 @@ const ADMIN_LANGS = {
     'sidebar.ficha_tecnica':'Ficha Técnica',
     'sidebar.filiais':      'Sucursales',
     'sidebar.mensalistas':  'Mensualistas',
-    'sidebar.motoboys':     'Repartidores',
+    'sidebar.motoboys':     'Delivery / Repartidores',
     'sidebar.produtos':     'Productos',
+    'sidebar.na_nota':      'Al Fiado',
 
     // ── Produtos (chaves faltando) ─────────────────────────────────
     'prod.produtos_title':  'Productos',

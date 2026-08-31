@@ -24,7 +24,7 @@ function ftRenderInsumos() {
   if (!tbody) return;
 
   if (!_ft_insumos.length) {
-    tbody.innerHTML = '<tr><td colspan="4" class="ft-empty">Nenhum insumo cadastrado ainda.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="4" class="ft-empty">Ningún insumo registrado todavía.</td></tr>';
     return;
   }
 
@@ -46,7 +46,7 @@ function ftRenderInsumos() {
 function ftPopularSelectInsumo() {
   const sel = document.getElementById('ft-sel-insumo');
   if (!sel) return;
-  sel.innerHTML = '<option value="">— Selecione o insumo —</option>' +
+  sel.innerHTML = '<option value="">— Seleccione el insumo —</option>' +
     _ft_insumos.map(i =>
       `<option value="${i.id}" data-preco="${i.preco_custo}" data-unidade="${i.unidade}">${i.nome} (${i.unidade})</option>`
     ).join('');
@@ -68,23 +68,23 @@ async function ftSalvarInsumo() {
   const unid  = document.getElementById('ft-insumo-unidade').value;
   const preco = parseFloat(document.getElementById('ft-insumo-preco').value) || 0;
 
-  if (!nome)    { alert('Informe o nome do insumo.'); return; }
-  if (preco <= 0) { alert('O preço de custo deve ser maior que zero.'); return; }
+  if (!nome)    { alert('Ingrese el nombre del insumo.'); return; }
+  if (preco <= 0) { alert('El precio de costo debe ser mayor que cero.'); return; }
 
   const payload = { nome, unidade: unid, preco_custo: preco };
   const { error } = id
     ? await supa.from('insumos').update(payload).eq('id', id)
     : await supa.from('insumos').insert([payload]);
 
-  if (error) { alert('Erro ao salvar: ' + error.message); return; }
+  if (error) { alert('Error al guardar: ' + error.message); return; }
   fecharModal('modal-ft-insumo');
   ftCarregarInsumos();
 }
 
 async function ftExcluirInsumo(id) {
-  if (!confirm('Excluir este insumo? Ele será removido de todas as fichas que o utilizam.')) return;
+  if (!confirm('¿Eliminar este insumo? Será eliminado de todas las fichas que lo utilizan.')) return;
   const { error } = await supa.from('insumos').delete().eq('id', id);
-  if (error) { alert('Erro: ' + error.message); return; }
+  if (error) { alert('Error: ' + error.message); return; }
   ftCarregarInsumos();
 }
 
@@ -115,7 +115,7 @@ function ftRenderFichas() {
   if (!cont) return;
 
   if (!_ft_fichas.length) {
-    cont.innerHTML = '<p style="text-align:center;color:#aaa;padding:30px">Nenhuma ficha técnica cadastrada.</p>';
+    cont.innerHTML = '<p style="text-align:center;color:#aaa;padding:30px">Ninguna ficha técnica registrada.</p>';
     return;
   }
 
@@ -157,7 +157,7 @@ function ftRenderFichas() {
           </button>
           <button onclick="ftExcluirFicha(${f.id})"
             style="flex:1;padding:7px;background:#e74c3c;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:0.83rem;font-weight:600">
-            🗑️ Excluir
+            🗑️ Eliminar
           </button>
         </div>
       </div>
@@ -176,7 +176,7 @@ async function ftAbrirModalFicha(id = null) {
   // Carrega produtos direto do banco (não depende de _todosProdutos do admin.js)
   const selProd = document.getElementById('ft-ficha-prod-sel');
   if (selProd) {
-    selProd.innerHTML = '<option value="">⏳ Carregando...</option>';
+    selProd.innerHTML = '<option value="">⏳ Cargando...</option>';
     try {
       let prods = [];
       // Tenta usar _todosProdutos se já estiver carregado
@@ -186,10 +186,10 @@ async function ftAbrirModalFicha(id = null) {
         const { data } = await supa.from('produtos').select('id, nome, categoria_slug').order('nome');
         prods = data || [];
       }
-      selProd.innerHTML = '<option value="">— Selecione do cardápio —</option>' +
+      selProd.innerHTML = '<option value="">— Seleccione del menú —</option>' +
         prods.map(p => `<option value="${p.nome}">${p.nome}${p.categoria_slug ? ' · ' + p.categoria_slug : ''}</option>`).join('');
     } catch(e) {
-      selProd.innerHTML = '<option value="">— Erro ao carregar —</option>';
+      selProd.innerHTML = '<option value="">— Error al cargar —</option>';
     }
     selProd.onchange = () => {
       if (selProd.value) document.getElementById('ft-ficha-produto').value = selProd.value;
@@ -202,9 +202,9 @@ async function ftAbrirModalFicha(id = null) {
 }
 
 async function ftExcluirFicha(id) {
-  if (!confirm('Excluir esta ficha técnica?')) return;
+  if (!confirm('¿Eliminar esta ficha técnica?')) return;
   const { error } = await supa.from('fichas_tecnicas').delete().eq('id', id);
-  if (error) { alert('Erro: ' + error.message); return; }
+  if (error) { alert('Error: ' + error.message); return; }
   ftCarregarFichas();
 }
 
@@ -212,8 +212,8 @@ async function ftExcluirFicha(id) {
 function ftAdicionarInsumo() {
   const sel = document.getElementById('ft-sel-insumo');
   const qtd = parseFloat(document.getElementById('ft-qtd-insumo').value) || 0;
-  if (!sel.value) { alert('Selecione um insumo.'); return; }
-  if (qtd <= 0)   { alert('Informe uma quantidade válida.'); return; }
+  if (!sel.value) { alert('Seleccione un insumo.'); return; }
+  if (qtd <= 0)   { alert('Ingrese una cantidad válida.'); return; }
 
   const insumo = _ft_insumos.find(i => i.id == sel.value);
   if (!insumo) return;
@@ -243,7 +243,7 @@ function ftRenderItensTemp() {
   if (!cont) return;
 
   if (!_ft_itensTemp.length) {
-    cont.innerHTML = '<p style="color:#aaa;font-size:0.83rem;text-align:center;padding:12px">Nenhum insumo adicionado</p>';
+    cont.innerHTML = '<p style="color:#aaa;font-size:0.83rem;text-align:center;padding:12px">Ningún insumo agregado</p>';
     return;
   }
 
@@ -287,19 +287,19 @@ async function ftSalvarFicha() {
   const produto_nome = document.getElementById('ft-ficha-produto').value.trim();
   const markup_percent = parseFloat(document.getElementById('ft-ficha-markup').value) || 300;
 
-  if (!produto_nome) { alert('Informe o nome do produto.'); return; }
+  if (!produto_nome) { alert('Ingrese el nombre del producto.'); return; }
 
   let fichaId = id ? parseInt(id) : null;
 
   if (fichaId) {
     const { error } = await supa.from('fichas_tecnicas')
       .update({ produto_nome, markup_percent }).eq('id', fichaId);
-    if (error) { alert('Erro: ' + error.message); return; }
+    if (error) { alert('Error: ' + error.message); return; }
     await supa.from('ficha_itens').delete().eq('ficha_id', fichaId);
   } else {
     const { data, error } = await supa.from('fichas_tecnicas')
       .insert([{ produto_nome, markup_percent }]).select('id').single();
-    if (error) { alert('Erro: ' + error.message); return; }
+    if (error) { alert('Error: ' + error.message); return; }
     fichaId = data.id;
   }
 
@@ -313,7 +313,7 @@ async function ftSalvarFicha() {
         quantidade:    fi.quantidade,
       }))
     );
-    if (error) { alert('Erro ao salvar itens: ' + error.message); return; }
+    if (error) { alert('Error al guardar ítems: ' + error.message); return; }
   }
 
   fecharModal('modal-ft-ficha');

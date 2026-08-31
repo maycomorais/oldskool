@@ -151,7 +151,7 @@
   </style>
   <body>
     <div id="auth-overlay" style="position:fixed;inset:0;background:#111;z-index:99999;display:flex;align-items:center;justify-content:center;font-family:Arial,sans-serif;font-size:15px;color:#aaa">
-      <div style="text-align:center"><div style="width:36px;height:36px;border:3px solid #333;border-top-color:#1a7a2e;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 12px"></div>Verificando sessão...</div>
+      <div style="text-align:center"><div style="width:36px;height:36px;border:3px solid #333;border-top-color:#1a7a2e;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 12px"></div>Verificando sesión...</div>
     </div>
     <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
     <audio id="som-campainha" preload="auto" loop>
@@ -176,11 +176,11 @@
 
       <div class="menu">
         <div class="menu-item active" id="menu-dashboard" onclick="showTab('dashboard', event)">
-          <i class="fas fa-chart-line"></i><span class="mobile-hide sidebar-label" data-i18n="sidebar.visao"> Visão</span>
+          <i class="fas fa-chart-line"></i><span class="mobile-hide sidebar-label" data-i18n="sidebar.visao"> Visión</span>
         </div>
 
         <div class="menu-item" id="menu-pdv" onclick="showTab('pdv', event)" style="color: #ffca28">
-          <i class="fas fa-cash-register"></i><span class="mobile-hide sidebar-label" data-i18n="sidebar.pdv"> PDV Balcão</span>
+          <i class="fas fa-cash-register"></i><span class="mobile-hide sidebar-label" data-i18n="sidebar.pdv"> PDV Mostrador</span>
         </div>
 
         <div class="menu-item" id="menu-pedidos" onclick="showTab('pedidos', event)">
@@ -208,7 +208,7 @@
         </div>
 
         <div class="menu-item" id="menu-notas" onclick="showTab('notas', event)" style="display:none">
-          <i class="fas fa-file-invoice-dollar"></i><span class="mobile-hide sidebar-label"> Na Nota</span>
+          <i class="fas fa-file-invoice-dollar"></i><span class="mobile-hide sidebar-label" data-i18n="sidebar.na_nota"> Al Fiado</span>
         </div>
 
         <div class="menu-item" id="menu-facturacion" onclick="showTab('facturacion', event)">
@@ -221,7 +221,7 @@
         </div>
 
         <div class="menu-item" id="menu-estatisticas" onclick="showTab('estatisticas', event)" style="display:none">
-          <i class="fas fa-chart-bar"></i><span class="mobile-hide sidebar-label" data-i18n="sidebar.estatisticas"> Estatísticas</span>
+          <i class="fas fa-chart-bar"></i><span class="mobile-hide sidebar-label" data-i18n="sidebar.estatisticas"> Estadísticas</span>
         </div>
 
         <div class="menu-item" id="menu-ficha-tecnica" onclick="showTab('ficha-tecnica', event)" style="display:none">
@@ -229,7 +229,7 @@
         </div>
         
         <div class="menu-item restrito-gerente" id="menu-equipe" onclick="showTab('equipe', event)">
-          <i class="fas fa-users"></i><span class="mobile-hide sidebar-label" data-i18n="sidebar.equipe"> Equipe</span>
+          <i class="fas fa-users"></i><span class="mobile-hide sidebar-label" data-i18n="sidebar.equipe"> Equipo</span>
         </div>
         
         <div class="menu-item" onclick="showTab('motoboys', event)">
@@ -241,7 +241,7 @@
         </div>
 
         <div class="menu-item" onclick="showTab('inventario', event)" id="menu-inventario" style="display:none">
-          <i class="fas fa-boxes"></i><span class="mobile-hide sidebar-label" data-i18n="sidebar.estoque"> Estoque</span>
+          <i class="fas fa-boxes"></i><span class="mobile-hide sidebar-label" data-i18n="sidebar.estoque"> Stock</span>
         </div>
 
         <!-- Turnos (KDS público) — abre em nova aba -->
@@ -277,8 +277,8 @@
           title="Español">🇵🇾 ES</button>
       </div>
 
-      <div class="menu-item" onclick="abrirModalAlterarSenha()" style="background:#145a22;color:#d1fae5" title="Alterar minha senha">
-        <i class="fas fa-key"></i><span class="mobile-hide"> Senha</span>
+      <div class="menu-item" onclick="abrirModalAlterarSenha()" style="background:#145a22;color:#d1fae5" title="Cambiar mi contraseña">
+        <i class="fas fa-key"></i><span class="mobile-hide"> Contraseña</span>
       </div>
       <div id="menu-assinatura" class="menu-item" onclick="showTab('assinatura', event)"
         style="display:none;background:#0f3460;color:#93c5fd" title="Controle de Assinatura">
@@ -303,14 +303,14 @@
           <div class="kpi-card kpi-accent-green">
             <div class="kpi-icon"><i class="fas fa-coins"></i></div>
             <div class="kpi-info">
-              <div class="kpi-label" data-i18n="dash.vendas_hoje">Vendas Hoje</div>
+              <div class="kpi-label" data-i18n="dash.vendas_hoje">Ventas Hoy</div>
               <div class="value" id="kpi-vendas">Gs 0</div>
             </div>
           </div>
           <div class="kpi-card kpi-accent-blue">
             <div class="kpi-icon"><i class="fas fa-receipt"></i></div>
             <div class="kpi-info">
-              <div class="kpi-label" data-i18n="dash.pedidos_hoje">Pedidos Hoje</div>
+              <div class="kpi-label" data-i18n="dash.pedidos_hoje">Pedidos Hoy</div>
               <div class="value" id="kpi-pedidos">0</div>
             </div>
           </div>
@@ -336,16 +336,16 @@
               <i class="fas fa-trophy" style="color:#f59e0b"></i>
               <h3 data-i18n="dash.top_produtos">Top Produtos</h3>
               <select id="rank-prod-periodo" class="rank-periodo-select" onchange="carregarRankingProdutos()" style="margin-left:auto">
-                <option value="hoje" data-i18n="dash.hoje">Hoje</option>
-                <option value="7" data-i18n="dash.7dias">7 dias</option>
-                <option value="30" data-i18n="dash.30dias">30 dias</option>
-                <option value="mes" data-i18n="dash.mes">Este mês</option>
+                <option value="hoje" data-i18n="dash.hoje">Hoy</option>
+                <option value="7" data-i18n="dash.7dias">7 días</option>
+                <option value="30" data-i18n="dash.30dias">30 días</option>
+                <option value="mes" data-i18n="dash.mes">Este mes</option>
                 <option value="custom" data-i18n="dash.personalizado">Período</option>
               </select>
             </div>
             <div id="rank-prod-custom" style="display:none;gap:4px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
               <input type="date" id="rank-prod-inicio" class="rank-data-input">
-              <span style="font-size:0.75rem;color:#888" data-i18n="geral.ate">até</span>
+              <span style="font-size:0.75rem;color:#888" data-i18n="geral.ate">hasta</span>
               <input type="date" id="rank-prod-fim" class="rank-data-input">
               <button class="btn btn-sm btn-primary" onclick="carregarRankingProdutos()" style="padding:3px 10px;font-size:0.75rem" data-i18n="geral.ir">Ir</button>
             </div>
@@ -354,19 +354,19 @@
           <div class="card ranking-card">
             <div class="ranking-header">
               <i class="fas fa-star" style="color:#a78bfa"></i>
-              <h3 data-i18n="dash.clientes">Clientes Assíduos</h3>
+              <h3 data-i18n="dash.clientes">Clientes Frecuentes</h3>
               <select id="rank-cli-periodo" class="rank-periodo-select" onchange="carregarRankingClientes()" style="margin-left:auto">
                 <option value="tudo" data-i18n="geral.todos">Todos</option>
-                <option value="hoje" data-i18n="dash.hoje">Hoje</option>
-                <option value="7" data-i18n="dash.7dias">7 dias</option>
-                <option value="30" data-i18n="dash.30dias">30 dias</option>
-                <option value="mes" data-i18n="dash.mes">Este mês</option>
+                <option value="hoje" data-i18n="dash.hoje">Hoy</option>
+                <option value="7" data-i18n="dash.7dias">7 días</option>
+                <option value="30" data-i18n="dash.30dias">30 días</option>
+                <option value="mes" data-i18n="dash.mes">Este mes</option>
                 <option value="custom" data-i18n="dash.personalizado">Período</option>
               </select>
             </div>
             <div id="rank-cli-custom" style="display:none;gap:4px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
               <input type="date" id="rank-cli-inicio" class="rank-data-input">
-              <span style="font-size:0.75rem;color:#888" data-i18n="geral.ate">até</span>
+              <span style="font-size:0.75rem;color:#888" data-i18n="geral.ate">hasta</span>
               <input type="date" id="rank-cli-fim" class="rank-data-input">
               <button class="btn btn-sm btn-primary" onclick="carregarRankingClientes()" style="padding:3px 10px;font-size:0.75rem" data-i18n="geral.ir">Ir</button>
             </div>
@@ -386,7 +386,7 @@
             <div class="pedidos-topbar-left">
               <h2 class="section-title" data-i18n="sidebar.pedidos">Pedidos</h2>
               <span id="badge-delivery-status" class="delivery-badge delivery-open"
-                onclick="carregarStatusDelivery()" title="Clique para atualizar">
+                onclick="carregarStatusDelivery()" title="Haga clic para actualizar">
                 🟢 Aberto
               </span>
               <span id="badge-horario-extra" class="delivery-badge badge-extra" style="display:none"></span>
@@ -400,17 +400,17 @@
 
           <!-- Linha 2: Ações de controle do delivery -->
           <div class="pedidos-topbar-row2">
-            <button class="topbar-btn btn-horario" onclick="abrirModalEstenderHorario()" title="Estender horário">
-              <i class="fas fa-clock"></i> <span data-i18n="pedidos.estender_horario">+Horário</span>
+            <button class="topbar-btn btn-horario" onclick="abrirModalEstenderHorario()" title="Extender horario">
+              <i class="fas fa-clock"></i> <span data-i18n="pedidos.estender_horario">+Horario</span>
             </button>
-            <button class="topbar-btn btn-encerrar" onclick="avisarEncerramentoDelivery()" title="Encerrar delivery">
-              <i class="fas fa-ban"></i> <span data-i18n="pedidos.encerrar">Encerrar</span>
+            <button class="topbar-btn btn-encerrar" onclick="avisarEncerramentoDelivery()" title="Cerrar delivery">
+              <i class="fas fa-ban"></i> <span data-i18n="pedidos.encerrar">Cerrar</span>
             </button>
             <button class="topbar-btn btn-reabrir" onclick="reabrirDelivery()" title="Reabrir delivery">
               <i class="fas fa-check"></i> <span data-i18n="pedidos.reabrir">Reabrir</span>
             </button>
-            <button class="topbar-btn btn-relatorio" onclick="abrirRelatorio()" title="Relatório">
-              <i class="fas fa-clipboard-list"></i> <span data-i18n="pedidos.relatorio">Relatório</span>
+            <button class="topbar-btn btn-relatorio" onclick="abrirRelatorio()" title="Reporte">
+              <i class="fas fa-clipboard-list"></i> <span data-i18n="pedidos.relatorio">Reporte</span>
             </button>
             <button class="topbar-btn btn-baixar-mesas" onclick="fecharTodasMesas()" title="Baixar Mesa/Retirada/Local">
               <i class="fas fa-store-alt-slash"></i> <span data-i18n="pedidos.baixar_mesa">Baixar Mesa/Local</span>
@@ -425,7 +425,7 @@
           <div class="rota-card-title"><i class="fas fa-route"></i> <span data-i18n="pedidos.despachar_rota">Despachar Rota</span></div>
           <div class="rota-controls">
             <select id="sel-motoboy" class="form-control">
-              <option value="" data-i18n="pedidos.selecione_motoboy">Selecione Motoboy...</option>
+              <option value="" data-i18n="pedidos.selecione_motoboy">Seleccione Repartidor...</option>
             </select>
             <button class="btn btn-success btn-zap" onclick="enviarRotaZap()">
               <i class="fab fa-whatsapp"></i> <span data-i18n="pedidos.enviar_rota">Enviar Rota</span>
@@ -445,7 +445,7 @@
                 <th data-i18n="crm.tabela_cliente">Cliente</th>
                 <th data-i18n="pedidos.status">Status</th>
                 <th data-i18n="rel.total">Total</th>
-                <th data-i18n="crm.tabela_acoes">Ações</th>
+                <th data-i18n="crm.tabela_acoes">Acciones</th>
               </tr>
             </thead>
             <tbody id="lista-pedidos"></tbody>
@@ -468,7 +468,7 @@
 
         <!-- PDV Header -->
         <div class="pdv-header-bar">
-          <h2 class="section-title" style="margin:0" data-i18n="pdv.title">🏪 Venda Balcão (PDV)</h2>
+          <h2 class="section-title" style="margin:0" data-i18n="pdv.title">🏪 Venta Mostrador (PDV)</h2>
           <div class="pdv-view-btns">
             <button id="pdv-view-btn-venda" class="pdv-view-btn active" onclick="pdvMudarView('venda')">
               <i class="fas fa-cash-register"></i> <span data-i18n="pdv.venda">Venda</span>
@@ -483,7 +483,7 @@
         <!-- MOBILE TABS — Cardápio | Pedido | Mesas -->
         <div class="pdv-tabs" id="pdv-tabs">
           <button class="pdv-tab-btn active" onclick="pdvMudarAba('produtos',this)">
-            <i class="fas fa-utensils"></i> <span data-i18n="pdv.cardapio">Cardápio</span>
+            <i class="fas fa-utensils"></i> <span data-i18n="pdv.cardapio">Menú</span>
           </button>
           <button class="pdv-tab-btn" onclick="pdvMudarAba('carrinho',this)">
             <i class="fas fa-shopping-cart"></i> <span data-i18n="pdv.pedido">Pedido</span>
@@ -507,14 +507,14 @@
               <div class="pdv-busca-wrap">
                 <i class="fas fa-search pdv-busca-icon"></i>
                 <input type="text" id="pdv-busca" class="pdv-busca-input"
-                  data-i18n-ph="pdv.buscar_produto" placeholder="Buscar produto..." oninput="filtrarPDV(this.value)" />
+                  data-i18n-ph="pdv.buscar_produto" placeholder="Buscar producto..." oninput="filtrarPDV(this.value)" />
               </div>
 
               <!-- Mesas ativas -->
               <div class="pdv-mesas-bar" id="pdv-mesas-bar">
                 <i class="fas fa-chair" style="color:#888;font-size:0.75rem"></i>
                 <span class="pdv-mesas-label" data-i18n="pdv.mesas_label">Mesas:</span>
-                <span id="pdv-mesas-vazio" style="color:#aaa;font-size:0.75rem" data-i18n="pdv.nenhuma_mesa">Nenhuma mesa ativa</span>
+                <span id="pdv-mesas-vazio" style="color:#aaa;font-size:0.75rem" data-i18n="pdv.nenhuma_mesa">Ninguna mesa activa</span>
               </div>
 
               <!-- Grid de produtos -->
@@ -524,12 +524,12 @@
             <!-- ══ COLUNA DIREITA: Pedido ══ -->
             <div class="pdv-col-dir pdv-tab-panel" id="pdv-panel-carrinho">
 
-              <div class="pdv-dir-titulo"><span data-i18n="pdv.novo_pedido">Novo Pedido</span></div>
+              <div class="pdv-dir-titulo"><span data-i18n="pdv.novo_pedido">Nuevo Pedido</span></div>
 
               <!-- Tipo de pedido — abas -->
               <div class="pdv-tipo-tabs">
                 <button class="pdv-tipo-tab active" data-tipo="balcao"
-                  onclick="pdvSelecionarTipo('balcao',this)"><span data-i18n="pdv.tipo_balcao">Balcão</span></button>
+                  onclick="pdvSelecionarTipo('balcao',this)"><span data-i18n="pdv.tipo_balcao">Mostrador</span></button>
                 <button class="pdv-tipo-tab" data-tipo="delivery"
                   onclick="pdvSelecionarTipo('delivery',this)"><span data-i18n="pdv.tipo_delivery">Delivery</span></button>
                 <button class="pdv-tipo-tab" data-tipo="retirada"
@@ -551,7 +551,7 @@
                   </div>
                 </div>
                 <div>
-                  <label class="pdv-dir-label" data-i18n="crm.tel_label">Telefone</label>
+                  <label class="pdv-dir-label" data-i18n="crm.tel_label">Teléfono</label>
                   <input type="tel" id="balcao-telefone" class="form-control"
                   data-i18n-ph="pdv.telefone_ph" placeholder="Ex: 0981234567"
                   oninput="pdvTelefoneInput(this.value)" />
@@ -561,7 +561,7 @@
                   border-radius:10px;padding:10px 12px;margin-top:6px;font-size:0.85rem">
                   <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">
                     <div>
-                      <div style="font-weight:700;color:#795548" data-i18n="pdv.cashback_disponivel">💰 Cashback disponível</div>
+                      <div style="font-weight:700;color:#795548" data-i18n="pdv.cashback_disponivel">💰 Cashback disponible</div>
                       <div style="color:#555"><b id="pdv-cash-nome">—</b>: <span style="color:#1a7a2e;font-weight:700" id="pdv-cash-saldo">—</span></div>
                     </div>
                     <button id="pdv-btn-usar-cash" onclick="pdvToggleCashback()"
@@ -578,9 +578,9 @@
               <div id="pdv-delivery-row" style="display:none;padding:0 8px 6px">
 
                 <!-- Endereço de texto -->
-                <label class="pdv-dir-label">📍 <span data-i18n="pdv.endereco">Endereço</span></label>
+                <label class="pdv-dir-label">📍 <span data-i18n="pdv.endereco">Dirección</span></label>
                 <input type="text" id="balcao-endereco" class="pdv-dir-input"
-                  data-i18n-ph="pdv.endereco_ph" placeholder="Rua, número, bairro..." />
+                  data-i18n-ph="pdv.endereco_ph" placeholder="Calle, número, barrio..." />
 
                 <!-- Link do Google Maps -->
                 <label class="pdv-dir-label" style="margin-top:5px">
@@ -592,7 +592,7 @@
                     style="flex:1;font-size:0.78rem"
                     oninput="pdvOnGmapsLinkInput(this.value)" />
                   <a id="btn-abrir-gmaps" href="#" target="_blank" rel="noopener"
-                    title="Abrir no Google Maps"
+                    title="Abrir en Google Maps"
                     style="display:none;padding:6px 8px;background:#4285f4;color:#fff;border-radius:5px;
                            font-size:0.8rem;text-decoration:none;white-space:nowrap;line-height:1.4">
                     🔗
@@ -630,7 +630,7 @@
 
               <!-- Desconto -->
               <div class="pdv-dir-desconto">
-                <div class="pdv-dir-desc-label">🏷️ <span data-i18n="pdv.desconto">DESCONTO</span></div>
+                <div class="pdv-dir-desc-label">🏷️ <span data-i18n="pdv.desconto">DESCUENTO</span></div>
                 <div style="display:flex;gap:6px">
                   <select id="pdv-desconto-tipo" onchange="atualizarCarrinhoPDV()"
                     class="pdv-dir-input" style="flex:0 0 88px">
@@ -654,7 +654,7 @@
               <!-- Totais -->
               <div class="pdv-dir-totais">
                 <div class="pdv-dir-total-row" id="pdv-row-desconto" style="display:none;color:#e67e22">
-                  <span data-i18n="pdv.desconto_label">– Desconto</span>
+                  <span data-i18n="pdv.desconto_label">– Descuento</span>
                   <span>Gs <span id="balcao-desconto">0</span></span>
                 </div>
                 <div class="pdv-dir-total-row" style="font-size:0.78rem;color:#888">
@@ -673,7 +673,7 @@
                   onchange="atualizarInfoPagPDV(parseInt(document.getElementById('balcao-total').innerText.replace(/\D/g,'')))">
                   <option value="Efetivo">💵 Efectivo</option>
                   <option value="Cartao">💳 Tarjeta PY</option>
-                  <option value="CartaoBR">💳🇧🇷 Cartão BR</option>
+                  <option value="CartaoBR">💳🇧🇷 Tarjeta BR</option>
                   <option value="Pix">✅ Pix</option>
                   <option value="Transferencia">🏦 Alias (PY)</option>
                   <option value="QrMaquina">📱 QR Maquina</option>
@@ -728,7 +728,7 @@
               <!-- Box Mensalista -->
               <div id="box-mensalista-pdv" style="display:none;padding:4px 8px 0">
                 <div style="font-size:0.72rem;font-weight:700;color:#1a7a2e;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">🎫 Selecionar Mensalista</div>
-                <input type="text" id="pdv-mens-busca" placeholder="Buscar cliente mensalista..."
+                <input type="text" id="pdv-mens-busca" placeholder="Buscar cliente mensualista..."
                   oninput="pdvFiltrarMensalistas()"
                   style="width:100%;padding:6px 9px;border:1.5px solid #d1fae5;border-radius:6px;font-size:0.8rem;outline:none;margin-bottom:5px">
                 <div id="pdv-mens-lista" style="max-height:130px;overflow-y:auto;display:flex;flex-direction:column;gap:3px"></div>
@@ -745,7 +745,7 @@
 
               <!-- Box Na Nota (fiado) -->
               <div id="box-nanota-pdv" style="display:none;padding:4px 8px 0">
-                <div style="font-size:0.72rem;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">📋 Colocar na Nota do Cliente</div>
+                <div style="font-size:0.72rem;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">📋 Poner en la Cuenta del Cliente</div>
                 <input type="text" id="pdv-nota-busca" placeholder="Buscar cliente..."
                   oninput="pdvFiltrarClientesNota()"
                   style="width:100%;padding:6px 9px;border:1.5px solid #ede9fe;border-radius:6px;font-size:0.8rem;outline:none;margin-bottom:5px">
@@ -761,10 +761,10 @@
                 </div>
                 <!-- Cadastrar novo cliente inline -->
                 <div id="pdv-nota-novo" style="display:none;border-top:1px dashed #c4b5fd;margin-top:8px;padding-top:8px">
-                  <div style="font-size:0.72rem;font-weight:700;color:#7c3aed;margin-bottom:5px">+ Novo cliente</div>
+                  <div style="font-size:0.72rem;font-weight:700;color:#7c3aed;margin-bottom:5px">+ Nuevo cliente</div>
                   <input type="text" id="pdv-nota-novo-nome" placeholder="Nome *"
                     style="width:100%;padding:6px 9px;border:1.5px solid #ede9fe;border-radius:6px;font-size:0.8rem;outline:none;margin-bottom:4px">
-                  <input type="tel" id="pdv-nota-novo-tel" placeholder="Telefone *"
+                  <input type="tel" id="pdv-nota-novo-tel" placeholder="Teléfono *"
                     style="width:100%;padding:6px 9px;border:1.5px solid #ede9fe;border-radius:6px;font-size:0.8rem;outline:none;margin-bottom:4px">
                   <button onclick="pdvCadastrarClienteNota()"
                     style="width:100%;padding:6px;background:#7c3aed;color:#fff;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-size:0.78rem">
@@ -813,7 +813,7 @@
           <div class="pdv-monitor pdv-tab-active" style="height:calc(100vh - 200px); overflow-y:auto">
             <h4 class="pdv-monitor-titulo"><i class="fas fa-utensils"></i> <span data-i18n="pdv.pedidos_andamento">Pedidos em Andamento</span></h4>
             <div id="lista-mesas-andamento">
-              <p style="text-align: center; font-size: 0.8rem; color: #aaa; margin-top: 20px">Nenhum pedido ativo.</p>
+              <p style="text-align: center; font-size: 0.8rem; color: #aaa; margin-top: 20px">Ningún pedido activo.</p>
             </div>
           </div>
         </div>
@@ -821,7 +821,7 @@
         <!-- MOBILE: barra inferior fixa com total + botão -->
         <div class="pdv-mobile-footer" id="pdv-mobile-footer" style="display:none">
           <div class="pdv-mobile-total">
-            <span id="pdv-mobile-qtd">0 itens</span>
+            <span id="pdv-mobile-qtd">0 ítems</span>
             <span class="pdv-mobile-valor">Gs <strong id="pdv-mobile-total-val">0</strong></span>
           </div>
           <button class="pdv-mobile-checkout-btn" onclick="pdvMudarAba('carrinho', document.querySelector('.pdv-tab-btn:nth-child(2)'))">
@@ -837,7 +837,7 @@
   <!-- ===== FILTROS (gestores: dono/gerente/adminMaster) ===== -->
   <div id="fin-filtros-gestor" class="filtro-bar">
     <div class="filtro-group">
-      <label><i class="far fa-calendar-alt"></i> Início</label>
+      <label><i class="far fa-calendar-alt"></i> Inicio</label>
       <input type="date" id="fin-inicio" onchange="_finMarcarFiltroManual()" />
     </div>
 
@@ -851,11 +851,11 @@
       <select id="fin-tipo">
         <option value="todos">Todos</option>
         <option value="Efetivo">Dinheiro</option>
-        <option value="Cartao">Cartão</option>
+        <option value="Cartao">Tarjeta</option>
         <option value="Pix">Pix</option>
         <option value="QrMaquina">QR Maquina</option>
         <option value="QrCelular">QR Celular</option>
-        <option value="Transferencia">Transferência</option>
+        <option value="Transferencia">Transferencia</option>
       </select>
     </div>
 
@@ -894,14 +894,14 @@
   <div class="card" style="margin-bottom: 20px; padding: 20px; border: none; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);">
     <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px">
       <div style="width: 4px; height: 20px; background: var(--primary); border-radius: 2px"></div>
-      <h3 style="margin: 0; color: #444" data-i18n="fin.caixa_ctrl">Controle de Caixa</h3>
+      <h3 style="margin: 0; color: #444" data-i18n="fin.caixa_ctrl">Control de Caja</h3>
     </div>
 
     
     <div class="actions-grid">
       <button class="action-card ac-abrir" onclick="abrirModalCaixa('abertura')">
         <i class="fas fa-door-open"></i>
-        <span data-i18n="caixa.titulo_abrir">Abrir Caixa</span>
+        <span data-i18n="caixa.titulo_abrir">Abrir Caja</span>
       </button>
       
       <button class="action-card ac-suprir" onclick="abrirModalCaixa('suprimento')">
@@ -921,7 +921,7 @@
       
       <button class="action-card ac-fechar" onclick="fecharCaixaResumo()">
         <i class="fas fa-calculator"></i>
-        <span data-i18n="caixa.fechar_dia">Fechar Dia</span>
+        <span data-i18n="caixa.fechar_dia">Cerrar Día</span>
       </button>
     </div>
   </div>
@@ -933,7 +933,7 @@
   <!-- ===== KPIs PRINCIPAIS ===== -->
   <div class="kpi-grid">
     <div class="kpi-card">
-      <h3 data-i18n="fin.faturamento">Faturamento</h3>
+      <h3 data-i18n="fin.faturamento">Facturación</h3>
       <div class="value" id="card-faturamento">Gs 0</div>
     </div>
     <div class="kpi-card">
@@ -951,7 +951,7 @@
       <div class="value" id="card-qtd-pedidos" style="color: white;">0</div>
     </div>
     <div class="kpi-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">
-      <h3 style="color: rgba(255,255,255,0.9);">Ticket Médio</h3>
+      <h3 style="color: rgba(255,255,255,0.9);">Ticket Promedio</h3>
       <div class="value" id="card-ticket-medio" style="color: white;">Gs 0</div>
     </div>
   </div>
@@ -967,7 +967,7 @@
         <div style="font-size:0.7rem;color:#a07800;margin-top:2px;display:none" id="total-efetivo-nanota-label">📋 incl. <span id="total-efetivo-nanota">Gs 0</span> de Nota quitada</div>
       </div>
       <div class="kpi-card" style="background: #d1ecf1; border-left: 4px solid #17a2b8;">
-        <h4 style="color: #0c5460;">Cartão</h4>
+        <h4 style="color: #0c5460;">Tarjeta</h4>
         <div class="value" id="total-cartao" style="color: #0c5460;">Gs 0</div>
         <div style="font-size:0.7rem;color:#0c5460;margin-top:4px;display:none" id="total-cartao-nanota-label">📋 incl. <span id="total-cartao-nanota">Gs 0</span> de Nota quitada</div>
       </div>
@@ -977,7 +977,7 @@
         <div style="font-size:0.7rem;color:#155724;margin-top:4px;display:none" id="total-pix-nanota-label">📋 incl. <span id="total-pix-nanota">Gs 0</span> de Nota quitada</div>
       </div>
       <div class="kpi-card" style="background: #e7e8ea; border-left: 4px solid #6c757d;">
-        <h4 style="color: #383d41;">Transferência</h4>
+        <h4 style="color: #383d41;">Transferencia</h4>
         <div class="value" id="total-transf" style="color: #383d41;">Gs 0</div>
         <div style="font-size:0.7rem;color:#383d41;margin-top:4px;display:none" id="total-transf-nanota-label">📋 incl. <span id="total-transf-nanota">Gs 0</span> de Nota quitada</div>
       </div>
@@ -993,7 +993,7 @@
       <div class="kpi-card" style="background: #fef3c7; border-left: 4px solid #d97706;">
         <h4 style="color: #92400e;">📋 Na Nota</h4>
         <div class="value" id="total-nanota" style="color: #92400e;">Gs 0</div>
-        <div style="font-size:0.7rem;color:#b45309;margin-top:4px">quitações antigas sem forma registrada</div>
+        <div style="font-size:0.7rem;color:#b45309;margin-top:4px">pagos antiguos sin forma registrada</div>
       </div>
     </div>
   </div>
@@ -1001,9 +1001,9 @@
   <!-- ===== TABELA DE DESPESAS (gestores) ===== -->
   <div id="secao-despesas-caixa" class="card" style="margin-top: 20px; padding: 0;">
     <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid #f0f0f0">
-      <h3 style="margin:0;color:#444;font-size:0.95rem">🧾 Despesas do Período</h3>
+      <h3 style="margin:0;color:#444;font-size:0.95rem">🧾 Gastos del Período</h3>
       <div style="display:flex;align-items:center;gap:14px">
-        <span style="font-size:0.82rem;color:#a9660d;font-weight:600">💸 Sangria do período: <span id="total-sangria">Gs 0</span></span>
+        <span style="font-size:0.82rem;color:#a9660d;font-weight:600">💸 Retiro del período: <span id="total-sangria">Gs 0</span></span>
         <button onclick="abrirModalCaixa('despesa')" class="btn btn-danger" style="font-size:0.83rem;padding:7px 14px">
           <i class="fas fa-plus"></i> Nova Despesa
         </button>
@@ -1013,13 +1013,13 @@
       <table class="table" style="margin:0;font-size:0.88rem">
         <thead>
           <tr>
-            <th data-i18n="geral.data">Data/Hora</th><th data-i18n="caixa.categoria_despesa">Categoria</th><th data-i18n="estoque.obs">Descrição</th>
+            <th data-i18n="geral.data">Data/Hora</th><th data-i18n="caixa.categoria_despesa">Categoria</th><th data-i18n="estoque.obs">Descripción</th>
             <th style="text-align:right" data-i18n="caixa.valor">Valor</th>
-            <th style="text-align:center" data-i18n="crm.tabela_acoes">Ações</th>
+            <th style="text-align:center" data-i18n="crm.tabela_acoes">Acciones</th>
           </tr>
         </thead>
         <tbody id="lista-despesas-caixa">
-          <tr><td colspan="5" style="text-align:center;color:#999;padding:16px">Nenhuma despesa no período</td></tr>
+          <tr><td colspan="5" style="text-align:center;color:#999;padding:16px">Ningún gasto en el período</td></tr>
         </tbody>
       </table>
     </div>
@@ -1027,13 +1027,13 @@
 
   <!-- ===== TABELA MOTOBOYS (gestores) ===== -->
   <div id="secao-motoboys-financeiro" class="card" style="margin-top: 20px">
-    <h3>🏍️ <span data-i18n="moto.relatorio">Relatório Motoboys</span></h3>
+    <h3>🏍️ <span data-i18n="moto.relatorio">Reporte Repartidores</span></h3>
     <table class="table">
       <thead>
         <tr>
           <th data-i18n="prod.nome">Nome</th>
           <th data-i18n="moto.qtd_entregas">Qtd Entregas</th>
-          <th data-i18n="moto.taxa_unitaria">Taxa Unitária</th>
+          <th data-i18n="moto.taxa_unitaria">Tarifa Unitaria</th>
           <th data-i18n="moto.total_pagar">Total a Pagar</th>
         </tr>
       </thead>
@@ -1043,17 +1043,17 @@
 </div>
 
       <div id="equipe" class="tab-content">
-        <h2 class="section-title" data-i18n="equipe.title">Gestão de Equipe</h2>
+        <h2 class="section-title" data-i18n="equipe.title">Gestión de Equipo</h2>
         <div class="card">
           <div style="margin-bottom: 20px">
-            <h4 style="margin-bottom:12px" data-i18n="equipe.cadastrar_usuario">Cadastrar Usuário</h4>
+            <h4 style="margin-bottom:12px" data-i18n="equipe.cadastrar_usuario">Registrar Usuario</h4>
             <div class="equipe-form">
               <input type="email" id="novo-user-email" placeholder="Email" class="form-control" />
-              <input type="text" id="novo-user-nome" data-i18n-ph="master.nome_exibicao" placeholder="Nome de exibição (ex: João Garçom)" class="form-control" />
-              <input type="text" id="novo-user-senha" data-i18n-ph="master.senha" placeholder="Senha (mín. 6)" class="form-control" />
+              <input type="text" id="novo-user-nome" data-i18n-ph="master.nome_exibicao" placeholder="Nombre a mostrar (ej: Juan Mozo)" class="form-control" />
+              <input type="text" id="novo-user-senha" data-i18n-ph="master.senha" placeholder="Contraseña (mín. 6)" class="form-control" />
               <select id="novo-user-cargo" class="form-control">
-                <option value="garcom" data-i18n="master.garcom_opcao">🍽️ Garçom</option>
-                <option value="funcionario" data-i18n="master.funcionario_opcao">👷 Funcionário</option>
+                <option value="garcom" data-i18n="master.garcom_opcao">🍽️ Mozo</option>
+                <option value="funcionario" data-i18n="master.funcionario_opcao">👷 Empleado</option>
                 <option value="gerente" data-i18n="master.gerente_opcao">👔 Gerente</option>
                 <option value="dono" id="opt-cargo-dono" style="display:none" data-i18n="master.dono_opcao">🔑 Dono</option>
               </select>
@@ -1070,7 +1070,7 @@
                   <th>Email</th>
                   <th data-i18n="equipe.cargo">Cargo</th>
                   <th data-i18n="geral.data">Data</th>
-                  <th data-i18n="crm.tabela_acoes">Ações</th>
+                  <th data-i18n="crm.tabela_acoes">Acciones</th>
                 </tr>
               </thead>
               <tbody id="lista-equipe"></tbody>
@@ -1083,15 +1083,15 @@
 
   
   <div class="header-title" style="flex-direction: column; align-items: flex-start; gap: 15px;">
-    <h2 data-i18n="prod.estoque_equipe_title">Gestão de Estoque e Equipe</h2>
+    <h2 data-i18n="prod.estoque_equipe_title">Gestión de Stock y Equipo</h2>
   </div>
 
   <div id="lista-produtos-wrapper" class="subtab-content" style="display: block">
       <div class="produtos-header">
           <h3 data-i18n="prod.produtos_title">Produtos</h3>
           <div class="produtos-header-actions">
-            <input type="text" id="busca-produto" class="form-control" data-i18n-ph="prod.buscar_placeholder" placeholder="🔍 Buscar produto..." oninput="filtrarProdutos(this.value)">
-            <button class="btn btn-primary" onclick="toggleNovosProdutosTipos()"><i class="fas fa-plus"></i> <span data-i18n="prod.novo_produto">Novo Produto</span></button>
+            <input type="text" id="busca-produto" class="form-control" data-i18n-ph="prod.buscar_placeholder" placeholder="🔍 Buscar producto..." oninput="filtrarProdutos(this.value)">
+            <button class="btn btn-primary" onclick="toggleNovosProdutosTipos()"><i class="fas fa-plus"></i> <span data-i18n="prod.novo_produto">Nuevo Producto</span></button>
 
             <!-- Export / Import -->
             <div style="display:flex;gap:6px">
@@ -1130,24 +1130,24 @@
 
       <!-- SELETOR DE TIPO — aparece ao clicar em "+ Novo Produto" -->
       <div id="novo-produto-tipos" class="novo-produto-tipos" style="display:none">
-        <div class="novo-produto-tipos-titulo" data-i18n="prod.escolha_tipo">Escolha o tipo de produto</div>
+        <div class="novo-produto-tipos-titulo" data-i18n="prod.escolha_tipo">Elija el tipo de producto</div>
         <div class="novo-produto-tipos-grid">
-          <button class="tipo-btn" onclick="criarNovoProduto('padrao')"><i class="fas fa-tag"></i><span data-i18n="prod.tipo_simples">Simples</span><small data-i18n="prod.tipo_simples_desc">Produto sem opções</small></button>
-          <button class="tipo-btn" onclick="criarNovoProduto('bebida')"><i class="fas fa-wine-bottle"></i><span data-i18n="prod.tipo_bebida">Bebida</span><small data-i18n="prod.tipo_bebida_desc">Refri, água, suco</small></button>
+          <button class="tipo-btn" onclick="criarNovoProduto('padrao')"><i class="fas fa-tag"></i><span data-i18n="prod.tipo_simples">Simples</span><small data-i18n="prod.tipo_simples_desc">Producto sin opciones</small></button>
+          <button class="tipo-btn" onclick="criarNovoProduto('bebida')"><i class="fas fa-wine-bottle"></i><span data-i18n="prod.tipo_bebida">Bebida</span><small data-i18n="prod.tipo_bebida_desc">Gaseosa, agua, jugo</small></button>
           <button class="tipo-btn" onclick="criarNovoProduto('lanche')"><i class="fas fa-burger"></i><span data-i18n="prod.tipo_lanche">Lanche</span><small data-i18n="prod.tipo_lanche_desc">Burger, hot dog</small></button>
           <button class="tipo-btn" onclick="criarNovoProduto('pizza')"><i class="fas fa-pizza-slice"></i><span data-i18n="prod.tipo_pizza">Pizza</span><small data-i18n="prod.tipo_pizza_desc">Tamanhos & sabores</small></button>
           <button class="tipo-btn" onclick="criarNovoProduto('acai')"><i class="fas fa-leaf"></i><span data-i18n="prod.tipo_acai">Açaí</span><small data-i18n="prod.tipo_acai_desc">Etapas de montagem</small></button>
           <button class="tipo-btn" onclick="criarNovoProduto('shake')"><i class="fas fa-blender"></i><span data-i18n="prod.tipo_shake">Shake</span><small data-i18n="prod.tipo_shake_desc">Milk shake</small></button>
           <button class="tipo-btn" onclick="criarNovoProduto('suco')"><i class="fas fa-lemon"></i><span data-i18n="prod.tipo_suco">Suco</span><small data-i18n="prod.tipo_suco_desc">Frutas & adicionais</small></button>
           <button class="tipo-btn" onclick="criarNovoProduto('sorvete')"><i class="fas fa-ice-cream"></i><span data-i18n="prod.tipo_sorvete">Sorvete</span><small data-i18n="prod.tipo_sorvete_desc">Sabores, açaí</small></button>
-          <button class="tipo-btn" onclick="criarNovoProduto('montavel')"><i class="fas fa-layer-group"></i><span data-i18n="prod.tipo_montavel">Montável</span><small data-i18n="prod.tipo_montavel_desc">Poke, salada</small></button>
-          <button class="tipo-btn" onclick="criarNovoProduto('combo')"><i class="fas fa-star"></i><span data-i18n="prod.tipo_combo">Combo</span><small data-i18n="prod.tipo_combo_desc">Kit / promoção</small></button>
-          <button class="tipo-btn" onclick="criarNovoProduto('variacoes')" style="border-color:#8b5cf6"><i class="fas fa-palette" style="color:#8b5cf6"></i><span data-i18n="prod.tipo_variacoes">Variações</span><small data-i18n="prod.tipo_variacoes_desc">Sabores c/ preço</small></button>
-          <button class="tipo-btn" onclick="criarNovoProduto('kg')" style="border-color:#0891b2"><i class="fas fa-weight-scale" style="color:#0891b2"></i><span data-i18n="prod.tipo_kg">Venda Kg</span><small data-i18n="prod.tipo_kg_desc">Pesado na balança</small></button>
+          <button class="tipo-btn" onclick="criarNovoProduto('montavel')"><i class="fas fa-layer-group"></i><span data-i18n="prod.tipo_montavel">Armable</span><small data-i18n="prod.tipo_montavel_desc">Poke, salada</small></button>
+          <button class="tipo-btn" onclick="criarNovoProduto('combo')"><i class="fas fa-star"></i><span data-i18n="prod.tipo_combo">Combo</span><small data-i18n="prod.tipo_combo_desc">Kit / promoción</small></button>
+          <button class="tipo-btn" onclick="criarNovoProduto('variacoes')" style="border-color:#8b5cf6"><i class="fas fa-palette" style="color:#8b5cf6"></i><span data-i18n="prod.tipo_variacoes">Variaciones</span><small data-i18n="prod.tipo_variacoes_desc">Sabores c/ precio</small></button>
+          <button class="tipo-btn" onclick="criarNovoProduto('kg')" style="border-color:#0891b2"><i class="fas fa-weight-scale" style="color:#0891b2"></i><span data-i18n="prod.tipo_kg">Venda Kg</span><small data-i18n="prod.tipo_kg_desc">Pesado en la balanza</small></button>
           <button class="tipo-btn" onclick="criarNovoProduto('combo_fechado')" style="border-color:#d97706">
             <i class="fas fa-box-open" style="color:#d97706"></i>
             <span>Combo Fechado</span>
-            <small>Caixa c/ qtd. fixa</small>
+            <small>Caja con cant. fija</small>
           </button>
         </div>
       </div>
@@ -1160,11 +1160,11 @@
   <div id="lista-categorias-wrapper" class="subtab-content subtab-hidden">
       <div class="cat-section-header">
         <div>
-          <h3 class="cat-section-title" data-i18n="cat.cardapio_title">🏷️ Categorias do Cardápio</h3>
-          <p class="cat-section-subtitle" data-i18n="cat.cardapio_subtitle">Gerencie a organização e horários de exibição</p>
+          <h3 class="cat-section-title" data-i18n="cat.cardapio_title">🏷️ Categorías del Menú</h3>
+          <p class="cat-section-subtitle" data-i18n="cat.cardapio_subtitle">Gestione la organización y horarios de visualización</p>
         </div>
         <button class="btn btn-primary cat-btn-nova" onclick="abrirModalCategoria()">
-          <i class="fas fa-plus"></i> <span data-i18n="cat.nova_btn">Nova Categoria</span>
+          <i class="fas fa-plus"></i> <span data-i18n="cat.nova_btn">Nueva Categoría</span>
         </button>
       </div>
 
@@ -1177,12 +1177,12 @@
 
   <div id="lista-motos-wrapper" class="subtab-content subtab-hidden">
       <div style="display: flex; justify-content: space-between; margin: 15px 0;">
-          <h3 data-i18n="moto.equipe_title">Equipe Motoboys</h3>
+          <h3 data-i18n="moto.equipe_title">Equipo de Repartidores</h3>
           <button class="btn btn-primary" onclick="abrirModalMoto()"><span data-i18n="moto.novo_btn">Novo Motoboy</span></button>
       </div>
       <div class="table-container">
           <table>
-              <thead><tr><th data-i18n="moto.nome_th">Nome</th><th data-i18n="moto.telefone_th">Telefone</th><th data-i18n="moto.acoes_th">Ações</th></tr></thead>
+              <thead><tr><th data-i18n="moto.nome_th">Nome</th><th data-i18n="moto.telefone_th">Teléfono</th><th data-i18n="moto.acoes_th">Acciones</th></tr></thead>
               <tbody id="lista-motos"></tbody>
           </table>
       </div>
@@ -1202,7 +1202,7 @@
       <div class="form-group">
         <label>API Key do Provedor</label>
         <input type="text" id="fact-api-key" class="form-control" placeholder="LLave fornecida por el provedor (ex: SIFENDE, Neosystem)" />
-        <small style="color:#888;">La llave es fornecida por el provedor de facturacción electónica trás cadastro.</small>
+        <small style="color:#888;">La clave es proporcionada por el proveedor de facturación electrónica tras el registro.</small>
       </div>
       <div class="form-group">
         <label>RUC *</label>
@@ -1248,13 +1248,13 @@
         </select>
       </div>
       <div class="form-group">
-        <label>IVA Padrão</label>
+        <label>IVA Predeterminado</label>
         <select id="fact-iva-default" class="form-control">
           <option value="10">10% (Geral)</option>
           <option value="5">5% (Reduzido)</option>
           <option value="exento">Exento</option>
         </select>
-        <small style="color:#888;">Aplicado a qualquer produto sem IVA específico definido abaixo.</small>
+        <small style="color:#888;">Aplicado a cualquier producto sin IVA específico definido abajo.</small>
       </div>
     </div>
     <button class="btn btn-primary" onclick="salvarConfigFacturacion()" style="margin-top:12px;">
@@ -1272,7 +1272,7 @@
     </small>
     <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
       <select id="fact-iva-prod-sel" class="form-control" style="flex:2; min-width:200px;">
-        <option value="">— Selecione um produto —</option>
+        <option value="">— Seleccione un producto —</option>
       </select>
       <select id="fact-iva-prod-valor" class="form-control" style="flex:1; min-width:140px;">
         <option value="10">10% (Geral)</option>
@@ -1293,7 +1293,7 @@
           </tr>
         </thead>
         <tbody id="fact-iva-produtos-tbody">
-          <tr><td colspan="3" style="text-align:center;color:#aaa;padding:14px;">Carregando...</td></tr>
+          <tr><td colspan="3" style="text-align:center;color:#aaa;padding:14px;">Cargando...</td></tr>
         </tbody>
       </table>
     </div>
@@ -1335,7 +1335,7 @@
           </tr>
         </thead>
         <tbody id="fact-documentos-tbody">
-          <tr><td colspan="5" style="text-align:center;color:#aaa;padding:20px;">Carregando...</td></tr>
+          <tr><td colspan="5" style="text-align:center;color:#aaa;padding:20px;">Cargando...</td></tr>
         </tbody>
       </table>
     </div>
@@ -1344,7 +1344,7 @@
 
       <!-- ===== ABA CONFIGURAÇÕES (COMPLETA) ===== -->
       <div id="configuracoes" class="tab-content">
-        <h2 class="section-title" data-i18n="cfg.title">⚙️ Configurações</h2>
+        <h2 class="section-title" data-i18n="cfg.title">⚙️ Configuración</h2>
 
         <!-- ── IDENTIDADE DA LOJA ─────────────────────────────── -->
         <div class="card cfg-card">
@@ -1352,28 +1352,28 @@
           <div class="cfg-grid">
             <div class="form-group">
               <label><span data-i18n="cfg.nome_rest">Nome do Restaurante</span> <span style="color:#e74c3c">*</span></label>
-              <input type="text" id="cfg-nome-restaurante" class="form-control" placeholder="Ex: Pizzaria do João">
+              <input type="text" id="cfg-nome-restaurante" class="form-control" placeholder="Ej: Pizzería de Juan">
             </div>
             <div class="form-group">
-              <label data-i18n="cfg.descricao">Descrição (tagline)</label>
-              <input type="text" id="cfg-descricao-loja" class="form-control" placeholder="Ex: Comida boa e rápida!">
+              <label data-i18n="cfg.descricao">Descripción (tagline)</label>
+              <input type="text" id="cfg-descricao-loja" class="form-control" placeholder="Ej: ¡Comida buena y rápida!">
             </div>
             <div class="form-group">
               <label data-i18n="cfg.url">URL do Site</label>
               <input type="text" id="cfg-url-loja" class="form-control" placeholder="Ex: https://meurestaurante.com.py">
             </div>
             <div class="form-group">
-              <label data-i18n="cfg.telefone">Telefone (exibição)</label>
+              <label data-i18n="cfg.telefone">Teléfono (a mostrar)</label>
               <input type="text" id="cfg-telefone-loja" class="form-control" placeholder="Ex: +595 984 123 456">
             </div>
             <div class="form-group">
-              <label><span data-i18n="cfg.whatsapp">WhatsApp para pedidos</span> <small style="color:#888" data-i18n="cfg.somente_digitos">(somente dígitos)</small></label>
+              <label><span data-i18n="cfg.whatsapp">WhatsApp para pedidos</span> <small style="color:#888" data-i18n="cfg.somente_digitos">(solo dígitos)</small></label>
               <input type="text" id="cfg-whatsapp-loja" class="form-control" placeholder="Ex: 595984123456">
             </div>
             <div class="form-group">
               <label data-i18n="cfg.logo">Logo / Ícone</label>
               <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                <input type="text" id="cfg-logo-url" class="form-control" data-i18n-ph="cfg.logo_placeholder" placeholder="https://... (cole URL pública aqui)" style="flex:1;min-width:200px">
+                <input type="text" id="cfg-logo-url" class="form-control" data-i18n-ph="cfg.logo_placeholder" placeholder="https://... (pegue URL pública aquí)" style="flex:1;min-width:200px">
                 <label style="cursor:pointer;background:#3498db;color:#fff;border-radius:8px;padding:9px 14px;font-size:0.85rem;font-weight:600;white-space:nowrap;display:flex;align-items:center;gap:6px">
                   <i class="fas fa-upload"></i> <span data-i18n="cfg.enviar_arquivo">Enviar arquivo</span>
                   <input type="file" id="cfg-logo-file-identidade" accept="image/*" style="display:none" onchange="_uploadLogoIdentidade(this)">
@@ -1381,12 +1381,12 @@
               </div>
               <div id="cfg-logo-preview-identidade" style="display:none;margin-top:8px">
                 <img id="cfg-logo-img-identidade" src="" style="width:64px;height:64px;border-radius:10px;object-fit:cover;border:2px solid var(--primary)">
-                <small style="color:#27ae60;display:block;margin-top:4px" data-i18n="cfg.imagem_carregada_tip">✅ Imagem carregada — clique em Salvar Identidade</small>
+                <small style="color:#27ae60;display:block;margin-top:4px" data-i18n="cfg.imagem_carregada_tip">✅ Imagen cargada — haga clic en Guardar Identidad</small>
               </div>
             </div>
           </div>
           <button class="btn btn-primary" onclick="salvarConfiguracoes()" style="margin-top:14px">
-            <i class="fas fa-save"></i> <span data-i18n="cfg.salvar_id">Salvar Identidade</span>
+            <i class="fas fa-save"></i> <span data-i18n="cfg.salvar_id">Guardar Identidad</span>
           </button>
         </div>
 
@@ -1400,25 +1400,25 @@
             </div>
             <div class="form-group">
               <label data-i18n="cfg.nome_pix">Nome titular Pix</label>
-              <input type="text" id="cfg-nome-pix" class="form-control" placeholder="Ex: João da Silva">
+              <input type="text" id="cfg-nome-pix" class="form-control" placeholder="Ej: Juan Pérez">
             </div>
             <div class="form-group">
-              <label data-i18n="cfg.alias">Número / Alias (transferência PY)</label>
+              <label data-i18n="cfg.alias">Número / Alias (transferencia PY)</label>
               <input type="text" id="cfg-dados-alias" class="form-control" placeholder="Ex: 9356779">
             </div>
             <div class="form-group">
               <label data-i18n="cfg.nome_alias">Nome titular Alias</label>
-              <input type="text" id="cfg-nome-alias" class="form-control" placeholder="Ex: João da Silva">
+              <input type="text" id="cfg-nome-alias" class="form-control" placeholder="Ej: Juan Pérez">
             </div>
           </div>
           <button class="btn btn-primary" onclick="salvarConfiguracoes()" style="margin-top:14px">
-            <i class="fas fa-save"></i> <span data-i18n="cfg.pagamento">Salvar Pagamento</span>
+            <i class="fas fa-save"></i> <span data-i18n="cfg.pagamento">Guardar Pago</span>
           </button>
         </div>
 
         <!-- ── LOCALIZAÇÃO & OPERAÇÃO ────────────────────────────── -->
         <div class="card cfg-card" style="margin-top:16px">
-          <div class="cfg-section-title"><i class="fas fa-map-marker-alt"></i> <span data-i18n="cfg.localizacao_operacao">Localização & Operação</span></div>
+          <div class="cfg-section-title"><i class="fas fa-map-marker-alt"></i> <span data-i18n="cfg.localizacao_operacao">Ubicación y Operación</span></div>
           <div class="cfg-grid">
             <div class="form-group">
               <label data-i18n="cfg.lat">Latitude da Loja</label>
@@ -1431,8 +1431,8 @@
             <div class="form-group">
               <label data-i18n="cfg.status_loja">Status Manual da Loja</label>
               <select id="cfg-aberta" class="form-control">
-                <option value="true" data-i18n="cfg.status_seguircron">🟢 Seguir horário semanal</option>
-                <option value="false" data-i18n="cfg.status_forcarfechado">🔴 Forçar fechado</option>
+                <option value="true" data-i18n="cfg.status_seguircron">🟢 Seguir horario semanal</option>
+                <option value="false" data-i18n="cfg.status_forcarfechado">🔴 Forzar cerrado</option>
               </select>
             </div>
             <div class="form-group">
@@ -1441,36 +1441,36 @@
             </div>
           </div>
           <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:10px 14px;font-size:0.8rem;color:#0369a1;margin-top:8px">
-            <span data-i18n="cfg.coordenadas_tip1">💡 Para encontrar as coordenadas: abra </span><a href="https://maps.google.com" target="_blank">Google Maps</a><span data-i18n="cfg.coordenadas_tip2">, clique com o botão direito sobre o endereço da loja e copie as coordenadas.</span>
+            <span data-i18n="cfg.coordenadas_tip1">💡 Para encontrar as coordenadas: abra </span><a href="https://maps.google.com" target="_blank">Google Maps</a><span data-i18n="cfg.coordenadas_tip2">, haga clic derecho sobre la dirección de la tienda y copie las coordenadas.</span>
           </div>
 
           <!-- GRADE SEMANAL -->
           <div style="margin-top:16px">
             <div style="font-weight:700;font-size:0.95rem;color:#2c3e50;margin-bottom:10px">
-              <span data-i18n="cfg.horarios_semana">📅 Horários por dia da semana</span>
-              <small style="font-weight:400;color:#999;display:block;margin-top:2px" data-i18n="cfg.horarios_semana_desc">Cada dia pode ter até 2 turnos (ex: almoço + jantar).</small>
+              <span data-i18n="cfg.horarios_semana">📅 Horarios por día de la semana</span>
+              <small style="font-weight:400;color:#999;display:block;margin-top:2px" data-i18n="cfg.horarios_semana_desc">Cada día puede tener hasta 2 turnos (ej: almuerzo + cena).</small>
             </div>
             <div id="grade-semanal" class="grade-semanal"></div>
           </div>
 
           <button class="btn btn-primary" onclick="salvarConfiguracoes()" style="margin-top:16px">
-            <i class="fas fa-save"></i> <span data-i18n="cfg.salvar_loc">Salvar Localização & Operação</span>
+            <i class="fas fa-save"></i> <span data-i18n="cfg.salvar_loc">Guardar Ubicación y Operación</span>
           </button>
         </div>
 
         <!-- ── PERSONALIZAÇÃO VISUAL ─────────────────────────── -->
         <div class="card cfg-card" style="margin-top:16px">
-          <div class="cfg-section-title"><i class="fas fa-palette"></i> <span data-i18n="cfg.visual">Personalização Visual</span></div>
+          <div class="cfg-section-title"><i class="fas fa-palette"></i> <span data-i18n="cfg.visual">Personalización Visual</span></div>
           <div class="cfg-grid">
             <div class="form-group">
-              <label data-i18n="cfg.cor_primaria">Cor Principal (botões)</label>
+              <label data-i18n="cfg.cor_primaria">Color Principal (botones)</label>
               <div style="display:flex;gap:8px;align-items:center">
                 <input type="color" id="cfg-cor-primaria" value="#1a7a2e" style="width:50px;height:40px;border:none;cursor:pointer;border-radius:4px">
                 <input type="text" id="cfg-cor-primaria-hex" class="form-control" placeholder="#1a7a2e" style="flex:1">
               </div>
             </div>
             <div class="form-group">
-              <label data-i18n="cfg.icone_upload">Upload de Ícone</label>
+              <label data-i18n="cfg.icone_upload">Subida de Ícono</label>
               <input type="file" id="cfg-icone-file" class="form-control" accept="image/*" onchange="previewIcone(this)">
             </div>
             <!-- campo oculto para compatibilidade -->
@@ -1483,32 +1483,32 @@
             <input type="hidden" id="cfg-nome-loja">
           </div>
           <button class="btn btn-primary" onclick="salvarPersonalizacao()" style="margin-top:12px">
-            <i class="fas fa-paint-brush"></i> <span data-i18n="cfg.salvar_visual">Salvar Personalização</span>
+            <i class="fas fa-paint-brush"></i> <span data-i18n="cfg.salvar_visual">Guardar Personalización</span>
           </button>
         </div>
 
         <!-- ── PROMOÇÃO / BANNERS ─────────────────────────────── -->
         <div class="card cfg-card" style="margin-top:16px">
           <div class="cfg-section-title"><i class="fas fa-tags"></i> <span data-i18n="cfg.banners">Banners Promocionais</span></div>
-          <p style="font-size:0.82rem;color:#888;margin-bottom:14px" data-i18n="cfg.banners_desc">Ao clicar no banner o cliente abre o produto. Defina também o desconto aplicado automaticamente.</p>
+          <p style="font-size:0.82rem;color:#888;margin-bottom:14px" data-i18n="cfg.banners_desc">Al hacer clic en el banner el cliente abre el producto. Defina también el descuento aplicado automáticamente.</p>
 
           <!-- Banner 1 -->
           <div style="border:1.5px solid #e5e7eb;border-radius:10px;padding:14px;margin-bottom:12px">
             <div style="font-weight:700;font-size:0.88rem;margin-bottom:10px;color:#1a7a2e" data-i18n="cfg.banner_1">🖼 Banner 1</div>
             <div class="form-group">
-              <label data-i18n="cfg.banner_id_prod">ID do Produto</label>
+              <label data-i18n="cfg.banner_id_prod">ID del Producto</label>
               <input type="text" id="cfg-banner-id" class="form-control" data-i18n-ph="cfg.ex_42" placeholder="Ex: 42">
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
               <div class="form-group">
-                <label data-i18n="cfg.banner_tipo_desc">Tipo de Desconto</label>
+                <label data-i18n="cfg.banner_tipo_desc">Tipo de Descuento</label>
                 <select id="cfg-banner-desc-tipo" class="form-control">
                   <option value="percentual" data-i18n="cfg.desc_percentual">% Percentual</option>
                   <option value="fixo" data-i18n="cfg.desc_fixo">Gs Fixo</option>
                 </select>
               </div>
               <div class="form-group">
-                <label data-i18n="cfg.desc_valor">Valor do Desconto</label>
+                <label data-i18n="cfg.desc_valor">Valor del Descuento</label>
                 <input type="number" id="cfg-banner-desc-valor" class="form-control" data-i18n-ph="cfg.desc_valor_placeholder" placeholder="Ex: 10 ou 5000" min="0">
               </div>
             </div>
@@ -1521,7 +1521,7 @@
             </div>
             <input type="hidden" id="cfg-banner-img">
             <button class="btn btn-success" onclick="salvarBanner(1)" style="margin-top:8px;width:100%">
-              <i class="fas fa-upload"></i> <span data-i18n="cfg.salvar_banner1">Salvar Banner 1</span>
+              <i class="fas fa-upload"></i> <span data-i18n="cfg.salvar_banner1">Guardar Banner 1</span>
             </button>
           </div>
 
@@ -1529,19 +1529,19 @@
           <div style="border:1.5px solid #e5e7eb;border-radius:10px;padding:14px">
             <div style="font-weight:700;font-size:0.88rem;margin-bottom:10px;color:#2980b9" data-i18n="cfg.banner_2">🖼 Banner 2</div>
             <div class="form-group">
-              <label data-i18n="cfg.banner_id_prod">ID do Produto</label>
+              <label data-i18n="cfg.banner_id_prod">ID del Producto</label>
               <input type="text" id="cfg-banner2-id" class="form-control" data-i18n-ph="cfg.ex_42" placeholder="Ex: 43">
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
               <div class="form-group">
-                <label data-i18n="cfg.banner_tipo_desc">Tipo de Desconto</label>
+                <label data-i18n="cfg.banner_tipo_desc">Tipo de Descuento</label>
                 <select id="cfg-banner2-desc-tipo" class="form-control">
                   <option value="percentual" data-i18n="cfg.desc_percentual">% Percentual</option>
                   <option value="fixo" data-i18n="cfg.desc_fixo">Gs Fixo</option>
                 </select>
               </div>
               <div class="form-group">
-                <label data-i18n="cfg.desc_valor">Valor do Desconto</label>
+                <label data-i18n="cfg.desc_valor">Valor del Descuento</label>
                 <input type="number" id="cfg-banner2-desc-valor" class="form-control" data-i18n-ph="cfg.desc_valor_placeholder" placeholder="Ex: 10 ou 5000" min="0">
               </div>
             </div>
@@ -1554,7 +1554,7 @@
             </div>
             <input type="hidden" id="cfg-banner2-img">
             <button class="btn btn-primary" onclick="salvarBanner(2)" style="margin-top:8px;width:100%">
-              <i class="fas fa-upload"></i> <span data-i18n="cfg.salvar_banner2">Salvar Banner 2</span>
+              <i class="fas fa-upload"></i> <span data-i18n="cfg.salvar_banner2">Guardar Banner 2</span>
             </button>
           </div>
         </div>
@@ -1567,20 +1567,20 @@
             </small>
           </div>
           <div id="extras-globais-lista" style="margin-bottom:12px"></div>
-          <button class="btn btn-sm" style="background:#8e44ad;color:white" onclick="addExtraGlobal()" data-i18n="cfg.adicionar_adicional">+ Adicionar Adicional</button>
+          <button class="btn btn-sm" style="background:#8e44ad;color:white" onclick="addExtraGlobal()" data-i18n="cfg.adicionar_adicional">+ Agregar Adicional</button>
           <div style="margin-top:14px;padding:10px;background:var(--color-background-secondary);border-radius:8px">
             <label style="font-size:0.82rem;font-weight:600;display:block;margin-bottom:8px" data-i18n="cfg.exibir_categorias">📂 Exibir nas categorias:</label>
-            <p style="font-size:0.78rem;color:#888;margin-bottom:8px" data-i18n="cfg.exibir_categorias_desc">Se nenhuma estiver marcada, aparece em todas.</p>
+            <p style="font-size:0.78rem;color:#888;margin-bottom:8px" data-i18n="cfg.exibir_categorias_desc">Si ninguna está marcada, aparece en todas.</p>
             <div id="extras-globais-cats-lista" style="display:flex;flex-wrap:wrap;gap:6px"></div>
           </div>
           <button class="btn btn-primary" onclick="salvarExtrasGlobais()" style="margin-top:12px;width:100%">
-            <i class="fas fa-save"></i> <span data-i18n="cfg.salvar_adicionais_globais">Salvar Adicionais Globais</span>
+            <i class="fas fa-save"></i> <span data-i18n="cfg.salvar_adicionais_globais">Guardar Adicionales Globales</span>
           </button>
         </div>
 
         <!-- ── CUPONS ─────────────────────────────────────────── -->
         <div id="card-cupons-cfg" class="card cfg-card" style="margin-top:16px">
-          <div class="cfg-section-title"><i class="fas fa-ticket-alt"></i> <span data-i18n="cfg.cupons_titulo">Gestão de Cupons de Desconto</span></div>
+          <div class="cfg-section-title"><i class="fas fa-ticket-alt"></i> <span data-i18n="cfg.cupons_titulo">Gestión de Cupones de Descuento</span></div>
           <button class="btn btn-primary" onclick="abrirModalCupom()" style="margin-bottom:15px">
             <i class="fas fa-plus"></i> <span data-i18n="cfg.novo_cupom_btn">Novo Cupom</span>
           </button>
@@ -1589,7 +1589,7 @@
               <thead>
                 <tr>
                   <th data-i18n="cfg.cupom_codigo">Código</th><th data-i18n="cfg.cupom_tipo">Tipo</th><th data-i18n="cfg.cupom_valor">Valor</th><th data-i18n="cfg.cupom_minimo">Mínimo</th>
-                  <th data-i18n="cfg.cupom_usos">Usos / Limite</th><th data-i18n="cfg.cupom_validade">Validade</th><th data-i18n="cfg.cupom_status">Status</th><th data-i18n="cfg.cupom_acoes">Ações</th>
+                  <th data-i18n="cfg.cupom_usos">Usos / Limite</th><th data-i18n="cfg.cupom_validade">Validade</th><th data-i18n="cfg.cupom_status">Status</th><th data-i18n="cfg.cupom_acoes">Acciones</th>
                 </tr>
               </thead>
               <tbody id="lista-cupons"></tbody>
@@ -1608,7 +1608,7 @@
 
           <!-- Limite de distância -->
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:10px;background:#fff8e6;border-radius:8px;border:1px solid #fde68a">
-            <label style="font-size:0.85rem;font-weight:600;white-space:nowrap" data-i18n="cfg.limite_entrega">🛑 Limite de entrega:</label>
+            <label style="font-size:0.85rem;font-weight:600;white-space:nowrap" data-i18n="cfg.limite_entrega">🛑 Límite de entrega:</label>
             <input type="number" id="cfg-limite-distancia" class="form-control" data-i18n-ph="cfg.limite_entrega_ph" placeholder="Sem limite" min="1" max="50" step="0.5"
               style="max-width:130px;border:1.5px solid #f59e0b;text-align:center">
             <span style="font-size:0.82rem;color:#78350f" data-i18n="cfg.limite_entrega_desc">km (deixar vazio = sem limite)</span>
@@ -1638,12 +1638,12 @@
             <div style="font-weight:700;font-size:0.88rem;color:#155c24;margin-bottom:8px" data-i18n="cfg.moto_custos_titulo">⛽ Custos do Motoboy</div>
             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
               <div>
-                <label style="font-size:0.78rem;color:#555" data-i18n="cfg.moto_combustivel">Combustível/dia (Gs)</label>
+                <label style="font-size:0.78rem;color:#555" data-i18n="cfg.moto_combustivel">Combustible/día (Gs)</label>
                 <input type="number" id="cfg-combustivel" class="form-control" placeholder="20000" min="0" step="1000"
                   style="max-width:150px;border:1.5px solid #27ae60;text-align:center">
               </div>
               <div>
-                <label style="font-size:0.78rem;color:#555" data-i18n="cfg.moto_taxa_base">Taxa base/entrega (Gs)</label>
+                <label style="font-size:0.78rem;color:#555" data-i18n="cfg.moto_taxa_base">Tarifa base/entrega (Gs)</label>
                 <input type="number" id="cfg-taxa-motoboy-base" class="form-control" placeholder="5000" min="0" step="500"
                   style="max-width:150px;border:1.5px solid #2980b9;text-align:center">
               </div>
@@ -1651,23 +1651,23 @@
           </div>
 
           <button class="btn btn-primary" onclick="salvarTabelaFrete()" style="margin-top:14px;width:100%">
-            <i class="fas fa-save"></i> <span data-i18n="cfg.salvar_frete">Salvar Tabela de Frete</span>
+            <i class="fas fa-save"></i> <span data-i18n="cfg.salvar_frete">Guardar Tabla de Envío</span>
           </button>
         </div>
 
         <!-- ── MAQUININHAS ────────────────────────────────────── -->
         <div class="card cfg-card" style="margin-top:16px">
-          <div class="cfg-section-title"><i class="fas fa-credit-card"></i> <span data-i18n="cfg.maq_titulo">Maquininhas de Cartão</span>
+          <div class="cfg-section-title"><i class="fas fa-credit-card"></i> <span data-i18n="cfg.maq_titulo">Posnets de Tarjeta</span>
             <small style="font-weight:400;color:#888;font-size:0.82rem;display:block;margin-top:4px" data-i18n="cfg.maq_desc">
               Cadastre cada operadora com suas taxas por modalidade.
             </small>
           </div>
           <div id="maquininhas-lista" style="margin-bottom:12px"></div>
           <button class="btn btn-sm btn-secondary" onclick="adicionarMaquininha()" style="margin-bottom:10px">
-            <i class="fas fa-plus"></i> <span data-i18n="cfg.maq_add">Adicionar Maquininha</span>
+            <i class="fas fa-plus"></i> <span data-i18n="cfg.maq_add">Agregar Posnet</span>
           </button>
           <button class="btn btn-primary" onclick="salvarMaquininhas()" style="width:100%">
-            <i class="fas fa-save"></i> <span data-i18n="cfg.maq_salvar">Salvar Maquininhas</span>
+            <i class="fas fa-save"></i> <span data-i18n="cfg.maq_salvar">Guardar Posnets</span>
           </button>
         </div>
 
@@ -1680,7 +1680,7 @@
             </small>
           </div>
           <div id="painel-features">
-            <p style="color:#aaa;font-size:0.85rem" data-i18n="geral.carregando">Carregando...</p>
+            <p style="color:#aaa;font-size:0.85rem" data-i18n="geral.carregando">Cargando...</p>
           </div>
         </div>
 
@@ -1693,7 +1693,7 @@
 
         <!-- ── Criar qualquer usuário ── -->
         <div class="card cfg-card" style="border:2px solid #e74c3c">
-          <div class="cfg-section-title"><i class="fas fa-user-plus"></i> <span data-i18n="master.criar_usuario_titulo">Criar Usuário</span></div>
+          <div class="cfg-section-title"><i class="fas fa-user-plus"></i> <span data-i18n="master.criar_usuario_titulo">Crear Usuario</span></div>
           <p style="font-size:0.83rem;color:#888;margin-bottom:12px" data-i18n="master.criar_usuario_desc">
             Crie qualquer cargo, incluindo <strong>Dono</strong>. Apenas o Admin Master pode criar Donos.
           </p>
@@ -1703,32 +1703,32 @@
               <input type="email" id="am-email" class="form-control" placeholder="email@exemplo.com">
             </div>
             <div class="form-group">
-              <label data-i18n="master.nome_exibicao">Nome de exibição</label>
-              <input type="text" id="am-nome" class="form-control" placeholder="Ex: João Silva">
+              <label data-i18n="master.nome_exibicao">Nombre a mostrar</label>
+              <input type="text" id="am-nome" class="form-control" placeholder="Ej: Juan Pérez">
             </div>
             <div class="form-group">
-              <label data-i18n="master.senha">Senha (mín. 6 caracteres)</label>
-              <input type="text" id="am-senha" class="form-control" placeholder="Senha inicial">
+              <label data-i18n="master.senha">Contraseña (mín. 6 caracteres)</label>
+              <input type="text" id="am-senha" class="form-control" placeholder="Contraseña inicial">
             </div>
             <div class="form-group">
               <label data-i18n="master.cargo">Cargo</label>
               <select id="am-cargo" class="form-control">
                 <option value="dono" data-i18n="master.dono_opcao">🔑 Dono</option>
                 <option value="gerente" data-i18n="master.gerente_opcao">👔 Gerente</option>
-                <option value="funcionario" data-i18n="master.funcionario_opcao">👷 Funcionário</option>
-                <option value="garcom" data-i18n="master.garcom_opcao">🍽️ Garçom</option>
+                <option value="funcionario" data-i18n="master.funcionario_opcao">👷 Empleado</option>
+                <option value="garcom" data-i18n="master.garcom_opcao">🍽️ Mozo</option>
               </select>
             </div>
           </div>
           <button class="btn btn-danger" onclick="amCriarUsuario()" style="margin-top:12px">
-            <i class="fas fa-user-plus"></i> <span data-i18n="master.criar_usuario_titulo">Criar Usuário</span>
+            <i class="fas fa-user-plus"></i> <span data-i18n="master.criar_usuario_titulo">Crear Usuario</span>
           </button>
         </div>
 
         <!-- ── CRUD completo de usuários ── -->
         <div class="card cfg-card" style="margin-top:16px;border:2px solid #e74c3c">
           <div class="cfg-section-title" style="display:flex;justify-content:space-between;align-items:center">
-            <span data-i18n="master.gerenciar_usuarios"><i class="fas fa-users-cog"></i> Gerenciar Todos os Usuários</span>
+            <span data-i18n="master.gerenciar_usuarios"><i class="fas fa-users-cog"></i> Gestionar Todos los Usuarios</span>
             <button class="btn btn-sm" style="background:#e74c3c;color:#fff" onclick="amCarregarUsuarios()">
               <i class="fas fa-sync"></i> <span data-i18n="geral.atualizar">Atualizar</span>
             </button>
@@ -1740,11 +1740,11 @@
                   <th data-i18n="prod.nome">Nome</th>
                   <th data-i18n="master.email">Email</th>
                   <th data-i18n="master.cargo">Cargo</th>
-                  <th data-i18n="cfg.cupom_acoes">Ações</th>
+                  <th data-i18n="cfg.cupom_acoes">Acciones</th>
                 </tr>
               </thead>
               <tbody id="am-lista-usuarios">
-                <tr><td colspan="4" style="text-align:center;color:#aaa;padding:20px" data-i18n="master.clique_atualizar">Clique em Atualizar</td></tr>
+                <tr><td colspan="4" style="text-align:center;color:#aaa;padding:20px" data-i18n="master.clique_atualizar">Haga clic en Actualizar</td></tr>
               </tbody>
             </table>
           </div>
@@ -1759,7 +1759,7 @@
             </small>
           </div>
           <div id="painel-features-master">
-            <p style="color:#aaa;font-size:0.85rem;padding:10px 0" data-i18n="geral.carregando">Carregando...</p>
+            <p style="color:#aaa;font-size:0.85rem;padding:10px 0" data-i18n="geral.carregando">Cargando...</p>
           </div>
         </div>
       </div>
@@ -1774,23 +1774,23 @@
           <div class="modal-body-modern">
             <input type="hidden" id="cupom-id">
             <div class="form-group-modern">
-              <label><i class="fas fa-tag"></i> <span data-i18n="cfg.codigo_cupom">Código do Cupom</span></label>
+              <label><i class="fas fa-tag"></i> <span data-i18n="cfg.codigo_cupom">Código del Cupón</span></label>
               <input type="text" id="cupom-codigo" class="input-modern" data-i18n-ph="cfg.ex_bemvindo10" placeholder="Ex: BEMVINDO10" style="text-transform:uppercase">
             </div>
             <div class="form-group-modern">
-              <label><i class="fas fa-percentage"></i> <span data-i18n="cfg.tipo_desconto">Tipo de Desconto</span></label>
+              <label><i class="fas fa-percentage"></i> <span data-i18n="cfg.tipo_desconto">Tipo de Descuento</span></label>
               <select id="cupom-tipo" class="input-modern" onchange="alterarTipoCupom()">
-                <option value="percentual" data-i18n="cfg.desconto_percentual_opcao">Desconto Percentual (%)</option>
-                <option value="fixo" data-i18n="cfg.desconto_fixo_opcao">Valor Fixo (Gs)</option>
-                <option value="frete" data-i18n="cfg.frete_gratis_opcao">Frete Grátis</option>
+                <option value="percentual" data-i18n="cfg.desconto_percentual_opcao">Descuento Porcentual (%)</option>
+                <option value="fixo" data-i18n="cfg.desconto_fixo_opcao">Valor Fijo (Gs)</option>
+                <option value="frete" data-i18n="cfg.frete_gratis_opcao">Envío Gratis</option>
               </select>
             </div>
             <div class="form-group-modern" id="box-valor-cupom">
-              <label><i class="fas fa-percent" id="icon-valor-cupom"></i> <span id="label-valor-cupom" data-i18n="cfg.valor_desconto_pct">Valor do Desconto (%)</span></label>
+              <label><i class="fas fa-percent" id="icon-valor-cupom"></i> <span id="label-valor-cupom" data-i18n="cfg.valor_desconto_pct">Valor del Descuento (%)</span></label>
               <input type="number" id="cupom-valor" class="input-modern" placeholder="Ex: 10" min="0" max="100">
             </div>
             <div class="form-group-modern">
-              <label><i class="fas fa-money-bill"></i> <span data-i18n="cfg.valor_minimo_pedido">Valor Mínimo do Pedido (Gs)</span></label>
+              <label><i class="fas fa-money-bill"></i> <span data-i18n="cfg.valor_minimo_pedido">Valor Mínimo del Pedido (Gs)</span></label>
               <input type="number" id="cupom-minimo" class="input-modern" placeholder="Ex: 50000" min="0">
             </div>
             <div class="form-group-modern">
@@ -1803,12 +1803,12 @@
             </div>
             <div class="checkbox-modern">
               <input type="checkbox" id="cupom-ativo" checked>
-              <label for="cupom-ativo"><strong data-i18n="cfg.cupom_ativo_bold">Cupom Ativo</strong><br><small data-i18n="cfg.cupom_ativo_desc">Desmarque para desativar temporariamente</small></label>
+              <label for="cupom-ativo"><strong data-i18n="cfg.cupom_ativo_bold">Cupón Activo</strong><br><small data-i18n="cfg.cupom_ativo_desc">Desmarque para desativar temporariamente</small></label>
             </div>
           </div>
           <div class="modal-footer-modern">
             <button class="btn-modern btn-modern-cancel" onclick="fecharModal('modal-cupom')"><i class="fas fa-times"></i> <span data-i18n="cfg.cancelar">Cancelar</span></button>
-            <button class="btn-modern btn-modern-primary" onclick="salvarCupom()"><i class="fas fa-save"></i> <span data-i18n="cfg.salvar_cupom">Salvar Cupom</span></button>
+            <button class="btn-modern btn-modern-primary" onclick="salvarCupom()"><i class="fas fa-save"></i> <span data-i18n="cfg.salvar_cupom">Guardar Cupón</span></button>
           </div>
         </div>
       </div>
@@ -1816,11 +1816,11 @@
       <!-- ===== ABA INVENTÁRIO ===== -->
       <div id="inventario" class="tab-content">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-          <h2 class="section-title" style="margin:0" data-i18n="estoque.title">📦 Controle de Estoque</h2>
-          <button class="btn btn-success" onclick="abrirModalInventario()"><i class="fas fa-plus"></i> <span data-i18n="estoque.novo">Novo Item</span></button>
+          <h2 class="section-title" style="margin:0" data-i18n="estoque.title">📦 Control de Stock</h2>
+          <button class="btn btn-success" onclick="abrirModalInventario()"><i class="fas fa-plus"></i> <span data-i18n="estoque.novo">Nuevo Ítem</span></button>
         </div>
         <div id="alerta-estoque-baixo" style="display:none;background:#fff3cd;border:1px solid #ffc107;border-radius:10px;padding:12px 14px;margin-bottom:12px;font-size:0.85rem;color:#856404">
-          <strong data-i18n="estoque.alerta_atencao">⚠️ Atenção:</strong> <span id="alerta-estoque-lista"></span>
+          <strong data-i18n="estoque.alerta_atencao">⚠️ Atención:</strong> <span id="alerta-estoque-lista"></span>
         </div>
         <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
           <input type="text" id="inv-busca" class="form-control" data-i18n-ph="estoque.buscar" placeholder="🔍 Buscar..." oninput="filtrarInventario()" style="flex:1;min-width:140px">
@@ -1832,12 +1832,12 @@
           </select>
         </div>
         <div id="inventario-lista" style="display:flex;flex-direction:column;gap:10px">
-          <div style="text-align:center;padding:30px;color:#aaa" data-i18n="geral.salvando">Carregando...</div>
+          <div style="text-align:center;padding:30px;color:#aaa" data-i18n="geral.salvando">Cargando...</div>
         </div>
       </div>
 
       <div id="estatisticas" class="tab-content">
-        <h2 class="section-title" data-i18n="est.title">📊 Estatísticas de Vendas</h2>
+        <h2 class="section-title" data-i18n="est.title">📊 Estadísticas de Ventas</h2>
       
         <!-- Loading -->
         <div id="est-loading" style="display:none;justify-content:center;align-items:center;padding:40px;gap:12px;color:#666">
@@ -1852,7 +1852,7 @@
               <input type="date" id="est-ini" class="form-control" style="min-width:140px">
             </div>
             <div>
-              <label style="font-size:0.78rem;font-weight:600;color:#555;display:block;margin-bottom:4px" data-i18n="est.ate">Até</label>
+              <label style="font-size:0.78rem;font-weight:600;color:#555;display:block;margin-bottom:4px" data-i18n="est.ate">Hasta</label>
               <input type="date" id="est-fim" class="form-control" style="min-width:140px">
             </div>
             <div>
@@ -1862,10 +1862,10 @@
               </select>
             </div>
             <div>
-              <label style="font-size:0.78rem;font-weight:600;color:#555;display:block;margin-bottom:4px">⚖️ <span data-i18n="est.unidade">Unidade</span></label>
+              <label style="font-size:0.78rem;font-weight:600;color:#555;display:block;margin-bottom:4px">⚖️ <span data-i18n="est.unidade">Unidad</span></label>
               <select id="est-filtro-unidade" class="form-control" style="min-width:130px" onchange="estAplicarFiltros()">
                 <option value="" data-i18n="est.todas_opcao">Todas</option>
-                <option value="un" data-i18n="est.por_unidade">Por Unidade</option>
+                <option value="un" data-i18n="est.por_unidade">Por Unidad</option>
                 <option value="kg" data-i18n="est.por_peso">Por Peso (kg)</option>
               </select>
             </div>
@@ -1878,11 +1878,11 @@
         <!-- KPI Cards -->
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px">
           <div class="card" style="text-align:center;padding:18px 12px;border-left:4px solid #1a7a2e">
-            <div style="font-size:0.78rem;color:#888;margin-bottom:6px;font-weight:600">💰 <span data-i18n="est.faturamento_total">Faturamento Total</span></div>
+            <div style="font-size:0.78rem;color:#888;margin-bottom:6px;font-weight:600">💰 <span data-i18n="est.faturamento_total">Facturación Total</span></div>
             <div id="est-kpi-faturamento" style="font-size:1.3rem;font-weight:800;color:#1a7a2e">—</div>
           </div>
           <div class="card" style="text-align:center;padding:18px 12px;border-left:4px solid #2980b9">
-            <div style="font-size:0.78rem;color:#888;margin-bottom:6px;font-weight:600">🧾 <span data-i18n="est.ticket_medio">Ticket Médio</span></div>
+            <div style="font-size:0.78rem;color:#888;margin-bottom:6px;font-weight:600">🧾 <span data-i18n="est.ticket_medio">Ticket Promedio</span></div>
             <div id="est-kpi-ticket" style="font-size:1.3rem;font-weight:800;color:#2980b9">—</div>
           </div>
           <div class="card" style="text-align:center;padding:18px 12px;border-left:4px solid #27ae60">
@@ -1897,7 +1897,7 @@
       
         <!-- Gráfico -->
         <div class="card" style="margin-bottom:20px;padding:16px">
-          <h4 style="margin:0 0 12px 0;color:#333;font-size:0.95rem" data-i18n="est.top15">Top 15 produtos por faturamento</h4>
+          <h4 style="margin:0 0 12px 0;color:#333;font-size:0.95rem" data-i18n="est.top15">Top 15 productos por facturación</h4>
           <div style="position:relative;height:260px">
             <canvas id="est-grafico"></canvas>
           </div>
@@ -1906,21 +1906,21 @@
         <!-- Tabela de todos os produtos -->
         <div class="card" style="padding:0">
           <div style="padding:14px 16px;border-bottom:1px solid #f0f0f0">
-            <h4 style="margin:0;color:#333;font-size:0.95rem" data-i18n="est.todos_produtos">📋 Todos os Produtos Vendidos</h4>
+            <h4 style="margin:0;color:#333;font-size:0.95rem" data-i18n="est.todos_produtos">📋 Todos los Productos Vendidos</h4>
           </div>
           <div style="overflow-x:auto">
             <table class="table" style="margin:0">
               <thead>
                 <tr>
-                  <th data-i18n="est.tabela_produto">Produto</th>
+                  <th data-i18n="est.tabela_produto">Producto</th>
                   <th data-i18n="est.tabela_categoria">Categoria</th>
                   <th style="text-align:center" data-i18n="est.tabela_qtd_peso">Qtd / Peso</th>
                   <th style="text-align:center" data-i18n="est.tabela_markup">Markup</th>
-                  <th style="text-align:right" data-i18n="est.tabela_faturamento">Faturamento</th>
+                  <th style="text-align:right" data-i18n="est.tabela_faturamento">Facturación</th>
                 </tr>
               </thead>
               <tbody id="est-tabela-body">
-                <tr><td colspan="5" style="text-align:center;color:#aaa;padding:20px" data-i18n="est.clique_atualizar">Clique em "Atualizar" para carregar</td></tr>
+                <tr><td colspan="5" style="text-align:center;color:#aaa;padding:20px" data-i18n="est.clique_atualizar">Haga clic en "Actualizar" para cargar</td></tr>
               </tbody>
             </table>
           </div>
@@ -1930,7 +1930,7 @@
       
       <!-- ════════════════════════ ABA: FICHA TÉCNICA ════════════════════════ -->
       <div id="ficha-tecnica" class="tab-content">
-        <h2 class="section-title" data-i18n="ft.title">🧮 Calculadora de Produtos — Ficha Técnica</h2>
+        <h2 class="section-title" data-i18n="ft.title">🧮 Calculadora de Productos — Ficha Técnica</h2>
       
         <!-- Sub-nav -->
         <div style="display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap">
@@ -1958,13 +1958,13 @@
                 <thead>
                   <tr>
                     <th data-i18n="ft.nome">Nome</th>
-                    <th style="text-align:center" data-i18n="ft.unidade">Unidade</th>
+                    <th style="text-align:center" data-i18n="ft.unidade">Unidad</th>
                     <th style="text-align:right" data-i18n="ft.custo_unit">Custo Unit.</th>
-                    <th style="text-align:center" data-i18n="ft.acoes">Ações</th>
+                    <th style="text-align:center" data-i18n="ft.acoes">Acciones</th>
                   </tr>
                 </thead>
                 <tbody id="ft-lista-insumos">
-                  <tr><td colspan="4" class="ft-empty" data-i18n="ft.carregando">Carregando...</td></tr>
+                  <tr><td colspan="4" class="ft-empty" data-i18n="ft.carregando">Cargando...</td></tr>
                 </tbody>
               </table>
             </div>
@@ -1974,13 +1974,13 @@
         <!-- PANEL: Fichas -->
         <div id="ft-panel-fichas" style="display:none">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-            <span style="color:#666;font-size:0.88rem" data-i18n="ft.sub_fichas">Monte a composição de cada produto e veja o custo + preço sugerido automaticamente.</span>
+            <span style="color:#666;font-size:0.88rem" data-i18n="ft.sub_fichas">Arme la composición de cada producto y vea el costo + precio sugerido automáticamente.</span>
             <button onclick="ftAbrirModalFicha()" class="btn btn-primary" style="font-size:0.83rem">
               <i class="fas fa-plus"></i> <span data-i18n="ft.nova_ficha">Nova Ficha</span>
             </button>
           </div>
           <div id="ft-lista-fichas">
-            <p style="text-align:center;color:#aaa;padding:30px" data-i18n="ft.nenhuma_ficha">Nenhuma ficha técnica cadastrada.</p>
+            <p style="text-align:center;color:#aaa;padding:30px" data-i18n="ft.nenhuma_ficha">Ninguna ficha técnica registrada.</p>
           </div>
         </div>
       </div>
@@ -2015,11 +2015,11 @@
                   <th style="text-align:left;padding:12px 16px;font-size:0.78rem;color:#6b7280;text-transform:uppercase" data-i18n="filiais.role_gerente">Gerente</th>
                   <th style="text-align:left;padding:12px 16px;font-size:0.78rem;color:#6b7280;text-transform:uppercase" data-i18n="sidebar.filiais">Filiais</th>
                   <th style="text-align:center;padding:12px 16px;font-size:0.78rem;color:#6b7280;text-transform:uppercase" data-i18n="filiais.status_ativa">Ativa</th>
-                  <th style="text-align:center;padding:12px 16px;font-size:0.78rem;color:#6b7280;text-transform:uppercase" data-i18n="crm.tabela_acoes">Ações</th>
+                  <th style="text-align:center;padding:12px 16px;font-size:0.78rem;color:#6b7280;text-transform:uppercase" data-i18n="crm.tabela_acoes">Acciones</th>
                 </tr>
               </thead>
               <tbody id="filiais-usuarios-body">
-                <tr><td colspan="5" style="text-align:center;padding:20px;color:#aaa" data-i18n="geral.carregando">Carregando...</td></tr>
+                <tr><td colspan="5" style="text-align:center;padding:20px;color:#aaa" data-i18n="geral.carregando">Cargando...</td></tr>
               </tbody>
             </table>
           </div>
@@ -2053,26 +2053,26 @@
       
         <!-- Config Cashback -->
         <div class="card" style="margin-bottom:16px;padding:14px">
-          <div style="font-weight:700;color:#333;margin-bottom:10px;font-size:0.9rem">⚙️ <span data-i18n="crm.config_cashback">Configurações de Cashback</span></div>
+          <div style="font-weight:700;color:#333;margin-bottom:10px;font-size:0.9rem">⚙️ <span data-i18n="crm.config_cashback">Configuración de Cashback</span></div>
           <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end">
             <div>
-              <label style="font-size:0.78rem;font-weight:600;color:#555;display:block;margin-bottom:4px" data-i18n="crm.sobre_pedido">% sobre o pedido</label>
+              <label style="font-size:0.78rem;font-weight:600;color:#555;display:block;margin-bottom:4px" data-i18n="crm.sobre_pedido">% sobre el pedido</label>
               <input type="number" id="crm-cfg-pct" class="form-control" style="width:100px" min="0" max="100" step="0.5">
             </div>
             <div>
-              <label style="font-size:0.78rem;font-weight:600;color:#555;display:block;margin-bottom:4px" data-i18n="crm.validade">Validade (dias)</label>
+              <label style="font-size:0.78rem;font-weight:600;color:#555;display:block;margin-bottom:4px" data-i18n="crm.validade">Validez (días)</label>
               <select id="crm-cfg-val" class="form-control" style="width:140px">
-                <option value="7">7 dias</option>
-                <option value="10">10 dias</option>
-                <option value="15">15 dias</option>
-                <option value="20">20 dias</option>
-                <option value="30" selected>30 dias</option>
-                <option value="60">60 dias</option>
-                <option value="90">90 dias</option>
+                <option value="7">7 días</option>
+                <option value="10">10 días</option>
+                <option value="15">15 días</option>
+                <option value="20">20 días</option>
+                <option value="30" selected>30 días</option>
+                <option value="60">60 días</option>
+                <option value="90">90 días</option>
               </select>
             </div>
             <button onclick="crmSalvarConfig()" class="btn btn-primary" style="height:38px">
-              <i class="fas fa-save"></i> <span data-i18n="crm.salvar">Salvar</span>
+              <i class="fas fa-save"></i> <span data-i18n="crm.salvar">Guardar</span>
             </button>
           </div>
         </div>
@@ -2085,11 +2085,11 @@
           <button id="crm-aba-aniversariantes" class="crm-aba-btn" onclick="crmMudarAba('aniversariantes')">
             🎂 <span data-i18n="crm.aniversariantes">Aniversariantes</span>
           </button>
-          <input type="text" placeholder="🔍 Buscar por nome ou telefone..." data-i18n-ph="crm.buscar_placeholder"
+          <input type="text" placeholder="🔍 Buscar por nombre o teléfono..." data-i18n-ph="crm.buscar_placeholder"
             class="form-control" style="flex:1;min-width:200px;max-width:320px"
             oninput="crmFiltrarClientes(this.value)">
           <button onclick="crmAbrirModalCliente()" class="btn btn-primary" style="margin-left:auto">
-            <i class="fas fa-user-plus"></i> <span data-i18n="crm.novo_cliente">Novo Cliente</span>
+            <i class="fas fa-user-plus"></i> <span data-i18n="crm.novo_cliente">Nuevo Cliente</span>
           </button>
         </div>
       
@@ -2100,15 +2100,15 @@
               <thead>
                 <tr>
                   <th data-i18n="crm.tabela_cliente">Cliente</th>
-                  <th data-i18n="crm.tabela_telefone">Telefone</th>
-                  <th data-i18n="crm.tabela_aniversario">Aniversário</th>
+                  <th data-i18n="crm.tabela_telefone">Teléfono</th>
+                  <th data-i18n="crm.tabela_aniversario">Cumpleaños</th>
                   <th data-i18n="crm.tabela_cashback">Cashback</th>
                   <th data-i18n="crm.tabela_total_gasto">Total Gasto</th>
-                  <th style="text-align:center" data-i18n="crm.tabela_acoes">Ações</th>
+                  <th style="text-align:center" data-i18n="crm.tabela_acoes">Acciones</th>
                 </tr>
               </thead>
               <tbody id="crm-lista-clientes">
-                <tr><td colspan="6" style="text-align:center;color:#aaa;padding:20px" data-i18n="ft.carregando">Carregando...</td></tr>
+                <tr><td colspan="6" style="text-align:center;color:#aaa;padding:20px" data-i18n="ft.carregando">Cargando...</td></tr>
               </tbody>
             </table>
           </div>
@@ -2125,7 +2125,7 @@
               <p style="font-size:0.83rem;color:#6b7280;margin-top:2px" data-i18n="mens.sub">Gerencie clientes com planos de consumo mensal</p>
             </div>
             <button onclick="mensAbrirModalPlano()" style="padding:10px 20px;background:#1a7a2e;color:#fff;border:none;border-radius:10px;font-weight:700;font-size:0.9rem;cursor:pointer">
-              <span data-i18n="mens.novo_plano">＋ Novo Plano</span>
+              <span data-i18n="mens.novo_plano">＋ Nuevo Plan</span>
             </button>
           </div>
           <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:20px">
@@ -2142,18 +2142,18 @@
               <div id="mens-kpi-receita" style="font-size:1.1rem;font-weight:800;color:#2980b9">—</div>
             </div>
             <div style="background:#fff;border-radius:12px;padding:14px 16px;border:1px solid #e5e7eb">
-              <div style="font-size:0.72rem;color:#6b7280;text-transform:uppercase;font-weight:600;margin-bottom:4px" data-i18n="mens.itens_restantes">Itens Restantes</div>
+              <div style="font-size:0.72rem;color:#6b7280;text-transform:uppercase;font-weight:600;margin-bottom:4px" data-i18n="mens.itens_restantes">Ítems Restantes</div>
               <div id="mens-kpi-itens" style="font-size:1.5rem;font-weight:800;color:#9b59b6">0</div>
             </div>
           </div>
           <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
-            <input id="mens-busca" type="search" placeholder="🔍 Buscar por cliente, produto..." oninput="mensFiltrar()"
+            <input id="mens-busca" type="search" placeholder="🔍 Buscar por cliente, producto..." oninput="mensFiltrar()"
               style="flex:1;min-width:200px;padding:9px 13px;border:1.5px solid #e5e7eb;border-radius:9px;font-size:0.88rem;outline:none">
             <select id="mens-filtro-status" onchange="mensFiltrar()"
               style="padding:9px 13px;border:1.5px solid #e5e7eb;border-radius:9px;font-size:0.88rem;outline:none;background:#fff">
-              <option value="todos" data-i18n="mens.todos_planos">Todos os planos</option>
-              <option value="ativo" data-i18n="mens.apenas_ativos">Apenas ativos</option>
-              <option value="inativo" data-i18n="mens.apenas_inativos">Apenas inativos</option>
+              <option value="todos" data-i18n="mens.todos_planos">Todos los planes</option>
+              <option value="ativo" data-i18n="mens.apenas_ativos">Solo activos</option>
+              <option value="inativo" data-i18n="mens.apenas_inativos">Solo inactivos</option>
             </select>
           </div>
           <div id="mens-loading" style="display:none;justify-content:center;padding:30px">
@@ -2191,7 +2191,7 @@
               <div id="notas-kpi-aberto" style="font-size:1.1rem;font-weight:800;color:#dc2626">Gs 0</div>
             </div>
             <div style="background:#fff;border-radius:12px;padding:14px 16px;border:1px solid #bbf7d0">
-              <div style="font-size:0.72rem;color:#16a34a;text-transform:uppercase;font-weight:600;margin-bottom:4px">Já Quitado</div>
+              <div style="font-size:0.72rem;color:#16a34a;text-transform:uppercase;font-weight:600;margin-bottom:4px">Ya Pagado</div>
               <div id="notas-kpi-quitado" style="font-size:1.1rem;font-weight:800;color:#16a34a">Gs 0</div>
             </div>
             <div style="background:#fff;border-radius:12px;padding:14px 16px;border:1px solid #fde68a">
@@ -2202,7 +2202,7 @@
 
           <!-- Filtros -->
           <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
-            <input id="notas-busca" type="search" placeholder="🔍 Buscar por cliente ou telefone..."
+            <input id="notas-busca" type="search" placeholder="🔍 Buscar por cliente o teléfono..."
               oninput="notasRenderLista()"
               style="flex:1;min-width:200px;padding:9px 13px;border:1.5px solid #e5e7eb;border-radius:9px;font-size:0.88rem;outline:none">
             <select id="notas-filtro-status" onchange="notasFiltrar()"
@@ -2213,10 +2213,10 @@
             </select>
           </div>
           <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px">
-            <label style="font-size:0.8rem;color:#6b7280;font-weight:600">Período (data do pedido):</label>
+            <label style="font-size:0.8rem;color:#6b7280;font-weight:600">Período (fecha del pedido):</label>
             <input id="notas-filtro-inicio" type="date" onchange="notasAplicarFiltroPeriodo()"
               style="padding:8px 11px;border:1.5px solid #e5e7eb;border-radius:9px;font-size:0.85rem;outline:none">
-            <span style="color:#9ca3af;font-size:0.85rem">até</span>
+            <span style="color:#9ca3af;font-size:0.85rem">hasta</span>
             <input id="notas-filtro-fim" type="date" onchange="notasAplicarFiltroPeriodo()"
               style="padding:8px 11px;border:1.5px solid #e5e7eb;border-radius:9px;font-size:0.85rem;outline:none">
             <button onclick="notasLimparFiltroPeriodo()"
@@ -2258,7 +2258,7 @@
     <div id="modal-produto" class="modal-overlay">
       <div class="modal-content modal-produto-content">
         <div class="modal-produto-header">
-          <h3 data-i18n="prod.gerenciar">Gerenciar Produto</h3>
+          <h3 data-i18n="prod.gerenciar">Gestionar Producto</h3>
           <button class="btn-modal-fechar" onclick="fecharModal('modal-produto')" aria-label="Fechar">×</button>
         </div>
         <input type="hidden" id="prod-id" />
@@ -2269,12 +2269,12 @@
           <input type="text" id="prod-nome" class="form-control" />
         </div>
         <div class="form-group">
-          <label data-i18n="prod.descricao">Descrição</label>
+          <label data-i18n="prod.descricao">Descripción</label>
           <textarea id="prod-desc" class="form-control" rows="2"></textarea>
         </div>
         <div class="form-group" style="display: flex; gap: 10px">
           <div id="box-prod-preco" style="flex: 1">
-            <label data-i18n="prod.preco">Preço base (Gs)</label>
+            <label data-i18n="prod.preco">Precio base (Gs)</label>
             <input type="number" id="prod-preco" class="form-control" />
           </div>
           <div style="flex: 1">
@@ -2287,9 +2287,9 @@
           <select id="prod-subcat" class="form-control"></select>
         </div>
         <div class="form-group">
-          <label data-i18n="prod.imagem">Imagem (Upload ou URL)</label>
+          <label data-i18n="prod.imagem">Imagen (Subida o URL)</label>
           <input type="file" id="prod-img-file" class="form-control" onchange="previewUpload(this)" />
-          <input type="text" id="prod-img" class="form-control" data-i18n-ph="prod.ou_cole_url" placeholder="Ou cole a URL aqui" />
+          <input type="text" id="prod-img" class="form-control" data-i18n-ph="prod.ou_cole_url" placeholder="O pegue la URL aquí" />
           <div id="box-preview" style="display:none; margin-top:10px; text-align:center">
             <img id="img-preview" src="" style="max-height:100px; border-radius:5px" />
           </div>
@@ -2297,22 +2297,22 @@
         <div class="form-group" style="display:flex; align-items:center; gap:10px; background:#fff8e1; padding:10px; border-radius:8px;">
           <input type="checkbox" id="prod-somente-balcao" style="width:20px; height:20px;">
           <label for="prod-somente-balcao" style="font-weight:bold; cursor:pointer;">
-            🏪 <span data-i18n="prod.somente_balcao">Somente Balcão (PDV)</span>
-            <small style="display:block; font-weight:normal; color:#888;" data-i18n="prod.nao_aparece_cardapio">Não aparece no cardápio online</small>
+            🏪 <span data-i18n="prod.somente_balcao">Solo Mostrador (PDV)</span>
+            <small style="display:block; font-weight:normal; color:#888;" data-i18n="prod.nao_aparece_cardapio">No aparece en el menú online</small>
           </label>
         </div>
         <div class="form-group" style="display:flex; align-items:center; gap:10px; background:#e0f7fa; padding:10px; border-radius:8px;">
           <input type="checkbox" id="prod-es-bebida" style="width:20px; height:20px;">
           <label for="prod-es-bebida" style="font-weight:bold; cursor:pointer;">
-            🥤 <span data-i18n="prod.es_bebida">É uma bebida</span>
-            <small style="display:block; font-weight:normal; color:#888;" data-i18n="prod.es_bebida_desc">Aparece destacado na mensagem do motoboy (LEVAR)</small>
+            🥤 <span data-i18n="prod.es_bebida">Es una bebida</span>
+            <small style="display:block; font-weight:normal; color:#888;" data-i18n="prod.es_bebida_desc">Aparece destacado en el mensaje del repartidor (LLEVAR)</small>
           </label>
         </div>
         <div class="form-group" style="display:flex; align-items:center; gap:10px; background:#ffe9e6; padding:10px; border-radius:8px;">
           <input type="checkbox" id="prod-promocao-dia" style="width:20px; height:20px;">
           <label for="prod-promocao-dia" style="font-weight:bold; cursor:pointer;">
-            🔥 <span data-i18n="prod.promocao_dia">Promoção do Dia</span>
-            <small style="display:block; font-weight:normal; color:#888;" data-i18n="prod.promocao_dia_desc">Pagamento restrito a Efetivo, Pix ou Transferência (independe da categoria)</small>
+            🔥 <span data-i18n="prod.promocao_dia">Promoción del Día</span>
+            <small style="display:block; font-weight:normal; color:#888;" data-i18n="prod.promocao_dia_desc">Pago restringido a Efectivo, Pix o Transferencia (independiente de la categoría)</small>
           </label>
         </div>
 
@@ -2352,13 +2352,13 @@
               <i class="fas fa-ice-cream"></i><strong data-i18n="prod.tipo_sorvete">Sorvete</strong>
             </button>
             <button type="button" class="builder-type-btn" data-tipo="montavel" onclick="selecionarTipoBuilder('montavel')">
-              <i class="fas fa-layer-group"></i><strong data-i18n="prod.tipo_montavel">Montável</strong>
+              <i class="fas fa-layer-group"></i><strong data-i18n="prod.tipo_montavel">Armable</strong>
             </button>
             <button type="button" class="builder-type-btn" data-tipo="combo" onclick="selecionarTipoBuilder('combo')">
               <i class="fas fa-star"></i><strong data-i18n="prod.tipo_combo">Combo</strong>
             </button>
             <button type="button" class="builder-type-btn" data-tipo="variacoes" onclick="selecionarTipoBuilder('variacoes')">
-              <i class="fas fa-palette"></i><strong data-i18n="prod.tipo_variacoes">Variações</strong>
+              <i class="fas fa-palette"></i><strong data-i18n="prod.tipo_variacoes">Variaciones</strong>
             </button>
             <button type="button" class="builder-type-btn" data-tipo="kg" onclick="selecionarTipoBuilder('kg')" style="border-color:#0891b2">
               <i class="fas fa-weight-scale" style="color:#0891b2"></i><strong data-i18n="prod.tipo_kg">⚖️ Kg</strong>
@@ -2383,16 +2383,16 @@
           <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px; flex-wrap:wrap;">
             <div style="display:flex; align-items:center; gap:6px;">
               <input type="checkbox" id="variacoes-estoque-ativo" onchange="toggleVariacoesEstoque()" style="width:18px; height:18px;">
-              <label for="variacoes-estoque-ativo" style="font-weight:700; cursor:pointer; font-size:0.9rem;">📦 Ativar estoque por variação</label>
+              <label for="variacoes-estoque-ativo" style="font-weight:700; cursor:pointer; font-size:0.9rem;">📦 Activar stock por variación</label>
             </div>
             <span style="font-size:0.75rem; color:#888;">(desconta automaticamente na venda)</span>
           </div>
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-            <h4 style="color:#8b5cf6;margin:0">🎨 Variações de Sabor</h4>
-            <button class="btn btn-sm" style="background:#8b5cf6;color:#fff" onclick="addVariacao()">+ Adicionar Variação</button>
+            <h4 style="color:#8b5cf6;margin:0">🎨 Variaciones de Sabor</h4>
+            <button class="btn btn-sm" style="background:#8b5cf6;color:#fff" onclick="addVariacao()">+ Agregar Variación</button>
           </div>
           <div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:8px;padding:10px 14px;font-size:0.81rem;color:#5b21b6;margin-bottom:12px">
-            🎯 Cada variação tem nome, preço próprio, foto opcional e <strong>estoque individual</strong> (se ativado acima).<br>
+            🎯 Cada variação tem nome, preço próprio, foto opcional e <strong>stock individual</strong> (se ativado acima).<br>
             O menu mostrará <strong>"A partir de Gs X"</strong> com o menor preço.
           </div>
           <div id="variacoes-lista" style="display:flex;flex-direction:column;gap:10px"></div>
@@ -2401,17 +2401,17 @@
         <!-- ── BUILDER: MONTÁVEL (Poke/Salada) ── -->
         <div id="builder-montavel" class="builder-section" style="display:none">
           <h4 style="color:#e67e22">🥗 Etapas de Montagem</h4>
-          <p style="font-size:0.82rem; color:#888; margin-bottom:10px">Configure as etapas que o cliente vai escolher (ingredientes, bases, molhos, etc.)</p>
+          <p style="font-size:0.82rem; color:#888; margin-bottom:10px">Configure las etapas que el cliente va a elegir (ingredientes, bases, salsas, etc.)</p>
           <div id="builder-steps"></div>
-          <button class="btn btn-sm btn-info" onclick="addBuilderStep()">+ Adicionar Etapa</button>
+          <button class="btn btn-sm btn-info" onclick="addBuilderStep()">+ Agregar Etapa</button>
           <!-- mantém compatibilidade com toggleBuilder() -->
           <input type="hidden" id="prod-montavel" value="false">
         </div>
 
         <!-- ── BUILDER: SHAKE ── -->
         <div id="builder-shake" class="builder-section" style="display:none">
-          <h4 style="color:#2980b9;margin-bottom:4px">🥤 Configuração do Milk Shake</h4>
-          <p style="font-size:0.82rem;color:#888;margin-bottom:14px">Defina os tamanhos disponíveis e os sabores que o cliente pode escolher.</p>
+          <h4 style="color:#2980b9;margin-bottom:4px">🥤 Configuración del Milk Shake</h4>
+          <p style="font-size:0.82rem;color:#888;margin-bottom:14px">Defina los tamaños disponibles y los sabores que el cliente puede elegir.</p>
 
           <!-- Tamanhos -->
           <div style="margin-bottom:18px">
@@ -2440,7 +2440,7 @@
 
         <!-- ── BUILDER: PIZZA (tipos dinâmicos) ── -->
         <div id="builder-pizza" class="builder-section" style="display:none">
-          <h4 style="color:#e74c3c;margin-bottom:12px">🍕 Configuração da Pizza</h4>
+          <h4 style="color:#e74c3c;margin-bottom:12px">🍕 Configuración de la Pizza</h4>
 
           <!-- Tipos de Pizza -->
           <div style="margin-bottom:18px">
@@ -2462,7 +2462,7 @@
             </label>
             <div id="pizza-borda-preco-box" style="display:none">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-                <h5 style="margin:0">Bordas disponíveis</h5>
+                <h5 style="margin:0">Bordes disponibles</h5>
                 <button class="btn btn-sm btn-success" onclick="addPizzaBorda()">+ Borda</button>
               </div>
               <div style="background:#fff8e1;border-radius:8px;padding:8px 12px;font-size:0.78rem;color:#7d5a00;margin-bottom:8px">
@@ -2487,18 +2487,18 @@
           <!-- Sabores -->
           <div>
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-              <h5 style="margin:0">Sabores <small style="color:#888;font-weight:normal">(o cliente escolhe deste menu)</small></h5>
+              <h5 style="margin:0">Sabores <small style="color:#888;font-weight:normal">(el cliente elige de este menú)</small></h5>
               <button class="btn btn-sm btn-success" onclick="addPizzaSabor()">+ Sabor</button>
             </div>
             <div id="pizza-sabores-lista" style="max-height:240px;overflow-y:auto;border:1px solid #eee;border-radius:8px;padding:8px">
-              <p style="color:#aaa;font-size:0.82rem;text-align:center;margin:10px 0">Clique em "+ Sabor" para adicionar</p>
+              <p style="color:#aaa;font-size:0.82rem;text-align:center;margin:10px 0">Haga clic en "+ Sabor" para agregar</p>
             </div>
           </div>
         </div>
 
         <!-- ── BUILDER: AÇAÍ ── -->
         <div id="builder-acai" class="builder-section" style="display:none">
-          <h4 style="color:#7c3aed;margin-bottom:12px">🍇 Configuração do Açaí</h4>
+          <h4 style="color:#7c3aed;margin-bottom:12px">🍇 Configuración del Açaí</h4>
 
           <!-- Tamanhos com imagem -->
           <div style="margin-bottom:18px">
@@ -2533,11 +2533,11 @@
             <div id="acai-etapas-container" style="display:flex;flex-direction:column;gap:8px"></div>
           </div>
 
-          <!-- Variações (ex: Tradicional, Premium) -->
+          <!-- Variaciones (ej: Tradicional, Premium) -->
           <div>
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-              <h5 style="margin:0;color:#7c3aed">Variações <small style="font-weight:400;color:#888">(opcional)</small></h5>
-              <button class="btn btn-sm" style="background:#7c3aed;color:#fff" onclick="addVariacaoSimples({}, 'acai-variacoes-lista')">+ Variação</button>
+              <h5 style="margin:0;color:#7c3aed">Variaciones <small style="font-weight:400;color:#888">(opcional)</small></h5>
+              <button class="btn btn-sm" style="background:#7c3aed;color:#fff" onclick="addVariacaoSimples({}, 'acai-variacoes-lista')">+ Variación</button>
             </div>
             <div id="acai-variacoes-lista" style="display:flex;flex-direction:column;gap:6px"></div>
           </div>
@@ -2545,7 +2545,7 @@
 
         <!-- ── BUILDER: SUCO ── -->
         <div id="builder-suco" class="builder-section" style="display:none">
-          <h4 style="color:#f59e0b;margin-bottom:12px">🍊 Configuração do Suco</h4>
+          <h4 style="color:#f59e0b;margin-bottom:12px">🍊 Configuración del Jugo</h4>
 
           <!-- Tamanhos -->
           <div style="margin-bottom:18px">
@@ -2571,12 +2571,12 @@
 
         <!-- ── BUILDER: SORVETE ── -->
         <div id="builder-sorvete" class="builder-section" style="display:none">
-          <h4 style="color:#0ea5e9;margin-bottom:12px">🍦 Configuração do Sorvete</h4>
+          <h4 style="color:#0ea5e9;margin-bottom:12px">🍦 Configuración del Helado</h4>
 
           <!-- Tamanhos / Bolas -->
           <div style="margin-bottom:18px">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-              <h5 style="margin:0;color:#0ea5e9">Tamanhos / Quantidade de Bolas</h5>
+              <h5 style="margin:0;color:#0ea5e9">Tamaños / Cantidad de Bochas</h5>
               <button class="btn btn-sm" style="background:#0ea5e9;color:#fff" onclick="addSorveteTamanho()">+ Tamanho</button>
             </div>
             <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:8px 12px;font-size:0.78rem;color:#0369a1;margin-bottom:8px">
@@ -2603,11 +2603,11 @@
             <div id="sorvete-etapas-container" style="display:flex;flex-direction:column;gap:8px"></div>
           </div>
 
-          <!-- Variações (casquinha, copinho) -->
+          <!-- Variaciones (cucurucho, vasito) -->
           <div>
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-              <h5 style="margin:0;color:#0ea5e9">Variações <small style="font-weight:400;color:#888">(casquinha, copinho... — opcional)</small></h5>
-              <button class="btn btn-sm" style="background:#0ea5e9;color:#fff" onclick="addVariacaoSimples({}, 'sorvete-variacoes-lista')">+ Variação</button>
+              <h5 style="margin:0;color:#0ea5e9">Variaciones <small style="font-weight:400;color:#888">(cucurucho, vasito... — opcional)</small></h5>
+              <button class="btn btn-sm" style="background:#0ea5e9;color:#fff" onclick="addVariacaoSimples({}, 'sorvete-variacoes-lista')">+ Variación</button>
             </div>
             <div id="sorvete-variacoes-lista" style="display:flex;flex-direction:column;gap:6px"></div>
           </div>
@@ -2615,16 +2615,16 @@
 
         <!-- ── BUILDER: COMBO ── -->
         <div id="builder-combo" class="builder-section" style="display:none">
-          <h4 style="color:#f59e0b;margin-bottom:12px">⭐ Configuração do Combo</h4>
+          <h4 style="color:#f59e0b;margin-bottom:12px">⭐ Configuración del Combo</h4>
           <div class="form-group">
-            <label data-i18n="prod.combo_descricao">Descrição do combo</label>
+            <label data-i18n="prod.combo_descricao">Descripción del combo</label>
             <textarea id="combo-descricao" class="form-control" rows="3"
-              placeholder="Ex: 1 lanche + 1 batata média + 1 refrigerante 350ml"></textarea>
+              placeholder="Ej: 1 sándwich + 1 papas medianas + 1 gaseosa 350ml"></textarea>
           </div>
           <div style="margin-top:12px">
-            <label style="font-weight:600;display:block;margin-bottom:8px">Produtos inclusos <small style="color:#888;font-weight:400">(opcional — marque os produtos que compõem o combo)</small></label>
+            <label style="font-weight:600;display:block;margin-bottom:8px">Produtos inclusos <small style="color:#888;font-weight:400">(opcional — marque los productos que componen el combo)</small></label>
             <div id="combo-produtos-selecionados" style="max-height:280px;overflow-y:auto;border:1px solid #eee;border-radius:8px;padding:8px;font-size:0.87rem">
-              <div style="text-align:center;color:#aaa;font-size:0.82rem;padding:12px">Selecione o tipo Combo para carregar a lista de produtos.</div>
+              <div style="text-align:center;color:#aaa;font-size:0.82rem;padding:12px">Seleccione el tipo Combo para cargar la lista de productos.</div>
             </div>
           </div>
         </div>
@@ -2637,7 +2637,7 @@
           <div style="background:#fffbeb;border-left:4px solid #f59e0b;border-radius:6px;
                       padding:10px 14px;font-size:0.82rem;color:#78350f;margin-bottom:14px;line-height:1.5">
             O cliente distribui os itens entre os sabores disponíveis até atingir o limite total.
-            Ex: <em>"Caixa com 9 Esfihas"</em> → Frango 3 + Queijo 1 + Carne 1 + Chocolate 4 = 9.
+            Ex: <em>"Caja con 9 Esfihas"</em> → Frango 3 + Queijo 1 + Carne 1 + Chocolate 4 = 9.
           </div>
 
           <!-- Limite total de itens -->
@@ -2658,7 +2658,7 @@
 
           <!-- Gerenciador de sabores -->
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-            <label class="form-label" style="font-weight:700;margin:0">🧂 Sabores disponíveis</label>
+            <label class="form-label" style="font-weight:700;margin:0">🧂 Sabores disponibles</label>
             <button type="button" class="btn btn-sm"
                     style="background:#d97706;color:#fff;border:none;border-radius:7px;padding:5px 12px;font-size:0.82rem;cursor:pointer"
                     onclick="cfAdicionarSabor()">
@@ -2686,15 +2686,15 @@
           <h4 style="color:#0891b2;margin-bottom:8px">⚖️ Venda por Kg</h4>
           <div style="background:#ecfeff;border:1px solid #a5f3fc;border-radius:8px;padding:10px 14px;font-size:0.82rem;color:#0e7490;margin-bottom:14px;line-height:1.5">
             O preço é cobrado proporcionalmente ao peso.<br>
-            No PDV, o atendente digita os gramas ou usa a <strong>balança Toledo Prix 3</strong> via USB Serial.
+            No PDV, o atendente digita os gramas ou usa a <strong>balanza Toledo Prix 3</strong> via USB Serial.
           </div>
           <div class="form-group">
-            <label class="form-label">Preço por kg (Gs)</label>
+            <label class="form-label">Precio por kg (Gs)</label>
             <input type="number" id="prod-preco-kg" class="form-control"
               placeholder="Ex: 15000 = Gs 15.000/kg"
               min="0" step="500"
               style="font-size:1.1rem;font-weight:700;border:2px solid #0891b2">
-            <small style="color:#666;font-size:0.78rem">100g de um produto a Gs 15.000/kg = Gs 1.500</small>
+            <small style="color:#666;font-size:0.78rem">100g de un producto a Gs 15.000/kg = Gs 1.500</small>
           </div>
         </div>
 
@@ -2702,19 +2702,19 @@
         <!-- Estoque vinculado -->
         <div class="form-group" style="background:#f0fff4;border:1px solid #a7f3d0;border-radius:10px;padding:12px;margin-bottom:12px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-            <label style="font-weight:700;margin:0">📦 <span data-i18n="estoque.controle">Controle de Estoque</span><small style="display:block;font-weight:normal;color:#888" data-i18n="estoque.desconto_automotivo">Desconta automaticamente na venda</small></label>
+            <label style="font-weight:700;margin:0">📦 <span data-i18n="estoque.controle">Control de Stock</span><small style="display:block;font-weight:normal;color:#888" data-i18n="estoque.desconto_automotivo">Desconta automaticamente na venda</small></label>
             <div style="display:flex;align-items:center;gap:8px">
               <input type="checkbox" id="prod-tem-estoque" style="width:18px;height:18px" onchange="toggleEstoqueProduto()">
               <label for="prod-tem-estoque" style="cursor:pointer;font-size:0.9rem" data-i18n="geral.ativar">Ativar</label>
             </div>
           </div>
           <div id="estoque-area" style="display:none">
-            <select id="prod-inventario-id" class="form-control" onchange="_toggleCriarNovoEstoque()"><option value="" data-i18n="estoque.selecione_item">— Selecione o item —</option></select>
+            <select id="prod-inventario-id" class="form-control" onchange="_toggleCriarNovoEstoque()"><option value="" data-i18n="estoque.selecione_item">— Seleccione el ítem —</option></select>
             <div id="prod-estoque-novo-area" style="margin-top:8px">
-              <div style="font-size:0.76rem;color:#16a34a;margin-bottom:6px">✨ Deixe "— Selecione o item —" acima e preencha abaixo pra criar um item novo automaticamente (ele também aparece na aba Estoque).</div>
+              <div style="font-size:0.76rem;color:#16a34a;margin-bottom:6px">✨ Deje "— Seleccione el ítem —" arriba y complete abajo para crear un ítem nuevo automáticamente (también aparece en la pestaña Stock).</div>
               <div style="display:flex;gap:8px">
                 <div style="flex:1">
-                  <label style="font-size:0.7rem;color:#555;font-weight:600">Quantidade inicial</label>
+                  <label style="font-size:0.7rem;color:#555;font-weight:600">Cantidad inicial</label>
                   <input type="number" id="prod-estoque-qtd-nova" class="form-control" min="0" step="1" placeholder="Qtd">
                 </div>
                 <div style="flex:1">
@@ -2730,7 +2730,7 @@
           <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px">
             <label style="font-weight:700; margin:0">
               ➕ <span data-i18n="prod.extras_titulo">Adicionais (Extras opcionais)</span>
-              <small style="display:block; font-weight:normal; color:#888" data-i18n="prod.extras_desc">O cliente poderá marcar estes itens ao pedir</small>
+              <small style="display:block; font-weight:normal; color:#888" data-i18n="prod.extras_desc">El cliente podrá marcar estos ítems al pedir</small>
             </label>
             <div style="display:flex; align-items:center; gap:8px">
               <input type="checkbox" id="prod-tem-extras" style="width:18px;height:18px" onchange="toggleExtras()">
@@ -2739,7 +2739,7 @@
           </div>
           <div id="extras-area" style="display:none">
             <div id="extras-lista"></div>
-            <button class="btn btn-sm btn-info" onclick="addExtra()" style="margin-top:8px" data-i18n="prod.adicionar_extra">+ Adicionar Extra</button>
+            <button class="btn btn-sm btn-info" onclick="addExtra()" style="margin-top:8px" data-i18n="prod.adicionar_extra">+ Agregar Extra</button>
           </div>
         </div>
 
@@ -2747,8 +2747,8 @@
         <div class="form-group" style="border:1px solid #e0f0ff; border-radius:10px; padding:14px; background:#f7fbff;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
             <label style="font-weight:700; margin:0">
-              🍳 <span data-i18n="prod.preparo_titulo">Opções de Preparo</span>
-              <small style="display:block; font-weight:normal; color:#888" data-i18n="prod.preparo_desc">Ex: "Salmão Cru / Flambado", "Batata Frita / Mandioca"</small>
+              🍳 <span data-i18n="prod.preparo_titulo">Opciones de Preparación</span>
+              <small style="display:block; font-weight:normal; color:#888" data-i18n="prod.preparo_desc">Ej: "Salmón Crudo / Flambeado", "Papas Fritas / Mandioca"</small>
             </label>
             <div style="display:flex; align-items:center; gap:8px">
               <input type="checkbox" id="prod-tem-preparo" style="width:18px;height:18px" onchange="togglePreparo()">
@@ -2757,12 +2757,12 @@
           </div>
           <div id="preparo-area" style="display:none">
             <div id="preparo-lista"></div>
-            <button class="btn btn-sm" style="background:#2980b9;color:white;margin-top:8px" onclick="addOpcaoPreparo()" data-i18n="prod.adicionar_opcao">+ Adicionar Opção</button>
+            <button class="btn btn-sm" style="background:#2980b9;color:white;margin-top:8px" onclick="addOpcaoPreparo()" data-i18n="prod.adicionar_opcao">+ Agregar Opción</button>
           </div>
         </div>
 
         <div class="modal-actions" style="margin-top:16px">
-          <button class="btn btn-primary" onclick="salvarProduto()" data-i18n="prod.salvar">Salvar Produto</button>
+          <button class="btn btn-primary" onclick="salvarProduto()" data-i18n="prod.salvar">Guardar Producto</button>
           <button class="btn btn-secondary" onclick="fecharModal('modal-produto')" data-i18n="prod.cancelar">Cancelar</button>
         </div>
       </div>
@@ -2773,11 +2773,11 @@
         <h3 id="titulo-modal-cat">Categoria</h3>
         <input type="hidden" id="cat-modo-edicao" />
         <div class="form-group">
-          <label data-i18n="cat.nome_exibicao">Nome Exibição</label>
+          <label data-i18n="cat.nome_exibicao">Nombre a Mostrar</label>
           <input type="text" id="cat-nome" class="form-control" oninput="autoSlugFromNome()" />
         </div>
         <div class="form-group">
-          <label><span data-i18n="cat.slug">Slug (ID único, sem espaços)</span> <small style="color:#e67e22;display:none" id="aviso-slug-edicao" data-i18n="cat.aviso_slug">⚠️ Alterar atualiza todos os produtos</small></label>
+          <label><span data-i18n="cat.slug">Slug (ID único, sin espacios)</span> <small style="color:#e67e22;display:none" id="aviso-slug-edicao" data-i18n="cat.aviso_slug">⚠️ Modificar actualiza todos los productos</small></label>
           <input type="text" id="cat-slug" class="form-control" />
         </div>
         <div class="form-group">
@@ -2787,7 +2787,7 @@
         <hr style="margin:12px 0; border-color:#eee">
         <div style="background:#f0f8ff; border:1px solid #b3d9ff; border-radius:8px; padding:12px; margin-bottom:12px">
           <div style="font-weight:600; font-size:0.9rem; color:#1a6eb5; margin-bottom:8px">
-            🕐 <span data-i18n="cat.horario_exibicao">Horário de Exibição</span> <small style="font-weight:400; color:#666" data-i18n="cat.horario_opcional">(opcional — deixe em branco para exibir sempre)</small>
+            🕐 <span data-i18n="cat.horario_exibicao">Horario de Visualización</span> <small style="font-weight:400; color:#666" data-i18n="cat.horario_opcional">(opcional — deixe em branco para exibir sempre)</small>
           </div>
           <div style="display:flex; gap:12px; align-items:center; margin-bottom:10px">
             <div style="flex:1">
@@ -2795,12 +2795,12 @@
               <input type="time" id="cat-hora-inicio" class="form-control" />
             </div>
             <div style="flex:1">
-              <label style="font-size:0.82rem; color:#555" data-i18n="rel.ate">Até</label>
+              <label style="font-size:0.82rem; color:#555" data-i18n="rel.ate">Hasta</label>
               <input type="time" id="cat-hora-fim" class="form-control" />
             </div>
           </div>
           <div>
-            <label style="font-size:0.82rem; color:#555; display:block; margin-bottom:6px"><span data-i18n="cat.dias_exibicao">📅 Dias de exibição</span> <small style="color:#aaa" data-i18n="cat.dias_todos">(deixe todos desmarcados = todos os dias)</small></label>
+            <label style="font-size:0.82rem; color:#555; display:block; margin-bottom:6px"><span data-i18n="cat.dias_exibicao">📅 Días de visualización</span> <small style="color:#aaa" data-i18n="cat.dias_todos">(deje todos desmarcados = todos los días)</small></label>
             <div style="display:flex; gap:6px; flex-wrap:wrap">
               <label style="display:flex;align-items:center;gap:3px;font-size:0.8rem;cursor:pointer;background:#fff;border:1px solid #ddd;border-radius:6px;padding:4px 8px"><input type="checkbox" class="cat-dia-check" value="dom"> <span data-i18n="dia.dom_curto">Dom</span></label>
               <label style="display:flex;align-items:center;gap:3px;font-size:0.8rem;cursor:pointer;background:#fff;border:1px solid #ddd;border-radius:6px;padding:4px 8px"><input type="checkbox" class="cat-dia-check" value="seg"> <span data-i18n="dia.seg_curto">Seg</span></label>
@@ -2811,10 +2811,10 @@
               <label style="display:flex;align-items:center;gap:3px;font-size:0.8rem;cursor:pointer;background:#fff;border:1px solid #ddd;border-radius:6px;padding:4px 8px"><input type="checkbox" class="cat-dia-check" value="sab"> <span data-i18n="dia.sab_curto">Sáb</span></label>
             </div>
           </div>
-          <small style="color:#888; display:block; margin-top:6px" data-i18n="cat.horario_exemplo">Ex: almoço de Seg a Sex das 11:00 às 14:30. Fora desse horário/dia, a categoria fica oculta no cardápio.</small>
+          <small style="color:#888; display:block; margin-top:6px" data-i18n="cat.horario_exemplo">Ej: almuerzo de Lun a Vie de 11:00 a 14:30. Fuera de ese horario/día, la categoría queda oculta en el menú.</small>
         </div>
         <div class="modal-actions">
-          <button class="btn btn-primary" onclick="salvarCategoria()" data-i18n="geral.salvar">Salvar</button>
+          <button class="btn btn-primary" onclick="salvarCategoria()" data-i18n="geral.salvar">Guardar</button>
           <button class="btn btn-secondary" onclick="fecharModal('modal-cat')" data-i18n="geral.cancelar">Cancelar</button>
         </div>
       </div>
@@ -2829,11 +2829,11 @@
           <input type="text" id="moto-nome" class="form-control" />
         </div>
         <div class="form-group">
-          <label data-i18n="moto.telefone_label">Telefone (WhatsApp)</label>
+          <label data-i18n="moto.telefone_label">Teléfono (WhatsApp)</label>
           <input type="text" id="moto-tel" class="form-control" />
         </div>
         <div class="modal-actions">
-          <button class="btn btn-primary" onclick="salvarMotoboy()" data-i18n="geral.salvar">Salvar</button>
+          <button class="btn btn-primary" onclick="salvarMotoboy()" data-i18n="geral.salvar">Guardar</button>
           <button class="btn btn-secondary" onclick="fecharModal('modal-moto')" data-i18n="geral.cancelar">Cancelar</button>
         </div>
       </div>
@@ -2842,7 +2842,7 @@
     <!-- ===== MODAL CAIXA (faltava no HTML) ===== -->
     <!-- Banner bloqueio de caixa por sangria -->
     <div id="banner-caixa-bloqueado" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9990;background:#e74c3c;color:#fff;padding:12px 16px;text-align:center;font-weight:700;font-size:0.9rem">
-      ⛔ <span id="banner-sangria-msg" data-i18n="caixa.alerta_bloqueado">Caixa bloqueado por sangria.</span>
+      ⛔ <span id="banner-sangria-msg" data-i18n="caixa.alerta_bloqueado">Caja bloqueada por retiro.</span>
       <span id="btn-solicitar-reabertura" style="margin-left:12px;background:rgba(255,255,255,0.2);padding:4px 12px;border-radius:6px;cursor:pointer"
         onclick="autorizarReaberturaCaixa(document.getElementById('user-email')?.innerText||'')" data-i18n="caixa.autorizar_reabertura">
         Autorizar Reabertura
@@ -2851,7 +2851,7 @@
 
     <div id="modal-caixa" class="modal-overlay" style="display:none">
       <div class="modal-content" style="max-width:420px">
-        <h3 id="titulo-caixa" data-i18n="caixa.operacao">Operação de Caixa</h3>
+        <h3 id="titulo-caixa" data-i18n="caixa.operacao">Operación de Caja</h3>
         <input type="hidden" id="tipo-caixa" value="">
         <div class="form-group">
           <label data-i18n="caixa.valor">Valor (Gs)</label>
@@ -2859,14 +2859,14 @@
         </div>
         <!-- Tipo de despesa (só aparece quando tipo=despesa) -->
         <div id="box-tipo-despesa" class="form-group" style="display:none">
-          <label data-i18n="caixa.categoria_despesa">Categoria da Despesa</label>
+          <label data-i18n="caixa.categoria_despesa">Categoría del Gasto</label>
           <select id="tipo-despesa-sel" class="form-control" onchange="document.getElementById('box-desc-outro').style.display=this.value==='outro'?'block':'none'">
             <option value="despesas_gerais" data-i18n="caixa.despesas_gerais">📦 Despesas Gerais</option>
-            <option value="contas_fixas" data-i18n="caixa.contas_fixas">🏠 Contas Fixas (água, luz, aluguel...)</option>
+            <option value="contas_fixas" data-i18n="caixa.contas_fixas">🏠 Gastos Fijos (agua, luz, alquiler...)</option>
             <option value="pagamento_fornecedor" data-i18n="caixa.pagamento_fornecedor">🤝 Pagamento de Fornecedor</option>
-            <option value="pagamento_funcionario" data-i18n="caixa.pagamento_funcionario">👷 Pagamento de Funcionário</option>
+            <option value="pagamento_funcionario" data-i18n="caixa.pagamento_funcionario">👷 Pago de Empleado</option>
             <option value="pagamento_terceiros" data-i18n="caixa.pagamento_terceiros">👥 Pagamento a Terceiros</option>
-            <option value="manutencao" data-i18n="caixa.manutencao">🔧 Manutenção</option>
+            <option value="manutencao" data-i18n="caixa.manutencao">🔧 Mantenimiento</option>
             <option value="retirada" data-i18n="caixa.retirada">💵 Retirada / Pro-Labore</option>
             <option value="motoboy" data-i18n="caixa.pagamento_motoboy">🛵 Pagamento Motoboy</option>
             <option value="outro" data-i18n="caixa.outro">✏️ Outro (especificar)</option>
@@ -2876,13 +2876,13 @@
           </div>
         </div>
         <div class="form-group">
-          <label data-i18n="caixa.observacao">Observação</label>
+          <label data-i18n="caixa.observacao">Observación</label>
           <input type="text" id="desc-caixa" class="form-control" data-i18n-ph="caixa.detalhes_opcionais" placeholder="Detalhes opcionais">
         </div>
         <div class="modal-actions">
           <button class="btn btn-secondary" onclick="fecharModal('modal-caixa')" data-i18n="geral.cancelar">Cancelar</button>
           <button class="btn btn-primary" onclick="salvarMovimentacaoCaixa()">
-            <i class="fas fa-save"></i> <span data-i18n="geral.salvar">Salvar</span>
+            <i class="fas fa-save"></i> <span data-i18n="geral.salvar">Guardar</span>
           </button>
         </div>
       </div>
@@ -2892,14 +2892,14 @@
     <div id="modal-relatorio" class="modal-overlay" style="display:none; align-items:flex-start; padding:10px; overflow-y:auto;">
       <div class="modal-content" style="max-width:95vw; width:100%; margin:auto; max-height:90vh; overflow-y:auto;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; position:sticky; top:0; background:white; padding:8px 0; z-index:10; border-bottom:1px solid #eee;">
-          <h3 style="margin:0"><i class="fas fa-clipboard-list" style="color:#3498db"></i> <span data-i18n="rel.titulo">Relatório de Pedidos</span></h3>
+          <h3 style="margin:0"><i class="fas fa-clipboard-list" style="color:#3498db"></i> <span data-i18n="rel.titulo">Reporte de Pedidos</span></h3>
           <button onclick="fecharModal('modal-relatorio')" style="background:#e74c3c;color:white;border:none;border-radius:50%;width:32px;height:32px;font-size:1.1rem;cursor:pointer">×</button>
         </div>
         
         <!-- Filtros -->
         <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px; background:#f8f9fa; padding:12px; border-radius:8px;">
           <div class="form-group" style="margin:0; flex:0 0 auto;">
-            <label style="font-size:0.8rem;font-weight:600" data-i18n="rel.num_pedido">Nº do Pedido</label>
+            <label style="font-size:0.8rem;font-weight:600" data-i18n="rel.num_pedido">Nº de Pedido</label>
             <input type="number" id="rel-filtro-numero" class="form-control" placeholder="Ex: 91" style="width:120px;" oninput="this.value ? (document.getElementById('rel-filtro-inicio').disabled=true, document.getElementById('rel-filtro-fim').disabled=true) : (document.getElementById('rel-filtro-inicio').disabled=false, document.getElementById('rel-filtro-fim').disabled=false)">
           </div>
           <div class="form-group" style="margin:0; flex:0 0 auto;">
@@ -2907,7 +2907,7 @@
             <input type="date" id="rel-filtro-inicio" class="form-control">
           </div>
           <div class="form-group" style="margin:0; flex:0 0 auto;">
-            <label style="font-size:0.8rem;font-weight:600" data-i18n="rel.ate">Até</label>
+            <label style="font-size:0.8rem;font-weight:600" data-i18n="rel.ate">Hasta</label>
             <input type="date" id="rel-filtro-fim" class="form-control">
           </div>
           <div class="form-group" style="margin:0; display:flex; align-items:flex-end;">
@@ -2925,11 +2925,11 @@
               <tr style="background:linear-gradient(135deg,#1a1a2e,#2c3e50);color:white;font-size:0.78rem;letter-spacing:0.5px;text-transform:uppercase;">
                 <th style="padding:12px 10px;text-align:left;width:70px" data-i18n="rel.id_data">#ID / Data</th>
                 <th style="padding:12px 10px;text-align:left" data-i18n="pedidos.cliente">Cliente</th>
-                <th style="padding:12px 10px;text-align:left" data-i18n="rel.itens">Itens</th>
+                <th style="padding:12px 10px;text-align:left" data-i18n="rel.itens">Ítems</th>
                 <th style="padding:12px 10px;text-align:left;width:130px" data-i18n="pedidos.status">Status</th>
                 <th style="padding:12px 10px;text-align:right;width:110px" data-i18n="rel.total">Total</th>
                 <th style="padding:12px 10px;text-align:left;width:200px" data-i18n="rel.timeline">⏱ Timeline</th>
-                <th style="padding:12px 10px;text-align:center;width:60px">Ações</th>
+                <th style="padding:12px 10px;text-align:center;width:60px">Acciones</th>
               </tr>
             </thead>
             <tbody id="rel-tbody"></tbody>
@@ -2938,7 +2938,7 @@
       </div>
     </div>
 
-    <!-- MODAL: Editar Pedido (Relatório) -->
+    <!-- MODAL: Editar Pedido (Reporte) -->
     <div id="modal-editar-pedido" class="modal-overlay" style="display:none; align-items:flex-start; padding:10px; overflow-y:auto;">
       <div class="modal-content" style="max-width:540px; margin:auto; max-height:90vh; overflow-y:auto;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
@@ -2989,7 +2989,7 @@
   style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;padding:16px">
   <div style="background:#fff;border-radius:18px;padding:28px;width:100%;max-width:520px;max-height:92vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,0.25)">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-      <h3 style="font-size:1.1rem;font-weight:700" id="mens-plano-titulo">📋 <span data-i18n="mens.plano_mensalista">Plano Mensalista</span></h3>
+      <h3 style="font-size:1.1rem;font-weight:700" id="mens-plano-titulo">📋 <span data-i18n="mens.plano_mensalista">Plan Mensual</span></h3>
       <button onclick="fecharModal('modal-mens-plano')" style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:#6b7280">×</button>
     </div>
     <input type="hidden" id="mens-plano-id">
@@ -3000,32 +3000,32 @@
       <div>
         <label style="font-size:0.78rem;font-weight:600;color:#4b5563;display:block;margin-bottom:5px;text-transform:uppercase" data-i18n="crm.tabela_cliente">Cliente *</label>
         <select id="mens-plano-cli-sel" style="width:100%;padding:10px 13px;border:1.5px solid #e5e7eb;border-radius:9px;font-size:0.9rem;outline:none;background:#fff">
-          <option value="" data-i18n="mens.selecione_cliente">— Selecione o cliente —</option>
+          <option value="" data-i18n="mens.selecione_cliente">— Seleccione el cliente —</option>
         </select>
       </div>
       <div>
-        <label style="font-size:0.78rem;font-weight:600;color:#4b5563;display:block;margin-bottom:5px;text-transform:uppercase" data-i18n="mens.produto_plano">Produto / Item do Plano *</label>
+        <label style="font-size:0.78rem;font-weight:600;color:#4b5563;display:block;margin-bottom:5px;text-transform:uppercase" data-i18n="mens.produto_plano">Producto / Ítem del Plan *</label>
         <select id="mens-plano-prod-sel" style="width:100%;padding:10px 13px;border:1.5px solid #e5e7eb;border-radius:9px;font-size:0.9rem;outline:none;background:#fff;margin-bottom:6px">
-          <option value="" data-i18n="geral.selecione_cardapio">— Selecione do cardápio —</option>
+          <option value="" data-i18n="geral.selecione_cardapio">— Seleccione del menú —</option>
         </select>
-        <input type="text" id="mens-plano-produto" data-i18n-ph="mens.ou_digite" placeholder="Ou digite manualmente..."
+        <input type="text" id="mens-plano-produto" data-i18n-ph="mens.ou_digite" placeholder="O ingrese manualmente..."
           style="width:100%;padding:9px 13px;border:1.5px solid #e5e7eb;border-radius:9px;font-size:0.9rem;outline:none">
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div>
-          <label id="mens-plano-qtd-label" style="font-size:0.78rem;font-weight:600;color:#4b5563;display:block;margin-bottom:5px;text-transform:uppercase">Qtd Total de Itens *</label>
+          <label id="mens-plano-qtd-label" style="font-size:0.78rem;font-weight:600;color:#4b5563;display:block;margin-bottom:5px;text-transform:uppercase">Cant. Total de Ítems *</label>
           <input type="number" id="mens-plano-qtd" placeholder="Ex: 22" min="1" step="1"
             style="width:100%;padding:10px 13px;border:1.5px solid #e5e7eb;border-radius:9px;font-size:0.9rem;outline:none">
         </div>
         <div>
-          <label style="font-size:0.78rem;font-weight:600;color:#4b5563;display:block;margin-bottom:5px;text-transform:uppercase" data-i18n="mens.valor_plano">Valor do Plano (Gs) *</label>
+          <label style="font-size:0.78rem;font-weight:600;color:#4b5563;display:block;margin-bottom:5px;text-transform:uppercase" data-i18n="mens.valor_plano">Valor del Plan (Gs) *</label>
           <input type="number" id="mens-plano-valor" placeholder="Ex: 330000" min="0"
             style="width:100%;padding:10px 13px;border:1.5px solid #e5e7eb;border-radius:9px;font-size:0.9rem;outline:none">
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div>
-          <label style="font-size:0.78rem;font-weight:600;color:#4b5563;display:block;margin-bottom:5px;text-transform:uppercase" data-i18n="mens.data_inicio">Data Início</label>
+          <label style="font-size:0.78rem;font-weight:600;color:#4b5563;display:block;margin-bottom:5px;text-transform:uppercase" data-i18n="mens.data_inicio">Fecha Inicio</label>
           <input type="date" id="mens-plano-ini" style="width:100%;padding:10px 13px;border:1.5px solid #e5e7eb;border-radius:9px;font-size:0.9rem;outline:none">
         </div>
         <div>
@@ -3037,23 +3037,23 @@
         <label style="font-size:0.78rem;font-weight:600;color:#4b5563;display:block;margin-bottom:5px;text-transform:uppercase">Tipo de Controle</label>
         <select id="mens-plano-tipo" onchange="mensToggleTipoPlano()"
           style="width:100%;padding:10px 13px;border:1.5px solid #e5e7eb;border-radius:9px;font-size:0.9rem;outline:none;background:#fff">
-          <option value="un">📦 Unidades (ex: refeições, marmitas)</option>
+          <option value="un">📦 Unidades (ej: comidas, viandas)</option>
           <option value="kg">⚖️ Peso em Kg (ex: carne, peixe)</option>
         </select>
       </div>
       <div>
-        <label style="font-size:0.78rem;font-weight:600;color:#4b5563;display:block;margin-bottom:5px;text-transform:uppercase">Observação / Nota</label>
-        <input type="text" id="mens-plano-nota" placeholder="Ex: Sem sal, entrega às terças..."
+        <label style="font-size:0.78rem;font-weight:600;color:#4b5563;display:block;margin-bottom:5px;text-transform:uppercase">Observación / Nota</label>
+        <input type="text" id="mens-plano-nota" placeholder="Ej: Sin sal, entrega los martes..."
           style="width:100%;padding:10px 13px;border:1.5px solid #e5e7eb;border-radius:9px;font-size:0.9rem;outline:none">
       </div>
       <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:0.9rem">
         <input type="checkbox" id="mens-plano-ativo" checked style="width:16px;height:16px;accent-color:#1a7a2e">
-        <span data-i18n="mens.plano_ativo">Plano ativo</span>
+        <span data-i18n="mens.plano_ativo">Plan activo</span>
       </label>
     </div>
     <div style="display:flex;gap:10px;margin-top:22px">
       <button onclick="fecharModal('modal-mens-plano')" style="flex:1;padding:11px;border:1.5px solid #e5e7eb;background:#fff;border-radius:9px;font-weight:600;cursor:pointer;font-size:0.9rem;color:#4b5563" data-i18n="geral.cancelar">Cancelar</button>
-      <button onclick="mensSalvarPlano()" id="mens-plano-btn-salvar" style="flex:2;padding:11px;background:#1a7a2e;color:#fff;border:none;border-radius:9px;font-weight:700;cursor:pointer;font-size:0.9rem" data-i18n="mens.salvar_plano">Salvar Plano</button>
+      <button onclick="mensSalvarPlano()" id="mens-plano-btn-salvar" style="flex:2;padding:11px;background:#1a7a2e;color:#fff;border:none;border-radius:9px;font-weight:700;cursor:pointer;font-size:0.9rem" data-i18n="mens.salvar_plano">Guardar Plan</button>
     </div>
   </div>
 </div>
@@ -3095,13 +3095,13 @@
       </div>
     </div>
     <div id="mens-ent-campos-un" style="display:none">
-      <label id="mens-ent-qtd-label-un" style="font-size:0.78rem;font-weight:600;color:#4b5563;display:block;margin-bottom:5px;text-transform:uppercase" data-i18n="mens.qtd_entregue">Quantidade entregue *</label>
+      <label id="mens-ent-qtd-label-un" style="font-size:0.78rem;font-weight:600;color:#4b5563;display:block;margin-bottom:5px;text-transform:uppercase" data-i18n="mens.qtd_entregue">Cantidad entregada *</label>
       <input type="number" id="mens-ent-qtd-un" value="1" min="1" step="1"
         style="width:100%;padding:12px 14px;border:1.5px solid #e5e7eb;border-radius:9px;font-size:1.1rem;font-weight:700;outline:none;text-align:center">
     </div>
     <div style="margin-top:10px">
-      <label style="font-size:0.78rem;font-weight:600;color:#4b5563;display:block;margin-bottom:5px;text-transform:uppercase" data-i18n="mens.obs_opcional">Observação (opcional)</label>
-      <input type="text" id="mens-ent-obs" data-i18n-ph="mens.ex_almoco" placeholder="Ex: Almoço, sem sal..."
+      <label style="font-size:0.78rem;font-weight:600;color:#4b5563;display:block;margin-bottom:5px;text-transform:uppercase" data-i18n="mens.obs_opcional">Observación (opcional)</label>
+      <input type="text" id="mens-ent-obs" data-i18n-ph="mens.ex_almoco" placeholder="Ej: Almuerzo, sin sal..."
         style="width:100%;padding:10px 13px;border:1.5px solid #e5e7eb;border-radius:9px;font-size:0.9rem;outline:none">
     </div>
     <!-- Itens adicionais (desconto do saldo) -->
@@ -3118,12 +3118,12 @@
   style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;padding:16px">
   <div style="background:#fff;border-radius:18px;padding:28px;width:100%;max-width:520px;max-height:88vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,0.25)">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <h3 style="font-size:1.1rem;font-weight:700">📋 <span data-i18n="mens.historico_entregas">Histórico de Entregas</span></h3>
+      <h3 style="font-size:1.1rem;font-weight:700">📋 <span data-i18n="mens.historico_entregas">Historial de Entregas</span></h3>
       <button onclick="fecharModal('modal-mens-hist')" style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:#6b7280">×</button>
     </div>
     <div style="background:#f9fafb;border-radius:10px;padding:12px 16px;margin-bottom:16px">
       <div style="font-weight:700;font-size:1rem" id="mens-hist-nome">—</div>
-      <div style="font-size:0.85rem;color:#555;margin-top:2px"><span data-i18n="mens.produto_label">Produto:</span> <b id="mens-hist-produto">—</b></div>
+      <div style="font-size:0.85rem;color:#555;margin-top:2px"><span data-i18n="mens.produto_label">Producto:</span> <b id="mens-hist-produto">—</b></div>
       <div style="display:flex;gap:16px;margin-top:8px;font-size:0.82rem;flex-wrap:wrap">
         <span><span data-i18n="mens.total_contratado">Total contratado:</span> <b id="mens-hist-plano-total">—</b></span>
         <span><span data-i18n="mens.restante">Restante:</span> <b style="color:#1a7a2e" id="mens-hist-plano-rest">—</b></span>
@@ -3140,11 +3140,11 @@
         </tr>
       </thead>
       <tbody id="mens-hist-tbody">
-        <tr><td colspan="4" style="text-align:center;color:#aaa;padding:16px" data-i18n="geral.carregando">Carregando...</td></tr>
+        <tr><td colspan="4" style="text-align:center;color:#aaa;padding:16px" data-i18n="geral.carregando">Cargando...</td></tr>
       </tbody>
     </table>
     <div style="margin-top:18px;text-align:center">
-      <button onclick="fecharModal('modal-mens-hist')" style="padding:10px 28px;border:1.5px solid #e5e7eb;background:#fff;border-radius:9px;font-weight:600;cursor:pointer;font-size:0.9rem;color:#4b5563" data-i18n="mens.fechar">Fechar</button>
+      <button onclick="fecharModal('modal-mens-hist')" style="padding:10px 28px;border:1.5px solid #e5e7eb;background:#fff;border-radius:9px;font-weight:600;cursor:pointer;font-size:0.9rem;color:#4b5563" data-i18n="mens.fechar">Cerrar</button>
     </div>
   </div>
 </div>
@@ -3153,25 +3153,25 @@
 <div id="modal-graficos" class="modal-overlay" style="display:none; align-items:flex-start; padding:20px; overflow-y:auto">
   <div class="modal-content" style="max-width:720px; width:100%; margin:auto">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px">
-      <h3 style="margin:0"><i class="fas fa-chart-bar" style="color:#8e44ad"></i> <span data-i18n="graf.titulo">Análise Comparativa de Vendas</span></h3>
+      <h3 style="margin:0"><i class="fas fa-chart-bar" style="color:#8e44ad"></i> <span data-i18n="graf.titulo">Análisis Comparativo de Ventas</span></h3>
       <button onclick="fecharModal('modal-graficos')" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:#888">✕</button>
     </div>
 
     <!-- Seletores de período -->
     <div style="display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap">
-      <button class="btn btn-periodo btn-sm" data-dias="7"  onclick="carregarDadosGrafico('7')"  style="background:#8e44ad;color:#fff;padding:6px 14px;border-radius:20px;border:none;cursor:pointer;font-size:0.85rem" data-i18n="dash.7dias">7 dias</button>
-      <button class="btn btn-periodo btn-sm" data-dias="14" onclick="carregarDadosGrafico('14')" style="background:#bdc3c7;color:#333;padding:6px 14px;border-radius:20px;border:none;cursor:pointer;font-size:0.85rem" data-i18n="dash.14dias">14 dias</button>
-      <button class="btn btn-periodo btn-sm" data-dias="30" onclick="carregarDadosGrafico('30')" style="background:#bdc3c7;color:#333;padding:6px 14px;border-radius:20px;border:none;cursor:pointer;font-size:0.85rem" data-i18n="dash.30dias">30 dias</button>
+      <button class="btn btn-periodo btn-sm" data-dias="7"  onclick="carregarDadosGrafico('7')"  style="background:#8e44ad;color:#fff;padding:6px 14px;border-radius:20px;border:none;cursor:pointer;font-size:0.85rem" data-i18n="dash.7dias">7 días</button>
+      <button class="btn btn-periodo btn-sm" data-dias="14" onclick="carregarDadosGrafico('14')" style="background:#bdc3c7;color:#333;padding:6px 14px;border-radius:20px;border:none;cursor:pointer;font-size:0.85rem" data-i18n="dash.14dias">14 días</button>
+      <button class="btn btn-periodo btn-sm" data-dias="30" onclick="carregarDadosGrafico('30')" style="background:#bdc3c7;color:#333;padding:6px 14px;border-radius:20px;border:none;cursor:pointer;font-size:0.85rem" data-i18n="dash.30dias">30 días</button>
     </div>
 
     <!-- Cards de resumo -->
     <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:16px">
       <div style="background:#f0f9f4; border-radius:10px; padding:12px; border-left:4px solid #27ae60">
-        <div style="font-size:0.75rem; color:#888; font-weight:600" data-i18n="graf.total_periodo">TOTAL DO PERÍODO</div>
+        <div style="font-size:0.75rem; color:#888; font-weight:600" data-i18n="graf.total_periodo">TOTAL DEL PERÍODO</div>
         <div id="graf-total-periodo" style="font-size:1.1rem; font-weight:700; color:#27ae60">-</div>
       </div>
       <div style="background:#f0f4ff; border-radius:10px; padding:12px; border-left:4px solid #3498db">
-        <div style="font-size:0.75rem; color:#888; font-weight:600" data-i18n="graf.media_dia">MÉDIA POR DIA</div>
+        <div style="font-size:0.75rem; color:#888; font-weight:600" data-i18n="graf.media_dia">PROMEDIO POR DÍA</div>
         <div id="graf-media-dia" style="font-size:1.1rem; font-weight:700; color:#3498db">-</div>
       </div>
       <div style="background:#f0fff4; border-radius:10px; padding:12px; border-left:4px solid #2ecc71">
@@ -3190,7 +3190,7 @@
     </div>
 
     <p style="font-size:0.75rem; color:#aaa; margin-top:10px; text-align:center">
-      🟢 <span data-i18n="graf.legenda_melhor">Melhor dia</span> &nbsp;|&nbsp; 🔴 <span data-i18n="graf.legenda_pior">Pior dia</span> &nbsp;|&nbsp; 🔵 <span data-i18n="graf.legenda_demais">Demais dias</span>
+      🟢 <span data-i18n="graf.legenda_melhor">Melhor dia</span> &nbsp;|&nbsp; 🔴 <span data-i18n="graf.legenda_pior">Pior dia</span> &nbsp;|&nbsp; 🔵 <span data-i18n="graf.legenda_demais">Demás días</span>
     </p>
   </div>
 </div>
@@ -3199,23 +3199,23 @@
     <!-- ===== MODAL INVENTÁRIO ===== -->
     <div id="modal-inventario" class="modal-overlay" style="display:none">
       <div class="modal-content" style="max-width:500px">
-        <h3 id="modal-inv-titulo" data-i18n="estoque.item_estoque_titulo">📦 Item de Estoque</h3>
+        <h3 id="modal-inv-titulo" data-i18n="estoque.item_estoque_titulo">📦 Ítem de Stock</h3>
         <input type="hidden" id="inv-id">
         <div class="form-group"><label><span data-i18n="estoque.nome">Nome</span> <span style="color:red">*</span></label><input type="text" id="inv-nome" class="form-control" data-i18n-ph="estoque.ex_coca_placeholder" placeholder="Ex: Coca-Cola Zero 500ml"></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div class="form-group"><label data-i18n="estoque.quantidade">Quantidade</label><input type="number" id="inv-qtd" class="form-control" placeholder="0" min="0" step="1"></div>
-          <div class="form-group"><label data-i18n="estoque.unidade">Unidade</label>
+          <div class="form-group"><label data-i18n="estoque.quantidade">Cantidad</label><input type="number" id="inv-qtd" class="form-control" placeholder="0" min="0" step="1"></div>
+          <div class="form-group"><label data-i18n="estoque.unidade">Unidad</label>
             <select id="inv-unidade" class="form-control">
               <option value="un">un</option><option value="kg">kg</option><option value="g">g</option>
               <option value="L">L</option><option value="ml">ml</option><option value="cx">cx</option><option value="pct">pct</option>
             </select>
           </div>
         </div>
-        <div class="form-group"><label data-i18n="estoque.minimo_alerta">Qtd. mínima (alerta)</label><input type="number" id="inv-minimo" class="form-control" placeholder="5" min="0" step="1"></div>
+        <div class="form-group"><label data-i18n="estoque.minimo_alerta">Cant. mínima (alerta)</label><input type="number" id="inv-minimo" class="form-control" placeholder="5" min="0" step="1"></div>
         <div class="form-group" style="background:#fff8f0;border:1px solid #fde68a;border-radius:10px;padding:12px">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
             <input type="checkbox" id="inv-perecivel" style="width:18px;height:18px" onchange="togglePerecivel()">
-            <label for="inv-perecivel" style="cursor:pointer;font-weight:700;margin:0" data-i18n="estoque.perecivel">🥛 Produto Perecível</label>
+            <label for="inv-perecivel" style="cursor:pointer;font-weight:700;margin:0" data-i18n="estoque.perecivel">🥛 Producto Perecedero</label>
           </div>
           <small style="color:#888" data-i18n="estoque.perecivel_tip">Alerta 1 semana antes do vencimento.</small>
           <div id="inv-validade-area" style="display:none;margin-top:10px">
@@ -3223,13 +3223,13 @@
             <input type="date" id="inv-validade" class="form-control">
           </div>
         </div>
-        <div class="form-group"><label data-i18n="estoque.vincular_produto">Vincular a Produto</label>
-          <select id="inv-produto-id" class="form-control"><option value="" data-i18n="estoque.sem_vinculo">— Sem vínculo —</option></select>
-          <small style="color:#888" data-i18n="estoque.desconto_automotivo">Estoque descontado automaticamente na venda.</small>
+        <div class="form-group"><label data-i18n="estoque.vincular_produto">Vincular a Producto</label>
+          <select id="inv-produto-id" class="form-control"><option value="" data-i18n="estoque.sem_vinculo">— Sin vínculo —</option></select>
+          <small style="color:#888" data-i18n="estoque.desconto_automotivo">Stock descontado automáticamente en la venta.</small>
         </div>
-        <div class="form-group"><label data-i18n="estoque.obs">Observações</label><input type="text" id="inv-obs" class="form-control" data-i18n-ph="estoque.ex_obs_placeholder" placeholder="Ex: Geladeiro 2, prateleira A"></div>
+        <div class="form-group"><label data-i18n="estoque.obs">Observaciones</label><input type="text" id="inv-obs" class="form-control" data-i18n-ph="estoque.ex_obs_placeholder" placeholder="Ex: Geladeiro 2, prateleira A"></div>
         <div class="modal-actions" style="margin-top:16px;padding-bottom:env(safe-area-inset-bottom,16px)">
-          <button class="btn btn-primary" onclick="salvarInventario()"><i class="fas fa-save"></i> <span data-i18n="estoque.salvar">Salvar</span></button>
+          <button class="btn btn-primary" onclick="salvarInventario()"><i class="fas fa-save"></i> <span data-i18n="estoque.salvar">Guardar</span></button>
           <button class="btn btn-secondary" onclick="fecharModal('modal-inventario')"><span data-i18n="estoque.cancelar">Cancelar</span></button>
         </div>
       </div>
@@ -3238,18 +3238,18 @@
     <!-- ===== MODAL AJUSTE DE ESTOQUE ===== -->
     <div id="modal-ajuste-estoque" class="modal-overlay" style="display:none">
       <div class="modal-content" style="max-width:360px">
-        <h3 data-i18n="estoque.ajustar_titulo">📊 Ajustar Estoque</h3>
+        <h3 data-i18n="estoque.ajustar_titulo">📊 Ajustar Stock</h3>
         <input type="hidden" id="ajuste-inv-id">
         <p id="ajuste-inv-nome" style="font-weight:600;font-size:1rem;color:#2c3e50;margin-bottom:14px"></p>
         <div class="form-group">
           <div style="display:flex;gap:6px">
             <button type="button" id="btn-ajuste-add" class="btn btn-success" style="flex:1" onclick="setTipoAjuste('add')" data-i18n="estoque.ajuste_entrada">➕ Entrada</button>
-            <button type="button" id="btn-ajuste-sub" class="btn btn-secondary" style="flex:1;opacity:0.5" onclick="setTipoAjuste('sub')" data-i18n="estoque.ajuste_saida">➖ Saída</button>
+            <button type="button" id="btn-ajuste-sub" class="btn btn-secondary" style="flex:1;opacity:0.5" onclick="setTipoAjuste('sub')" data-i18n="estoque.ajuste_saida">➖ Salida</button>
             <button type="button" id="btn-ajuste-set" class="btn btn-secondary" style="flex:1;opacity:0.5" onclick="setTipoAjuste('set')" data-i18n="estoque.ajuste_definir">✏️ Definir</button>
           </div>
         </div>
         <div class="form-group">
-          <label id="ajuste-qtd-label" data-i18n="estoque.ajuste_qtd_add">Quantidade a adicionar</label>
+          <label id="ajuste-qtd-label" data-i18n="estoque.ajuste_qtd_add">Cantidad a agregar</label>
           <input type="number" id="ajuste-qtd" class="form-control" min="0" step="1" placeholder="0" style="font-size:1.4rem;text-align:center;font-weight:700">
         </div>
         <div class="form-group">
@@ -3271,7 +3271,7 @@
     <!-- Cabeçalho com steps -->
     <div style="background:linear-gradient(135deg,var(--primary,#1a7a2e),#155c24);padding:20px 24px;border-radius:20px 20px 0 0">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <div style="color:#fff;font-weight:800;font-size:1.1rem">⚡ Configuração Inicial</div>
+        <div style="color:#fff;font-weight:800;font-size:1.1rem">⚡ Configuración Inicial</div>
         <button onclick="_obSkip()" style="background:rgba(255,255,255,0.15);border:none;color:#fff;border-radius:8px;padding:5px 12px;cursor:pointer;font-size:0.8rem">Pular tudo →</button>
       </div>
       <!-- Progress dots -->
@@ -3304,9 +3304,9 @@
       <input type="text" id="ft-insumo-nome" class="form-control" data-i18n-ph="ft.ex_farinha" placeholder="Ex: Farinha de Trigo">
     </div>
     <div class="form-group">
-      <label data-i18n="ft.unidade">Unidade de Medida</label>
+      <label data-i18n="ft.unidade">Unidad de Medida</label>
       <select id="ft-insumo-unidade" class="form-control">
-        <option value="un" data-i18n="ft.un_unidade">Unidade (un)</option>
+        <option value="un" data-i18n="ft.un_unidade">Unidad (un)</option>
         <option value="kg" data-i18n="ft.un_kg">Quilograma (kg)</option>
         <option value="g" data-i18n="ft.un_g">Grama (g)</option>
         <option value="l" data-i18n="ft.un_l">Litro (l)</option>
@@ -3315,13 +3315,13 @@
       </select>
     </div>
     <div class="form-group">
-      <label data-i18n="ft.custo_unit">Preço de Custo (Gs)</label>
+      <label data-i18n="ft.custo_unit">Precio de Costo (Gs)</label>
       <input type="number" id="ft-insumo-preco" class="form-control" placeholder="Ex: 15000" min="0">
     </div>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="fecharModal('modal-ft-insumo')" data-i18n="geral.cancelar">Cancelar</button>
       <button class="btn btn-primary" onclick="ftSalvarInsumo()">
-        <i class="fas fa-save"></i> <span data-i18n="geral.salvar">Salvar</span>
+        <i class="fas fa-save"></i> <span data-i18n="geral.salvar">Guardar</span>
       </button>
     </div>
   </div>
@@ -3335,19 +3335,19 @@
  
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <div class="form-group" style="flex:1;min-width:180px">
-        <label><span data-i18n="prod.nome">Produto</span> <span style="color:#e74c3c">*</span></label>
-        <input type="text" id="ft-ficha-produto" class="form-control" data-i18n-ph="ft.nome_produto" placeholder="Nome do produto">
+        <label><span data-i18n="prod.nome">Producto</span> <span style="color:#e74c3c">*</span></label>
+        <input type="text" id="ft-ficha-produto" class="form-control" data-i18n-ph="ft.nome_produto" placeholder="Nombre del producto">
       </div>
       <div class="form-group" style="width:170px">
-        <label data-i18n="ft.ou_selecione_cardapio">Ou selecione do cardápio</label>
+        <label data-i18n="ft.ou_selecione_cardapio">O seleccione del menú</label>
         <select id="ft-ficha-prod-sel" class="form-control">
-          <option value="" data-i18n="ft.cardapio_opcao">— Cardápio —</option>
+          <option value="" data-i18n="ft.cardapio_opcao">— Menú —</option>
         </select>
       </div>
     </div>
  
     <div class="form-group">
-      <label data-i18n="ft.markup_label">Markup % (quanto acima do custo você vende)</label>
+      <label data-i18n="ft.markup_label">Markup % (cuánto por encima del costo usted vende)</label>
       <input type="number" id="ft-ficha-markup" class="form-control"
         placeholder="Ex: 300" min="0" step="10"
         oninput="ftAtualizarCustoModal()">
@@ -3355,24 +3355,24 @@
     </div>
  
     <div style="background:#f0f9f4;border:1.5px solid #d1fae5;border-radius:10px;padding:12px;margin-bottom:14px">
-      <div style="font-weight:700;color:#333;font-size:0.88rem;margin-bottom:10px" data-i18n="ft.adicionar_insumo">➕ Adicionar Insumo</div>
+      <div style="font-weight:700;color:#333;font-size:0.88rem;margin-bottom:10px" data-i18n="ft.adicionar_insumo">➕ Agregar Insumo</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
         <div style="flex:2;min-width:160px">
           <label style="font-size:0.75rem;font-weight:600;color:#555;display:block;margin-bottom:3px" data-i18n="ft.insumos_cadastrados">Insumo</label>
           <select id="ft-sel-insumo" class="form-control" style="font-size:0.85rem">
-            <option value="" data-i18n="ft.selecione_opcao">— Selecione —</option>
+            <option value="" data-i18n="ft.selecione_opcao">— Seleccione —</option>
           </select>
         </div>
         <div style="width:110px">
-          <label style="font-size:0.75rem;font-weight:600;color:#555;display:block;margin-bottom:3px" data-i18n="estoque.quantidade">Quantidade</label>
+          <label style="font-size:0.75rem;font-weight:600;color:#555;display:block;margin-bottom:3px" data-i18n="estoque.quantidade">Cantidad</label>
           <input type="number" id="ft-qtd-insumo" class="form-control" placeholder="Ex: 0.5" min="0" step="0.01" style="font-size:0.85rem">
         </div>
-        <button onclick="ftAdicionarInsumo()" class="btn btn-primary" style="height:38px;font-size:0.83rem" data-i18n="ft.btn_adicionar">+ Adicionar</button>
+        <button onclick="ftAdicionarInsumo()" class="btn btn-primary" style="height:38px;font-size:0.83rem" data-i18n="ft.btn_adicionar">+ Agregar</button>
       </div>
     </div>
  
     <div style="margin-bottom:14px">
-      <div style="font-weight:700;color:#333;font-size:0.88rem;margin-bottom:8px" data-i18n="ft.composicao_atual">🧾 Composição atual</div>
+      <div style="font-weight:700;color:#333;font-size:0.88rem;margin-bottom:8px" data-i18n="ft.composicao_atual">🧾 Composición actual</div>
       <div id="ft-composicao-lista"></div>
     </div>
  
@@ -3384,7 +3384,7 @@
           <div id="ft-custo-calculado" style="font-weight:800;color:#e74c3c">Gs 0</div>
         </div>
         <div>
-          <div style="font-size:0.7rem;color:#888;font-weight:600;margin-bottom:3px" data-i18n="ft.preco_sugerido">Preço Sugerido</div>
+          <div style="font-size:0.7rem;color:#888;font-weight:600;margin-bottom:3px" data-i18n="ft.preco_sugerido">Precio Sugerido</div>
           <div id="ft-preco-sugerido" style="font-weight:800;color:#1a7a2e">Gs 0</div>
         </div>
         <div>
@@ -3397,7 +3397,7 @@
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="fecharModal('modal-ft-ficha')" data-i18n="geral.cancelar">Cancelar</button>
       <button class="btn btn-primary" onclick="ftSalvarFicha()">
-        <i class="fas fa-save"></i> <span data-i18n="ft.salvar_ficha">Salvar Ficha</span>
+        <i class="fas fa-save"></i> <span data-i18n="ft.salvar_ficha">Guardar Ficha</span>
       </button>
     </div>
   </div>
@@ -3410,10 +3410,10 @@
     <input type="hidden" id="crm-cli-id">
     <div class="form-group">
       <label><span data-i18n="crm.nome_completo">Nome completo</span> <span style="color:#e74c3c">*</span></label>
-      <input type="text" id="crm-cli-nome" class="form-control" data-i18n-ph="crm.nome_placeholder" placeholder="Nome do cliente">
+      <input type="text" id="crm-cli-nome" class="form-control" data-i18n-ph="crm.nome_placeholder" placeholder="Nombre del cliente">
     </div>
     <div class="form-group">
-      <label><span data-i18n="crm.whatsapp_label">WhatsApp / Telefone</span> <span style="color:#e74c3c">*</span></label>
+      <label><span data-i18n="crm.whatsapp_label">WhatsApp / Teléfono</span> <span style="color:#e74c3c">*</span></label>
       <input type="tel" id="crm-cli-tel" class="form-control" placeholder="Ex: 0981234567">
     </div>
     <div class="form-group">
@@ -3427,7 +3427,7 @@
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="fecharModal('modal-crm-cliente')" data-i18n="geral.cancelar">Cancelar</button>
       <button class="btn btn-primary" onclick="crmSalvarCliente()">
-        <i class="fas fa-save"></i> <span data-i18n="geral.salvar">Salvar</span>
+        <i class="fas fa-save"></i> <span data-i18n="geral.salvar">Guardar</span>
       </button>
     </div>
   </div>
@@ -3437,7 +3437,7 @@
 <div id="modal-crm-hist" class="modal-overlay" style="display:none;align-items:flex-start;padding:10px;overflow-y:auto">
   <div class="modal-content" style="max-width:500px;margin:auto;max-height:88vh;overflow-y:auto">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-      <h3 style="margin:0">📋 <span data-i18n="crm.historico_cashback">Histórico de Cashback</span></h3>
+      <h3 style="margin:0">📋 <span data-i18n="crm.historico_cashback">Historial de Cashback</span></h3>
       <button onclick="fecharModal('modal-crm-hist')"
         style="background:#e74c3c;color:#fff;border:none;border-radius:50%;width:30px;height:30px;font-size:1rem;cursor:pointer">×</button>
     </div>
@@ -3459,7 +3459,7 @@
 <!-- MODAL: Editar Despesa -->
 <div id="modal-editar-despesa" class="modal-overlay" style="display:none">
   <div class="modal-content" style="max-width:420px">
-    <h3>✏️ <span data-i18n="caixa.editar_despesa">Editar Despesa</span></h3>
+    <h3>✏️ <span data-i18n="caixa.editar_despesa">Editar Gasto</span></h3>
     <input type="hidden" id="edit-despesa-id">
     <div class="form-group">
       <label data-i18n="caixa.valor">Valor (Gs)</label>
@@ -3472,9 +3472,9 @@
         <option value="despesas_gerais" data-i18n="caixa.despesas_gerais">📦 Despesas Gerais</option>
         <option value="contas_fixas" data-i18n="caixa.contas_fixas">🏠 Contas Fixas</option>
         <option value="pagamento_fornecedor" data-i18n="caixa.pagamento_fornecedor">🤝 Fornecedor</option>
-        <option value="pagamento_funcionario" data-i18n="caixa.pagamento_funcionario">👷 Funcionário</option>
+        <option value="pagamento_funcionario" data-i18n="caixa.pagamento_funcionario">👷 Empleado</option>
         <option value="pagamento_terceiros" data-i18n="caixa.pagamento_terceiros">👥 Terceiros</option>
-        <option value="manutencao" data-i18n="caixa.manutencao">🔧 Manutenção</option>
+        <option value="manutencao" data-i18n="caixa.manutencao">🔧 Mantenimiento</option>
         <option value="retirada" data-i18n="caixa.retirada">💵 Retirada / Pro-Labore</option>
         <option value="motoboy" data-i18n="caixa.pagamento_motoboy">🛵 Motoboy</option>
         <option value="outro" data-i18n="caixa.outro">✏️ Outro (especificar)</option>
@@ -3484,13 +3484,13 @@
       </div>
     </div>
     <div class="form-group">
-      <label data-i18n="caixa.observacao">Observação</label>
+      <label data-i18n="caixa.observacao">Observación</label>
       <input type="text" id="edit-despesa-desc" class="form-control" data-i18n-ph="caixa.detalhes_opcionais" placeholder="Detalhes opcionais">
     </div>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="fecharModal('modal-editar-despesa')" data-i18n="geral.cancelar">Cancelar</button>
       <button class="btn btn-primary" onclick="salvarEdicaoDespesa()">
-        <i class="fas fa-save"></i> <span data-i18n="caixa.salvar_alteracoes">Salvar Alterações</span>
+        <i class="fas fa-save"></i> <span data-i18n="caixa.salvar_alteracoes">Guardar Cambios</span>
       </button>
     </div>
   </div>
@@ -3513,7 +3513,7 @@
           style="width:100%;padding:10px 13px;border:1.5px solid #e5e7eb;border-radius:9px;font-size:0.9rem;outline:none">
       </div>
       <div>
-        <label style="font-size:0.78rem;font-weight:600;color:#4b5563;display:block;margin-bottom:5px;text-transform:uppercase" data-i18n="filiais.endereco_label">Endereço</label>
+        <label style="font-size:0.78rem;font-weight:600;color:#4b5563;display:block;margin-bottom:5px;text-transform:uppercase" data-i18n="filiais.endereco_label">Dirección</label>
         <input id="filial-endereco" type="text" placeholder="Av. Mariscal López 1234"
           style="width:100%;padding:10px 13px;border:1.5px solid #e5e7eb;border-radius:9px;font-size:0.9rem;outline:none">
       </div>
@@ -3536,7 +3536,7 @@
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div>
-          <label style="font-size:0.78rem;font-weight:600;color:#4b5563;display:block;margin-bottom:5px;text-transform:uppercase" data-i18n="filiais.radio_label">Raio entrega (km)</label>
+          <label style="font-size:0.78rem;font-weight:600;color:#4b5563;display:block;margin-bottom:5px;text-transform:uppercase" data-i18n="filiais.radio_label">Radio de entrega (km)</label>
           <input id="filial-raio" type="number" step="0.5" min="1" value="10"
             style="width:100%;padding:10px 13px;border:1.5px solid #e5e7eb;border-radius:9px;font-size:0.9rem;outline:none">
         </div>
@@ -3552,7 +3552,7 @@
           style="width:100%;padding:10px 13px;border:1.5px solid #e5e7eb;border-radius:9px;font-size:0.9rem;outline:none;background:#fff">
           <option value="ativa" data-i18n="filiais.status_ativa">Ativa</option>
           <option value="inativa" data-i18n="filiais.status_inativa">Inativa</option>
-          <option value="manutencao" data-i18n="filiais.status_manutencao">Manutenção</option>
+          <option value="manutencao" data-i18n="filiais.status_manutencao">Mantenimiento</option>
         </select>
       </div>
     </div>
@@ -3577,7 +3577,7 @@
   <div style="background:#fff;border-radius:18px;padding:28px;width:100%;max-width:460px;
               box-shadow:0 24px 60px rgba(0,0,0,0.25)">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-      <h3 style="font-size:1.1rem;font-weight:700">✏️ <span data-i18n="filiais.editar_usuario">Editar Usuário</span></h3>
+      <h3 style="font-size:1.1rem;font-weight:700">✏️ <span data-i18n="filiais.editar_usuario">Editar Usuario</span></h3>
       <button onclick="fecharModal('modal-filial-usuario')"
         style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:#6b7280">×</button>
     </div>
@@ -3606,7 +3606,7 @@
       </div>
       <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:0.9rem">
         <input type="checkbox" id="ua-ativo" checked style="width:16px;height:16px;accent-color:#1a7a2e">
-        <span data-i18n="filiais.usuario_ativo">Usuário ativo</span>
+        <span data-i18n="filiais.usuario_ativo">Usuario activo</span>
       </label>
     </div>
     <div style="display:flex;gap:10px;margin-top:22px">
@@ -3615,7 +3615,7 @@
                font-weight:600;cursor:pointer;font-size:0.9rem;color:#4b5563" data-i18n="geral.cancelar">Cancelar</button>
       <button onclick="salvarUsuarioAdmin()"
         style="flex:2;padding:11px;background:#1a7a2e;color:#fff;border:none;border-radius:9px;
-               font-weight:700;cursor:pointer;font-size:0.9rem" data-i18n="filiais.salvar_alteracoes">Salvar Alterações</button>
+               font-weight:700;cursor:pointer;font-size:0.9rem" data-i18n="filiais.salvar_alteracoes">Guardar Cambios</button>
     </div>
   </div>
 </div>
@@ -3631,7 +3631,7 @@
     <!-- Header -->
     <div style="background:#1a7a2e;color:#fff;padding:22px 28px;flex-shrink:0">
       <h2 style="font-size:1.1rem;font-weight:700;margin-bottom:4px">📋 Contrato de Prestación de Servicios</h2>
-      <p style="font-size:0.82rem;opacity:0.85">Leia o contrato completo antes de continuar. Sua aceitação é legalmente vinculante.</p>
+      <p style="font-size:0.82rem;opacity:0.85">Lea el contrato completo antes de continuar. Su aceptación es legalmente vinculante.</p>
       <div style="height:4px;background:rgba(255,255,255,0.2);margin-top:14px;border-radius:2px;overflow:hidden">
         <div id="adm-contrato-bar" style="height:100%;background:#fff;width:0%;transition:width 0.3s;border-radius:2px"></div>
       </div>
@@ -3733,7 +3733,7 @@
       <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;margin-bottom:16px">
         <input type="checkbox" id="adm-chk-aceite" disabled onchange="admToggleBtnAceitar()"
           style="width:20px;height:20px;flex-shrink:0;accent-color:#1a7a2e;margin-top:2px">
-        <span style="font-size:0.85rem;color:#555;line-height:1.5">Li o contrato completo e <b style="color:#111">aceito todos os termos e condições</b>.</span>
+        <span style="font-size:0.85rem;color:#555;line-height:1.5">Li o contrato completo e <b style="color:#111">acepto todos los términos y condiciones</b>.</span>
       </label>
       <button id="adm-btn-aceitar" disabled onclick="admAceitarContrato()"
         style="width:100%;padding:14px;background:#1a7a2e;color:#fff;border:none;border-radius:10px;
