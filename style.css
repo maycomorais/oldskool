@@ -42,9 +42,27 @@ main.menu-container { flex: 1; }
 .header-info p { font-size: 0.8rem; color: var(--gray); text-align: right; }
 
 /* Banner */
-.banner-area { overflow: hidden; margin: 15px 20px; border-radius: 12px; height: 160px; }
-.banner-track { display: flex; width: 200%; animation: slide 10s infinite; }
-.banner-track img { width: 50%; height: 160px; object-fit: cover; }
+.banner-area { 
+    overflow: hidden; 
+    margin: 15px 20px; 
+    border-radius: 12px; 
+    width: calc(100% - 40px); /* Garante o preenchimento ocupando as margens */
+    aspect-ratio: 2.7 / 1;    /* Trava a proporção em 2.7:1 em qualquer tela */
+    height: auto;             /* Remove a altura fixa de 160px */
+}
+
+.banner-track { 
+    display: flex; 
+    width: 200%; 
+    height: 100%;             /* Garante que o slider ocupe 100% da altura da proporção */
+    animation: slide 10s infinite; 
+}
+
+.banner-track img { 
+    width: 50%; 
+    height: 100%;             /* Acompanha a altura proporcional do container */
+    object-fit: cover; 
+}
 @keyframes slide { 0%, 45% { transform: translateX(0); } 55%, 100% { transform: translateX(-50%); } }
 
 /* --- CSS PARA O CARD DE REPETIR PEDIDO --- */
