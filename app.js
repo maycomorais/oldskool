@@ -19,6 +19,13 @@ let QR_ALIAS_URL = ""; // URL da imagem do QR code Alias PY (carregado do banco)
 let QR_PY_URL = ""; // URL opcional da imagem QR para QrPy (Tigo/Personal/Bancard)
 let WHATSAPP_LOJA_APP = "";
 
+// ── Helper de tradução para textos dinâmicos (alerts, confirms, mensagens) ─
+// Uso: tt({ es: "...", pt: "...", en: "...", de: "..." })
+function tt(dict) {
+  const lang = localStorage.getItem("language") || "es";
+  return dict[lang] || dict.es;
+}
+
 // ── Toast notifications ────────────────────────────────────────────────────
 function mostrarToast(msg, tipo = "info", duracao = 3000) {
   const cores = {
@@ -116,8 +123,8 @@ async function confirmarEntregaAutomatica(pedidoId) {
 
     // Mostra notificação
     if (Notification.permission === "granted") {
-      new Notification("Pedido Entregue ✅", {
-        body: "Sua entrega foi confirmada automaticamente. Obrigado!",
+      new Notification(tt({es:"¡Pedido Entregado! ✅",pt:"Pedido Entregue ✅",en:"Order Delivered ✅",de:"Bestellung geliefert ✅"}), {
+        body: tt({es:"Su entrega fue confirmada automáticamente. ¡Gracias!",pt:"Sua entrega foi confirmada automaticamente. Obrigado!",en:"Your delivery was automatically confirmed. Thank you!",de:"Ihre Lieferung wurde automatisch bestätigt. Danke!"}),
       });
     }
   } catch (err) {
@@ -129,11 +136,11 @@ async function confirmarEntregaAutomatica(pedidoId) {
 async function confirmarEntregaCliente() {
   const pedidoId = localStorage.getItem("app_pedido_id");
   if (!pedidoId) {
-    alert("Erro: Pedido não encontrado");
+    alert(tt({es:"Error: Pedido no encontrado",pt:"Erro: Pedido não encontrado",en:"Error: Order not found",de:"Fehler: Bestellung nicht gefunden"}));
     return;
   }
 
-  if (!confirm("Confirmar que você recebeu o pedido?")) {
+  if (!confirm(tt({es:"¿Confirma que recibió el pedido?",pt:"Confirmar que você recebeu o pedido?",en:"Confirm that you received the order?",de:"Bestätigen Sie, dass Sie die Bestellung erhalten haben?"}))) {
     return;
   }
 
@@ -165,7 +172,7 @@ async function confirmarEntregaCliente() {
     }, 3000);
   } catch (err) {
     console.error("Erro ao confirmar entrega:", err);
-    alert("Erro ao confirmar entrega. Tente novamente.");
+    alert(tt({es:"Error al confirmar entrega. Intente nuevamente.",pt:"Erro ao confirmar entrega. Tente novamente.",en:"Error confirming delivery. Please try again.",de:"Fehler bei der Bestätigung der Lieferung. Bitte versuchen Sie es erneut."}));
   }
 }
 
@@ -661,6 +668,7 @@ async function renderMenu() {
     console.error(
       "Erro ao carregar menu do banco — verifique se as tabelas categorias e produtos existem.",
     );
+    mostrarToast(tt({es:"⚠️ Error al cargar el menú. Intente recargar la página.",pt:"⚠️ Erro ao carregar o cardápio. Tente recarregar a página.",en:"⚠️ Error loading the menu. Try reloading the page.",de:"⚠️ Fehler beim Laden des Menüs. Versuchen Sie, die Seite neu zu laden."}), "error", 5000);
     return;
   }
 
@@ -956,7 +964,7 @@ function _renderMontavel(item, cfg, container) {
   const etapas = Array.isArray(cfg) ? cfg : cfg && cfg.etapas ? cfg.etapas : [];
   etapas.forEach((etapa, idxEtapa) => {
     const h4 = document.createElement("h4");
-    h4.innerText = `${etapa.titulo} (Máx: ${etapa.max})`;
+    h4.innerText = `${etapa.titulo} (${tt({es:"Máx",pt:"Máx",en:"Max",de:"Max"})}: ${etapa.max})`;
     h4.style.cssText = "margin-top:10px; font-size:0.95rem; color:#555;";
     container.appendChild(h4);
 
@@ -974,7 +982,7 @@ function _renderMontavel(item, cfg, container) {
           if (itensMontagem[idxEtapa].length < etapa.max) {
             itensMontagem[idxEtapa].push(ingrediente);
           } else {
-            alert(`Máximo: ${etapa.max} itens para "${etapa.titulo}"`);
+            alert(tt({es:`Máximo: ${etapa.max} ítems para "${etapa.titulo}"`,pt:`Máximo: ${etapa.max} itens para "${etapa.titulo}"`,en:`Maximum: ${etapa.max} items for "${etapa.titulo}"`,de:`Maximal: ${etapa.max} Artikel für "${etapa.titulo}"`}));
             input.checked = false;
           }
         } else {
@@ -1014,7 +1022,7 @@ function _renderPizza(cfg, container) {
   secTam.innerHTML = `
     <div class="pizza-step-header">
       <span class="pizza-step-num">1</span>
-      <span>Escolha o tamanho</span>
+      <span>${tt({es:"Elija el tamaño",pt:"Escolha o tamanho",en:"Choose the size",de:"Wählen Sie die Größe"})}</span>
     </div>
     <div class="pizza-size-grid" id="pizza-size-grid"></div>`;
   container.appendChild(secTam);
@@ -1351,7 +1359,7 @@ function _atualizarResumo() {
 
   const notaPreco = n > 1 && saboresOk.some(s => s.tipo)
     ? `<div style="font-size:.68rem;color:#888;padding:4px 14px;background:#fffbf0">
-         ★ Prevalece o preço do tipo mais caro
+         ★ ${tt({es:"Prevalece el precio del tipo más caro",pt:"Prevalece o preço do tipo mais caro",en:"The most expensive type price prevails",de:"Der Preis der teuersten Art gilt"})}
        </div>`
     : "";
 
@@ -1420,7 +1428,12 @@ function _renderComboFechado(cfg, container) {
   const instrucao = document.createElement("p");
   instrucao.style.cssText =
     "font-size:0.85rem;color:#64748b;margin:0 0 12px;line-height:1.45";
-  instrucao.textContent = `Distribua ${limite} ${limite === 1 ? "item" : "itens"} entre os sabores disponíveis.`;
+  instrucao.textContent = tt({
+    es: `Distribuya ${limite} ${limite === 1 ? "ítem" : "ítems"} entre los sabores disponibles.`,
+    pt: `Distribua ${limite} ${limite === 1 ? "item" : "itens"} entre os sabores disponíveis.`,
+    en: `Distribute ${limite} ${limite === 1 ? "item" : "items"} among the available flavors.`,
+    de: `Verteilen Sie ${limite} Artikel auf die verfügbaren Geschmacksrichtungen.`,
+  });
   wrap.appendChild(instrucao);
  
   // ── Contador global ────────────────────────────────────────
@@ -1647,14 +1660,14 @@ function _renderVariacoes(item, cfg, container) {
 
   const sec = document.createElement("div");
   sec.className = "var-section";
-  sec.innerHTML = `<div class="var-label">Escolha o sabor</div><div class="var-grid" id="var-grid"></div>`;
+  sec.innerHTML = `<div class="var-label">${tt({es:"Elija el sabor",pt:"Escolha o sabor",en:"Choose the flavor",de:"Wählen Sie den Geschmack"})}</div><div class="var-grid" id="var-grid"></div>`;
   container.appendChild(sec);
 
   if (variacoes.length === 0) {
     const empty = document.createElement("div");
     empty.style.cssText =
       "padding:14px 12px; color:#666; font-size:0.95rem; border:1px dashed #ddd; border-radius:10px; margin-top:10px; background:#fafafa;";
-    empty.innerText = "Nenhuma variação disponível para este produto.";
+    empty.innerText = tt({es:"Ninguna variación disponible para este producto.",pt:"Nenhuma variação disponível para este produto.",en:"No variation available for this product.",de:"Keine Variante für dieses Produkt verfügbar."});
     container.appendChild(empty);
     return;
   }
@@ -1711,7 +1724,7 @@ function _renderShake(cfg, container) {
   sec1.innerHTML = `
     <div class="pizza-step-header">
       <span class="pizza-step-num">${stepNum++}</span>
-      <span>Escolha o tamanho</span>
+      <span>${tt({es:"Elija el tamaño",pt:"Escolha o tamanho",en:"Choose the size",de:"Wählen Sie die Größe"})}</span>
     </div>
     <div class="pizza-size-grid" id="shake-tam-grid"></div>`;
   container.appendChild(sec1);
@@ -1750,7 +1763,7 @@ function _renderShake(cfg, container) {
     sec2.innerHTML = `
       <div class="pizza-step-header">
         <span class="pizza-step-num">${stepNum++}</span>
-        <span>Escolha o sabor</span>
+        <span>${tt({es:"Elija el sabor",pt:"Escolha o sabor",en:"Choose the flavor",de:"Wählen Sie den Geschmack"})}</span>
       </div>
       <div class="var-grid" id="shake-sabor-grid"></div>`;
     passo2El.appendChild(sec2);
@@ -1798,7 +1811,7 @@ function _renderSorvete(cfg, container) {
   sec1.innerHTML = `
     <div class="pizza-step-header">
       <span class="pizza-step-num">${stepNum++}</span>
-      <span>Escolha o tamanho</span>
+      <span>${tt({es:"Elija el tamaño",pt:"Escolha o tamanho",en:"Choose the size",de:"Wählen Sie die Größe"})}</span>
     </div>
     <div class="pizza-size-grid" id="sorv-tam-grid"></div>`;
   container.appendChild(sec1);
@@ -1828,7 +1841,12 @@ function _renderSorvete(cfg, container) {
       // Atualiza label de quantos sabores
       const maxB = tam.qtd_bolas || 1;
       const lbl = container.querySelector("#sorv-sabor-count");
-      if (lbl) lbl.textContent = `Escolha até ${maxB} ${maxB === 1 ? "sabor" : "sabores"}`;
+      if (lbl) lbl.textContent = tt({
+      es: `Elija hasta ${maxB} ${maxB === 1 ? "sabor" : "sabores"}`,
+      pt: `Escolha até ${maxB} ${maxB === 1 ? "sabor" : "sabores"}`,
+      en: `Choose up to ${maxB} ${maxB === 1 ? "flavor" : "flavors"}`,
+      de: `Wählen Sie bis zu ${maxB} Geschmacksrichtung(en)`,
+    });
       // Desmarca todos
       container.querySelectorAll("#sorv-sabor-grid .var-card").forEach(c => c.classList.remove("selected"));
       _atualizarPrecoPizza();
@@ -1847,7 +1865,7 @@ function _renderSorvete(cfg, container) {
     sec2.innerHTML = `
       <div class="pizza-step-header">
         <span class="pizza-step-num">${stepNum++}</span>
-        <span id="sorv-sabor-count">Escolha o sabor</span>
+        <span id="sorv-sabor-count">${tt({es:"Elija el sabor",pt:"Escolha o sabor",en:"Choose the flavor",de:"Wählen Sie den Geschmack"})}</span>
       </div>
       <div class="var-grid" id="sorv-sabor-grid"></div>`;
     passo2El.appendChild(sec2);
@@ -1874,7 +1892,12 @@ function _renderSorvete(cfg, container) {
           _sorveteConfig.sabores.push(sab);
           card.classList.add("selected");
         } else {
-          mostrarToast(`Máximo de ${maxB} ${maxB === 1 ? "sabor" : "sabores"} para este tamanho`, "warning");
+          mostrarToast(tt({
+            es: `Máximo de ${maxB} ${maxB === 1 ? "sabor" : "sabores"} para este tamaño`,
+            pt: `Máximo de ${maxB} ${maxB === 1 ? "sabor" : "sabores"} para este tamanho`,
+            en: `Maximum of ${maxB} ${maxB === 1 ? "flavor" : "flavors"} for this size`,
+            de: `Maximal ${maxB} Geschmacksrichtung(en) für diese Größe`,
+          }), "warning");
         }
         _atualizarPrecoPizza();
       };
@@ -1909,7 +1932,7 @@ function _renderSorvete(cfg, container) {
         const checked = container.querySelectorAll(`.sorv-etapa-check[data-etapa="${etIdx}"]:checked`);
         if (this.checked && checked.length > max) {
           this.checked = false;
-          mostrarToast(`Máximo de ${max} itens`, "warning");
+          mostrarToast(tt({es:`Máximo de ${max} ítems`,pt:`Máximo de ${max} itens`,en:`Maximum of ${max} items`,de:`Maximal ${max} Artikel`}), "warning");
         } else {
           if (!_sorveteConfig.etapasSel[etIdx]) _sorveteConfig.etapasSel[etIdx] = [];
           _sorveteConfig.etapasSel[etIdx] = Array.from(
@@ -1966,7 +1989,7 @@ function _renderAcai(cfg, container) {
   sec1.innerHTML = `
     <div class="pizza-step-header">
       <span class="pizza-step-num">${stepNum++}</span>
-      <span>Escolha o tamanho</span>
+      <span>${tt({es:"Elija el tamaño",pt:"Escolha o tamanho",en:"Choose the size",de:"Wählen Sie die Größe"})}</span>
     </div>
     <div class="var-grid" id="acai-tam-grid"></div>`;
   container.appendChild(sec1);
@@ -2016,7 +2039,7 @@ function _renderAcai(cfg, container) {
           <div class="var-card-nome">${ac.nome}</div>
           ${(ac.preco || 0) > 0
             ? `<div class="var-card-preco">+Gs ${ac.preco.toLocaleString("es-PY")}</div>`
-            : `<div class="var-card-preco" style="color:#27ae60">Grátis</div>`}
+            : `<div class="var-card-preco" style="color:#27ae60">${tt({es:"Gratis",pt:"Grátis",en:"Free",de:"Kostenlos"})}</div>`}
         </div>
         <div class="var-card-check">✓</div>`;
       let sel = false;
@@ -2060,7 +2083,7 @@ function _renderAcai(cfg, container) {
         const checked = container.querySelectorAll(`.acai-etapa-check[data-etapa="${etIdx}"]:checked`);
         if (this.checked && checked.length > max) {
           this.checked = false;
-          mostrarToast(`Máximo de ${max} itens`, "warning");
+          mostrarToast(tt({es:`Máximo de ${max} ítems`,pt:`Máximo de ${max} itens`,en:`Maximum of ${max} items`,de:`Maximal ${max} Artikel`}), "warning");
         } else {
           _acaiConfig.etapasSel[etIdx] = Array.from(
             container.querySelectorAll(`.acai-etapa-check[data-etapa="${etIdx}"]:checked`)
@@ -2114,7 +2137,7 @@ function _renderSuco(cfg, container) {
   sec1.innerHTML = `
     <div class="pizza-step-header">
       <span class="pizza-step-num">${stepNum++}</span>
-      <span>Escolha o tamanho</span>
+      <span>${tt({es:"Elija el tamaño",pt:"Escolha o tamanho",en:"Choose the size",de:"Wählen Sie die Größe"})}</span>
     </div>
     <div class="pizza-size-grid" id="suco-tam-grid"></div>`;
   container.appendChild(sec1);
@@ -2163,7 +2186,7 @@ function _renderSuco(cfg, container) {
         const checked = container.querySelectorAll(`.suco-etapa-check[data-etapa="${etIdx}"]:checked`);
         if (this.checked && checked.length > max) {
           this.checked = false;
-          mostrarToast(`Máximo de ${max} itens`, "warning");
+          mostrarToast(tt({es:`Máximo de ${max} ítems`,pt:`Máximo de ${max} itens`,en:`Maximum of ${max} items`,de:`Maximal ${max} Artikel`}), "warning");
         } else {
           _sucoConfig.etapasSel[etIdx] = Array.from(
             container.querySelectorAll(`.suco-etapa-check[data-etapa="${etIdx}"]:checked`)
@@ -2186,7 +2209,7 @@ function _renderAlmoco(cfg, container) {
   const pratos = cfg.almoco.pratos;
 
   const sec = document.createElement("div");
-  sec.innerHTML = `<div class="sabor-slot-label">Escolha o prato</div><div class="almoco-pratos-grid" id="almoco-pratos-grid"></div>`;
+  sec.innerHTML = `<div class="sabor-slot-label">${tt({es:"Elija el plato",pt:"Escolha o prato",en:"Choose the dish",de:"Wählen Sie das Gericht"})}</div><div class="almoco-pratos-grid" id="almoco-pratos-grid"></div>`;
   container.appendChild(sec);
 
   const grid = sec.querySelector("#almoco-pratos-grid");
@@ -2261,7 +2284,7 @@ function _renderExtrasGlobais(extras, container) {
     row.innerHTML = `
       <input type="checkbox" class="extra-check-input" data-preco="${ex.preco || 0}" onchange="_atualizarPrecoPizza()">
       <span class="extra-check-label">${ex.nome}</span>
-      ${ex.preco > 0 ? `<span class="extra-check-price">+Gs ${ex.preco.toLocaleString("es-PY")}</span>` : '<span class="extra-check-price" style="color:#27ae60">Grátis</span>'}`;
+      ${ex.preco > 0 ? `<span class="extra-check-price">+Gs ${ex.preco.toLocaleString("es-PY")}</span>` : `<span class="extra-check-price" style="color:#27ae60">${tt({es:"Gratis",pt:"Grátis",en:"Free",de:"Kostenlos"})}</span>`}`;
     sec.appendChild(row);
   });
   container.appendChild(sec);
@@ -2292,41 +2315,51 @@ function adicionarDoModal() {
   // Validações por tipo
   if (tipo === "pizza") {
     if (!_pizzaConfig.tamanhoSelecionado) {
-      alert("Selecione o tamanho da pizza!");
+      alert(tt({es:"¡Seleccione el tamaño de la pizza!",pt:"Selecione o tamanho da pizza!",en:"Select the pizza size!",de:"Wählen Sie die Pizzagröße!"}));
       return;
     }
     const saboresOk = (_pizzaConfig.sabores || []).filter(Boolean);
     if (saboresOk.length === 0) {
-      alert("Selecione ao menos 1 sabor!");
+      alert(tt({es:"¡Seleccione al menos 1 sabor!",pt:"Selecione ao menos 1 sabor!",en:"Select at least 1 flavor!",de:"Wählen Sie mindestens 1 Geschmacksrichtung!"}));
       return;
     }
     if (_pizzaConfig.numSabores && saboresOk.length < _pizzaConfig.numSabores) {
       alert(
-        `Você escolheu ${_pizzaConfig.numSabores} sabores mas selecionou apenas ${saboresOk.length}. Complete a seleção!`,
+        tt({
+          es: `Eligió ${_pizzaConfig.numSabores} sabores pero seleccionó solo ${saboresOk.length}. ¡Complete la selección!`,
+          pt: `Você escolheu ${_pizzaConfig.numSabores} sabores mas selecionou apenas ${saboresOk.length}. Complete a seleção!`,
+          en: `You chose ${_pizzaConfig.numSabores} flavors but only selected ${saboresOk.length}. Complete your selection!`,
+          de: `Sie haben ${_pizzaConfig.numSabores} Geschmacksrichtungen gewählt, aber nur ${saboresOk.length} ausgewählt. Vervollständigen Sie die Auswahl!`,
+        }),
       );
       return;
     }
   }
   if (tipo === "almoco" && !prodAtual._pratoselecionado) {
-    alert("Selecione o prato!");
+    alert(tt({es:"¡Seleccione el plato!",pt:"Selecione o prato!",en:"Select the dish!",de:"Wählen Sie das Gericht!"}));
     return;
   }
   if (tipo === "variacoes" && !_variacaoSelecionada) {
-    alert("Escolha o sabor antes de adicionar!");
+    alert(tt({es:"¡Elija el sabor antes de agregar!",pt:"Escolha o sabor antes de adicionar!",en:"Choose the flavor before adding!",de:"Wählen Sie den Geschmack vor dem Hinzufügen!"}));
     return;
   }
   if (tipo === "shake") {
-    if (!_shakeConfig.tamanho) { alert("Selecione o tamanho do shake!"); return; }
+    if (!_shakeConfig.tamanho) { alert(tt({es:"¡Seleccione el tamaño del shake!",pt:"Selecione o tamanho do shake!",en:"Select the shake size!",de:"Wählen Sie die Shake-Größe!"})); return; }
     const temSaboresShake = (cfg?.shake?.sabores || cfg?.sabores || []).length > 0;
-    if (temSaboresShake && !_shakeConfig.sabor) { alert("Selecione o sabor do shake!"); return; }
+    if (temSaboresShake && !_shakeConfig.sabor) { alert(tt({es:"¡Seleccione el sabor del shake!",pt:"Selecione o sabor do shake!",en:"Select the shake flavor!",de:"Wählen Sie den Shake-Geschmack!"})); return; }
   }
-  if (tipo === "sorvete" && !_sorveteConfig.tamanho) { alert("Selecione o tamanho!"); return; }
-  if (tipo === "acai"    && !_acaiConfig.tamanho)    { alert("Selecione o tamanho!"); return; }
-  if (tipo === "suco"    && !_sucoConfig.tamanho)    { alert("Selecione o tamanho!"); return; }
+  if (tipo === "sorvete" && !_sorveteConfig.tamanho) { alert(tt({es:"¡Seleccione el tamaño!",pt:"Selecione o tamanho!",en:"Select the size!",de:"Wählen Sie die Größe!"})); return; }
+  if (tipo === "acai"    && !_acaiConfig.tamanho)    { alert(tt({es:"¡Seleccione el tamaño!",pt:"Selecione o tamanho!",en:"Select the size!",de:"Wählen Sie die Größe!"})); return; }
+  if (tipo === "suco"    && !_sucoConfig.tamanho)    { alert(tt({es:"¡Seleccione el tamaño!",pt:"Selecione o tamanho!",en:"Select the size!",de:"Wählen Sie die Größe!"})); return; }
   if (tipo === "combo_fechado") {
     const total = Object.values(_comboFechadoConfig.selecao).reduce((a, b) => a + b, 0);
     if (total !== _comboFechadoConfig.limite) {
-      alert(`Selecione exatamente ${_comboFechadoConfig.limite} itens para continuar.`);
+      alert(tt({
+        es: `Seleccione exactamente ${_comboFechadoConfig.limite} ítems para continuar.`,
+        pt: `Selecione exatamente ${_comboFechadoConfig.limite} itens para continuar.`,
+        en: `Select exactly ${_comboFechadoConfig.limite} items to continue.`,
+        de: `Wählen Sie genau ${_comboFechadoConfig.limite} Artikel aus, um fortzufahren.`,
+      }));
       return;
     }
   }
@@ -2552,7 +2585,7 @@ function updateUI() {
 }
 
 function limparCarrinho() {
-  if (confirm("Deseja limpar o carrinho?")) {
+  if (confirm(tt({es:"¿Desea limpiar el carrito?",pt:"Deseja limpar o carrinho?",en:"Do you want to clear the cart?",de:"Möchten Sie den Warenkorb leeren?"}))) {
     carrinho = [];
     cupomAplicado = null;
     freteCalculado = 0;
@@ -2568,25 +2601,32 @@ function limparCarrinho() {
 // ==========================================
 function validarCampo(campoId, regras = {}) {
   const campo = document.getElementById(campoId);
-  if (!campo) return { valido: false, mensagem: "Campo não encontrado" };
+  if (!campo) return { valido: false, mensagem: tt({es:"Campo no encontrado",pt:"Campo não encontrado",en:"Field not found",de:"Feld nicht gefunden"}) };
 
   const valor = campo.value.trim();
 
   if (regras.obrigatorio && !valor) {
-    marcarErro(campo, "Este campo é obrigatório");
-    return { valido: false, mensagem: "Campo obrigatório" };
+    marcarErro(campo, tt({es:"Este campo es obligatorio",pt:"Este campo é obrigatório",en:"This field is required",de:"Dieses Feld ist erforderlich"}));
+    return { valido: false, mensagem: tt({es:"Campo obligatorio",pt:"Campo obrigatório",en:"Required field",de:"Pflichtfeld"}) };
   }
 
   if (regras.minimo && valor.length < regras.minimo) {
-    marcarErro(campo, `Mínimo de ${regras.minimo} caracteres`);
-    return { valido: false, mensagem: `Mínimo de ${regras.minimo} caracteres` };
+    const _minMsg = tt({
+      es: `Mínimo de ${regras.minimo} caracteres`,
+      pt: `Mínimo de ${regras.minimo} caracteres`,
+      en: `Minimum of ${regras.minimo} characters`,
+      de: `Mindestens ${regras.minimo} Zeichen`,
+    });
+    marcarErro(campo, _minMsg);
+    return { valido: false, mensagem: _minMsg };
   }
 
   if (regras.telefone && valor) {
     const telefoneLimpo = valor.replace(/\D/g, "");
     if (telefoneLimpo.length < 8) {
-      marcarErro(campo, "Telefone inválido");
-      return { valido: false, mensagem: "Telefone inválido" };
+      const _telMsg = tt({es:"Teléfono inválido",pt:"Telefone inválido",en:"Invalid phone number",de:"Ungültige Telefonnummer"});
+      marcarErro(campo, _telMsg);
+      return { valido: false, mensagem: _telMsg };
     }
   }
 
@@ -2628,7 +2668,7 @@ function limparTodosErros() {
 // 7. CHECKOUT E VALIDAÇÃO
 // ==========================================
 function abrirCheckout() {
-  if (carrinho.length === 0) return alert("Carrinho vazio!");
+  if (carrinho.length === 0) return alert(tt({es:"¡Carrito vacío!",pt:"Carrinho vazio!",en:"Empty cart!",de:"Warenkorb leer!"}));
 
   // Verifica se a loja está aberta (se não estiver em modo agendamento)
   if (!MODO_AGENDAMENTO) {
@@ -2841,8 +2881,8 @@ function verificarPagamento() {
   const pagFinal =
     pag === "CartaoBR"
       ? _cartaoBRTipo === "debito"
-        ? "Cartão BR - Débito"
-        : "Cartão BR - Crédito"
+        ? tt({es:"Tarjeta BR - Débito",pt:"Cartão BR - Débito",en:"Card BR - Debit",de:"Karte BR - Debit"})
+        : tt({es:"Tarjeta BR - Crédito",pt:"Cartão BR - Crédito",en:"Card BR - Credit",de:"Karte BR - Kredit"})
       : pag;
   const infoDiv = document.getElementById("info-pagamento-extra");
   const boxTroco = document.getElementById("box-troco");
@@ -2965,6 +3005,42 @@ function verificarPagamento() {
 // ==========================================
 let _multiContador = 0;
 
+function _getMetodosPag() {
+  return tt({
+    es: [
+      { value: "Efetivo", label: "💵 Efectivo" },
+      { value: "Cartao", label: "💳 Tarjeta" },
+      { value: "CartaoBR", label: "💳🇧🇷 Tarjeta BR" },
+      { value: "Pix", label: "🟢 Pix (BR)" },
+      { value: "Transferencia", label: "🏦 Alias/Transferencia" },
+      { value: "QrPy", label: "📱 QR Paraguay" },
+    ],
+    pt: [
+      { value: "Efetivo", label: "💵 Dinheiro" },
+      { value: "Cartao", label: "💳 Cartão" },
+      { value: "CartaoBR", label: "💳🇧🇷 Cartão BR" },
+      { value: "Pix", label: "🟢 Pix (BR)" },
+      { value: "Transferencia", label: "🏦 Alias/Transferência" },
+      { value: "QrPy", label: "📱 QR Paraguai" },
+    ],
+    en: [
+      { value: "Efetivo", label: "💵 Cash" },
+      { value: "Cartao", label: "💳 Card" },
+      { value: "CartaoBR", label: "💳🇧🇷 Card BR" },
+      { value: "Pix", label: "🟢 Pix (BR)" },
+      { value: "Transferencia", label: "🏦 Alias/Transfer" },
+      { value: "QrPy", label: "📱 QR Paraguay" },
+    ],
+    de: [
+      { value: "Efetivo", label: "💵 Bargeld" },
+      { value: "Cartao", label: "💳 Karte" },
+      { value: "CartaoBR", label: "💳🇧🇷 Karte BR" },
+      { value: "Pix", label: "🟢 Pix (BR)" },
+      { value: "Transferencia", label: "🏦 Alias/Überweisung" },
+      { value: "QrPy", label: "📱 QR Paraguay" },
+    ],
+  });
+}
 const METODOS_PAG = [
   { value: "Efetivo", label: "💵 Efectivo" },
   { value: "Cartao", label: "💳 Tarjeta" },
@@ -3004,7 +3080,7 @@ function adicionarPartePagamento() {
   const id = _multiContador;
   const ordinal = ["1ª", "2ª", "3ª", "4ª", "5ª"][id - 1] || `${id}ª`;
 
-  const metodoOptions = METODOS_PAG.map(
+  const metodoOptions = _getMetodosPag().map(
     (m) => `<option value="${m.value}">${m.label}</option>`,
   ).join("");
 
@@ -3158,12 +3234,97 @@ function _coletarMultiPagamento() {
   return partes;
 }
 
+// ── Textos localizados usados no fluxo de cálculo de frete via GPS ──
+function _gpsL() {
+  const lang = localStorage.getItem("language") || "es";
+  const dict = {
+    es: {
+      localizando: "Localizando...",
+      gpsIndisponivel: (v) => `⚠️ GPS no disponible. Envío mínimo aplicado: Gs ${v}. El valor puede aumentar si la entrega es más distante.`,
+      freteMinAplicadoBtn: "✅ Envío mínimo aplicado",
+      gpsBloqueado: (v) => `⚠️ GPS bloqueado. Envío mínimo aplicado: Gs ${v}`,
+      permissaoBloqueada: "Permiso de ubicación bloqueado",
+      paraHabilitar: 'Para habilitar: haga clic en el ícono de candado/info en la barra de direcciones del navegador → <strong>Ubicación</strong> → <strong>Permitir</strong> → recargue la página.',
+      freteMinAplicadoLabel: (v) => `Envío mínimo aplicado: Gs ${v}`,
+      valorPodeAumentar: "⚠️ El valor del envío puede aumentar si la dirección de entrega está más lejos que el rango mínimo.",
+      distanciaFreteCombinar: (d) => `⚠️ Distancia: ${d}km — Envío <strong>a coordinar</strong> por WhatsApp.`,
+      localizacaoOk: "✅ Ubicación OK",
+      distanciaFreteValor: (d, v) => `✅ Distancia: ${d}km - Envío: Gs ${v}`,
+      naoFoiPossivelObter: "No fue posible obtener su ubicación.",
+      permissaoGpsNegada: "⚠️ Permiso de GPS denegado.",
+      localizacaoIndisponivel: "⚠️ Ubicación no disponible. Verifique si el GPS está activo.",
+      tempoEsgotado: "⚠️ Tiempo agotado al obtener la ubicación. Intente nuevamente.",
+      gpsNaoFuncionou: "¿El GPS no funcionó?",
+      valorPodeAumentarDiferenca: "⚠️ El valor del envío puede aumentar si la dirección de entrega está más lejos que el rango mínimo. En ese caso, la diferencia se coordinará en la entrega.",
+    },
+    pt: {
+      localizando: "Localizando...",
+      gpsIndisponivel: (v) => `⚠️ GPS indisponível. Frete mínimo aplicado: Gs ${v}. O valor pode aumentar se a entrega for mais distante.`,
+      freteMinAplicadoBtn: "✅ Frete mínimo aplicado",
+      gpsBloqueado: (v) => `⚠️ GPS bloqueado. Frete mínimo aplicado: Gs ${v}`,
+      permissaoBloqueada: "Permissão de localização bloqueada",
+      paraHabilitar: 'Para habilitar: clique no ícone de cadeado/info na barra de endereço do navegador → <strong>Localização</strong> → <strong>Permitir</strong> → recarregue a página.',
+      freteMinAplicadoLabel: (v) => `Frete mínimo aplicado: Gs ${v}`,
+      valorPodeAumentar: "⚠️ O valor do delivery pode aumentar caso o endereço de entrega seja mais distante do que a faixa mínima.",
+      distanciaFreteCombinar: (d) => `⚠️ Distância: ${d}km — Frete <strong>a combinar</strong> pelo WhatsApp.`,
+      localizacaoOk: "✅ Localização OK",
+      distanciaFreteValor: (d, v) => `✅ Distância: ${d}km - Frete: Gs ${v}`,
+      naoFoiPossivelObter: "Não foi possível obter sua localização.",
+      permissaoGpsNegada: "⚠️ Permissão de GPS negada.",
+      localizacaoIndisponivel: "⚠️ Localização indisponível. Verifique se o GPS está ativo.",
+      tempoEsgotado: "⚠️ Tempo esgotado ao obter localização. Tente novamente.",
+      gpsNaoFuncionou: "GPS não funcionou?",
+      valorPodeAumentarDiferenca: "⚠️ O valor do delivery pode aumentar caso o endereço de entrega seja mais distante do que a faixa mínima. Nesse caso, a diferença será combinada na entrega.",
+    },
+    en: {
+      localizando: "Locating...",
+      gpsIndisponivel: (v) => `⚠️ GPS unavailable. Minimum delivery fee applied: Gs ${v}. The amount may increase if the delivery is farther away.`,
+      freteMinAplicadoBtn: "✅ Minimum delivery fee applied",
+      gpsBloqueado: (v) => `⚠️ GPS blocked. Minimum delivery fee applied: Gs ${v}`,
+      permissaoBloqueada: "Location permission blocked",
+      paraHabilitar: 'To enable: click the lock/info icon in the browser address bar → <strong>Location</strong> → <strong>Allow</strong> → reload the page.',
+      freteMinAplicadoLabel: (v) => `Minimum delivery fee applied: Gs ${v}`,
+      valorPodeAumentar: "⚠️ The delivery fee may increase if the delivery address is farther than the minimum range.",
+      distanciaFreteCombinar: (d) => `⚠️ Distance: ${d}km — Delivery fee <strong>to be arranged</strong> via WhatsApp.`,
+      localizacaoOk: "✅ Location OK",
+      distanciaFreteValor: (d, v) => `✅ Distance: ${d}km - Delivery: Gs ${v}`,
+      naoFoiPossivelObter: "Could not get your location.",
+      permissaoGpsNegada: "⚠️ GPS permission denied.",
+      localizacaoIndisponivel: "⚠️ Location unavailable. Check if GPS is enabled.",
+      tempoEsgotado: "⚠️ Timeout while getting location. Please try again.",
+      gpsNaoFuncionou: "GPS didn't work?",
+      valorPodeAumentarDiferenca: "⚠️ The delivery fee may increase if the delivery address is farther than the minimum range. In that case, the difference will be arranged at delivery.",
+    },
+    de: {
+      localizando: "Wird geortet...",
+      gpsIndisponivel: (v) => `⚠️ GPS nicht verfügbar. Mindestliefergebühr angewendet: Gs ${v}. Der Betrag kann steigen, wenn die Lieferung weiter entfernt ist.`,
+      freteMinAplicadoBtn: "✅ Mindestliefergebühr angewendet",
+      gpsBloqueado: (v) => `⚠️ GPS blockiert. Mindestliefergebühr angewendet: Gs ${v}`,
+      permissaoBloqueada: "Standortberechtigung blockiert",
+      paraHabilitar: 'Zum Aktivieren: Klicken Sie auf das Schloss-/Info-Symbol in der Adressleiste des Browsers → <strong>Standort</strong> → <strong>Zulassen</strong> → Seite neu laden.',
+      freteMinAplicadoLabel: (v) => `Mindestliefergebühr angewendet: Gs ${v}`,
+      valorPodeAumentar: "⚠️ Die Liefergebühr kann steigen, wenn die Lieferadresse weiter als der Mindestbereich entfernt ist.",
+      distanciaFreteCombinar: (d) => `⚠️ Entfernung: ${d}km — Liefergebühr <strong>nach Vereinbarung</strong> per WhatsApp.`,
+      localizacaoOk: "✅ Standort OK",
+      distanciaFreteValor: (d, v) => `✅ Entfernung: ${d}km - Lieferung: Gs ${v}`,
+      naoFoiPossivelObter: "Ihr Standort konnte nicht ermittelt werden.",
+      permissaoGpsNegada: "⚠️ GPS-Berechtigung verweigert.",
+      localizacaoIndisponivel: "⚠️ Standort nicht verfügbar. Prüfen Sie, ob GPS aktiviert ist.",
+      tempoEsgotado: "⚠️ Zeitüberschreitung beim Abrufen des Standorts. Bitte versuchen Sie es erneut.",
+      gpsNaoFuncionou: "GPS hat nicht funktioniert?",
+      valorPodeAumentarDiferenca: "⚠️ Die Liefergebühr kann steigen, wenn die Lieferadresse weiter als der Mindestbereich entfernt ist. In diesem Fall wird die Differenz bei der Lieferung vereinbart.",
+    },
+  };
+  return dict[lang] || dict.es;
+}
+
 async function calcularFrete() {
+  const _gL = _gpsL();
   const btn = document.getElementById("btn-gps");
   const msg = document.getElementById("frete-msg");
   const boxErro = document.getElementById("box-erro-gps");
 
-  btn.innerText = "Localizando...";
+  btn.innerText = _gL.localizando;
   btn.disabled = true;
 
   if (!navigator.geolocation) {
@@ -3172,9 +3333,9 @@ async function calcularFrete() {
     freteCalculado = freteMinimo;
     freteMotoboy = freteMinimo;
     _freteResolvidoSemGps = true;
-    msg.innerHTML = `<span style="color:#e67e22">⚠️ GPS indisponível. Frete mínimo aplicado: Gs ${freteMinimo.toLocaleString("es-PY")}. O valor pode aumentar se a entrega for mais distante.</span>`;
+    msg.innerHTML = `<span style="color:#e67e22">${_gL.gpsIndisponivel(freteMinimo.toLocaleString("es-PY"))}</span>`;
     boxErro.style.display = "none";
-    btn.innerText = "✅ Frete mínimo aplicado";
+    btn.innerText = _gL.freteMinAplicadoBtn;
     btn.disabled = true;
     atualizarTotalCheckout();
     return;
@@ -3191,18 +3352,18 @@ async function calcularFrete() {
           freteCalculado = freteMinimo;
           freteMotoboy = freteMinimo;
           _freteResolvidoSemGps = true;
-          msg.innerHTML = `<span style="color:#e67e22">⚠️ GPS bloqueado. Frete mínimo aplicado: Gs ${freteMinimo.toLocaleString("es-PY")}</span>`;
+          msg.innerHTML = `<span style="color:#e67e22">${_gL.gpsBloqueado(freteMinimo.toLocaleString("es-PY"))}</span>`;
           boxErro.innerHTML = `
-            <p><strong><i class="fas fa-lock"></i> Permissão de localização bloqueada</strong></p>
-            <p style="margin-top:6px;font-size:0.85rem">Para habilitar: clique no ícone de cadeado/info na barra de endereço do navegador → <strong>Localização</strong> → <strong>Permitir</strong> → recarregue a página.</p>
-            <p style="margin-top:8px;font-size:0.85rem;color:#27ae60"><strong>Frete mínimo aplicado: Gs ${freteMinimo.toLocaleString("es-PY")}</strong></p>
-            <p style="margin-top:6px;font-size:0.85rem;color:#e67e22">⚠️ O valor do delivery pode aumentar caso o endereço de entrega seja mais distante do que a faixa mínima.</p>
+            <p><strong><i class="fas fa-lock"></i> ${_gL.permissaoBloqueada}</strong></p>
+            <p style="margin-top:6px;font-size:0.85rem">${_gL.paraHabilitar}</p>
+            <p style="margin-top:8px;font-size:0.85rem;color:#27ae60"><strong>${_gL.freteMinAplicadoLabel(freteMinimo.toLocaleString("es-PY"))}</strong></p>
+            <p style="margin-top:6px;font-size:0.85rem;color:#e67e22">${_gL.valorPodeAumentar}</p>
             <label style="display:flex;align-items:center;gap:10px;margin-top:10px;cursor:pointer;">
               <input type="checkbox" id="check-sem-gps" style="width:20px;height:20px;">
               <span data-lang-key="gps-erro-check">Enviaré mi ubicación por WhatsApp</span>
             </label>`;
           boxErro.style.display = "block";
-          btn.innerText = "✅ Frete mínimo aplicado";
+          btn.innerText = _gL.freteMinAplicadoBtn;
           btn.disabled = true;
           atualizarTotalCheckout();
           return;
@@ -3233,6 +3394,7 @@ function _obterFreteMinimoDaTabela() {
 }
 
 function _executarGetPosition(btn, msg, boxErro) {
+  const _gL = _gpsL();
   navigator.geolocation.getCurrentPosition(
     (position) => {
       localCliente = {
@@ -3263,10 +3425,10 @@ function _executarGetPosition(btn, msg, boxErro) {
       if (freteIndex === -1) {
         // Acima de 20km
         freteCalculado = -1; // sentinela: a combinar
-        msg.innerHTML = `<span style="color:#e67e22">⚠️ Distância: ${dist.toFixed(1)}km — Frete <strong>a combinar</strong> pelo WhatsApp.</span>`;
+        msg.innerHTML = `<span style="color:#e67e22">${_gL.distanciaFreteCombinar(dist.toFixed(1))}</span>`;
         msg.style.color = "#e67e22";
         boxErro.style.display = "none";
-        btn.innerText = "✅ Localização OK";
+        btn.innerText = _gL.localizacaoOk;
         btn.disabled = false;
         atualizarTotalCheckout();
         return;
@@ -3276,10 +3438,10 @@ function _executarGetPosition(btn, msg, boxErro) {
         // Verifica se a faixa está marcada como "a combinar" no admin
         if (TABELA_FRETE[freteIndex].acombinar === true) {
           freteCalculado = -1; // sentinela: a combinar
-          msg.innerHTML = `<span style="color:#e67e22">⚠️ Distância: ${dist.toFixed(1)}km — Frete <strong>a combinar</strong> pelo WhatsApp.</span>`;
+          msg.innerHTML = `<span style="color:#e67e22">${_gL.distanciaFreteCombinar(dist.toFixed(1))}</span>`;
           msg.style.color = "#e67e22";
           boxErro.style.display = "none";
-          btn.innerText = "✅ Localização OK";
+          btn.innerText = _gL.localizacaoOk;
           btn.disabled = false;
           atualizarTotalCheckout();
           return;
@@ -3299,11 +3461,11 @@ function _executarGetPosition(btn, msg, boxErro) {
         freteMotoboy = freteCalculado; // sem tabela, assume igual ao loja
       }
 
-      msg.innerHTML = `<span style="color:#27ae60">✅ Distância: ${dist.toFixed(1)}km - Frete: Gs ${freteCalculado.toLocaleString("es-PY")}</span>`;
+      msg.innerHTML = `<span style="color:#27ae60">${_gL.distanciaFreteValor(dist.toFixed(1), freteCalculado.toLocaleString("es-PY"))}</span>`;
       msg.style.color = "#27ae60";
       boxErro.style.display = "none";
 
-      btn.innerText = "✅ Localização OK";
+      btn.innerText = _gL.localizacaoOk;
       btn.disabled = true;
       atualizarTotalCheckout();
     },
@@ -3317,33 +3479,33 @@ function _executarGetPosition(btn, msg, boxErro) {
       freteMotoboy = freteMinimo;
       _freteResolvidoSemGps = true;
 
-      let errMsg = "Não foi possível obter sua localização.";
+      let errMsg = _gL.naoFoiPossivelObter;
       let instrucao = "";
       if (err.code === 1) {
         // PERMISSION_DENIED
-        errMsg = "⚠️ Permissão de GPS negada.";
+        errMsg = _gL.permissaoGpsNegada;
         instrucao =
-          '<p style="margin-top:6px;font-size:0.85rem">Para habilitar: clique no ícone de cadeado/info na barra de endereço → <strong>Localização</strong> → <strong>Permitir</strong> → recarregue a página.</p>';
+          `<p style="margin-top:6px;font-size:0.85rem">${_gL.paraHabilitar}</p>`;
       } else if (err.code === 2) {
         // POSITION_UNAVAILABLE
-        errMsg = "⚠️ Localização indisponível. Verifique se o GPS está ativo.";
+        errMsg = _gL.localizacaoIndisponivel;
       } else if (err.code === 3) {
         // TIMEOUT
-        errMsg = "⚠️ Tempo esgotado ao obter localização. Tente novamente.";
+        errMsg = _gL.tempoEsgotado;
       }
-      msg.innerHTML = `<span style="color:#e67e22">${errMsg} <strong>Frete mínimo aplicado: Gs ${freteMinimo.toLocaleString("es-PY")}</strong></span>`;
+      msg.innerHTML = `<span style="color:#e67e22">${errMsg} <strong>${_gL.freteMinAplicadoLabel(freteMinimo.toLocaleString("es-PY"))}</strong></span>`;
       msg.style.color = "#e67e22";
       boxErro.innerHTML = `
-        <p><strong><i class="fas fa-info-circle"></i> GPS não funcionou?</strong></p>
+        <p><strong><i class="fas fa-info-circle"></i> ${_gL.gpsNaoFuncionou}</strong></p>
         ${instrucao}
-        <p style="margin-top:8px;font-size:0.85rem;color:#27ae60"><strong>Frete mínimo aplicado: Gs ${freteMinimo.toLocaleString("es-PY")}</strong></p>
-        <p style="margin-top:6px;font-size:0.85rem;color:#e67e22">⚠️ O valor do delivery pode aumentar caso o endereço de entrega seja mais distante do que a faixa mínima. Nesse caso, a diferença será combinada na entrega.</p>
+        <p style="margin-top:8px;font-size:0.85rem;color:#27ae60"><strong>${_gL.freteMinAplicadoLabel(freteMinimo.toLocaleString("es-PY"))}</strong></p>
+        <p style="margin-top:6px;font-size:0.85rem;color:#e67e22">${_gL.valorPodeAumentarDiferenca}</p>
         <label style="display:flex;align-items:center;gap:10px;margin-top:10px;cursor:pointer;">
           <input type="checkbox" id="check-sem-gps" style="width:20px;height:20px;">
           <span data-lang-key="gps-erro-check">Enviaré mi ubicación por WhatsApp</span>
         </label>`;
       boxErro.style.display = "block";
-      btn.innerText = "✅ Frete mínimo aplicado";
+      btn.innerText = _gL.freteMinAplicadoBtn;
       btn.disabled = true;
       atualizarTotalCheckout();
     },
@@ -3411,12 +3573,12 @@ async function enviarZap() {
   const pagFinal =
     pag === "CartaoBR"
       ? _cartaoBRTipo === "debito"
-        ? "Cartão BR - Débito"
-        : "Cartão BR - Crédito"
+        ? tt({es:"Tarjeta BR - Débito",pt:"Cartão BR - Débito",en:"Card BR - Debit",de:"Karte BR - Debit"})
+        : tt({es:"Tarjeta BR - Crédito",pt:"Cartão BR - Crédito",en:"Card BR - Credit",de:"Karte BR - Kredit"})
       : pag;
 
   if (!nome || !tel || !pag)
-    return alert("Preencha todos os campos obrigatórios!");
+    return alert(tt({es:"¡Complete todos los campos obligatorios!",pt:"Preencha todos os campos obrigatórios!",en:"Fill in all required fields!",de:"Füllen Sie alle Pflichtfelder aus!"}));
 
   // Troco obrigatório quando pagamento em Efetivo
   if (pag === "Efetivo") {
@@ -3424,7 +3586,7 @@ async function enviarZap() {
     if (!trocoVal || parseFloat(trocoVal.replace(/[^\d]/g, "")) <= 0) {
       document.getElementById("troco-valor").focus();
       document.getElementById("troco-valor").style.borderColor = "#e74c3c";
-      return alert("⚠️ Informe o valor em dinheiro para cálculo do troco!");
+      return alert(tt({es:"⚠️ ¡Ingrese el valor en efectivo para calcular el vuelto!",pt:"⚠️ Informe o valor em dinheiro para cálculo do troco!",en:"⚠️ Enter the cash amount to calculate change!",de:"⚠️ Geben Sie den Bargeldbetrag zur Wechselgeldberechnung ein!"}));
     }
     document.getElementById("troco-valor").style.borderColor = "";
   }
@@ -3444,7 +3606,7 @@ async function enviarZap() {
   });
   if (temPromoItem && pag === "Cartao") {
     return alert(
-      '⚠️ Produtos da "Promoção do Dia" não aceitam pagamento com Cartão.',
+      tt({es:'⚠️ Los productos de la "Promoción del Día" no aceptan pago con Tarjeta.',pt:'⚠️ Produtos da "Promoção do Dia" não aceitam pagamento com Cartão.',en:'⚠️ "Deal of the Day" products do not accept Card payment.',de:'⚠️ Produkte des "Angebots des Tages" akzeptieren keine Kartenzahlung.'}),
     );
   }
 
@@ -3458,7 +3620,7 @@ async function enviarZap() {
     .join("|");
   if (_ultimoHash === _hashAtual && _agora - _ultimoTs < 3600000) {
     return alert(
-      "🚫 Seu pedido anterior foi computado, estamos bloqueando esta segunda tentativa.",
+      tt({es:"🚫 Su pedido anterior fue registrado, estamos bloqueando este segundo intento.",pt:"🚫 Seu pedido anterior foi computado, estamos bloqueando esta segunda tentativa.",en:"🚫 Your previous order was registered, we are blocking this second attempt.",de:"🚫 Ihre vorherige Bestellung wurde registriert, wir blockieren diesen zweiten Versuch."}),
     );
   }
 
@@ -3467,7 +3629,7 @@ async function enviarZap() {
     const partes = _coletarMultiPagamento();
     if (partes.length < 2)
       return alert(
-        "Adicione pelo menos 2 formas de pagamento para o multipagamento.",
+        tt({es:"Agregue al menos 2 formas de pago para el pago múltiple.",pt:"Adicione pelo menos 2 formas de pagamento para o multipagamento.",en:"Add at least 2 payment methods for split payment.",de:"Fügen Sie mindestens 2 Zahlungsmethoden für die Mehrfachzahlung hinzu."}),
       );
     const somaPartes = partes.reduce((s, p) => s + p.valor, 0);
     const totalCheck =
@@ -3485,7 +3647,12 @@ async function enviarZap() {
         : 0);
     if (Math.abs(somaPartes - totalCheck) > 1) {
       return alert(
-        `A soma dos pagamentos (Gs ${somaPartes.toLocaleString("es-PY")}) não confere com o total do pedido (Gs ${totalCheck.toLocaleString("es-PY")}). Ajuste os valores.`,
+        tt({
+        es: `La suma de los pagos (Gs ${somaPartes.toLocaleString("es-PY")}) no coincide con el total del pedido (Gs ${totalCheck.toLocaleString("es-PY")}). Ajuste los valores.`,
+        pt: `A soma dos pagamentos (Gs ${somaPartes.toLocaleString("es-PY")}) não confere com o total do pedido (Gs ${totalCheck.toLocaleString("es-PY")}). Ajuste os valores.`,
+        en: `The sum of payments (Gs ${somaPartes.toLocaleString("es-PY")}) does not match the order total (Gs ${totalCheck.toLocaleString("es-PY")}). Adjust the values.`,
+        de: `Die Summe der Zahlungen (Gs ${somaPartes.toLocaleString("es-PY")}) stimmt nicht mit der Bestellsumme (Gs ${totalCheck.toLocaleString("es-PY")}) überein. Passen Sie die Werte an.`,
+      }),
       );
     }
   }
@@ -3497,7 +3664,7 @@ async function enviarZap() {
     !document.getElementById("check-sem-gps")?.checked
   ) {
     alert(
-      "Por favor, calcule o frete ou marque a opção de enviar localização pelo WhatsApp",
+      tt({es:"Por favor, calcule el envío o marque la opción de enviar ubicación por WhatsApp",pt:"Por favor, calcule o frete ou marque a opção de enviar localização pelo WhatsApp",en:"Please calculate the delivery fee or check the option to send location via WhatsApp",de:"Bitte berechnen Sie die Lieferung oder aktivieren Sie die Option, den Standort per WhatsApp zu senden"}),
     );
     return;
   }
@@ -3604,14 +3771,24 @@ async function enviarZap() {
         if (res2.error) {
           console.error("Erro no insert de fallback:", res2.error);
           alert(
-            `⚠️ Erro ao salvar pedido.\n\nDetalhe: ${res2.error.message}\n\nMostre este erro ao suporte.`,
+            tt({
+            es: `⚠️ Error al guardar pedido.\n\nDetalle: ${res2.error.message}\n\nMuestre este error al soporte.`,
+            pt: `⚠️ Erro ao salvar pedido.\n\nDetalhe: ${res2.error.message}\n\nMostre este erro ao suporte.`,
+            en: `⚠️ Error saving order.\n\nDetail: ${res2.error.message}\n\nShow this error to support.`,
+            de: `⚠️ Fehler beim Speichern der Bestellung.\n\nDetail: ${res2.error.message}\n\nZeigen Sie diesen Fehler dem Support.`,
+          }),
           );
           return;
         }
         pedidoSalvo = res2.data;
       } else {
         alert(
-          `⚠️ Erro ao salvar pedido no sistema.\n\nDetalhe: ${error.message}\n\nTente novamente ou contate o suporte.`,
+          tt({
+          es: `⚠️ Error al guardar pedido en el sistema.\n\nDetalle: ${error.message}\n\nIntente nuevamente o contacte al soporte.`,
+          pt: `⚠️ Erro ao salvar pedido no sistema.\n\nDetalhe: ${error.message}\n\nTente novamente ou contate o suporte.`,
+          en: `⚠️ Error saving order in the system.\n\nDetail: ${error.message}\n\nTry again or contact support.`,
+          de: `⚠️ Fehler beim Speichern der Bestellung im System.\n\nDetail: ${error.message}\n\nVersuchen Sie es erneut oder kontaktieren Sie den Support.`,
+        }),
         );
         return;
       }
@@ -3731,30 +3908,37 @@ async function enviarZap() {
   // 2. Usa o número real do pedido na mensagem
   const idDisplay = numeroPedido || "TEMP";
 
-  // 3. Monta Mensagem WhatsApp
+  // 3. Monta Mensagem WhatsApp (rótulos no idioma selecionado pelo cliente)
+  const _msgLang = localStorage.getItem("language") || "es";
+  const _wl = {
+    es: { pedido:"PEDIDO", cliente:"Cliente", tel:"Tel", tipo:"Tipo", delivery:"DELIVERY", local:"COMER AQUÍ 🍽️", retirada:"RETIRO", maps:"Maps", freteGratis:"ENVÍO GRATIS", freteValor:"valor", envio:"Envío", localizacao:"Ubicación", enviareiZap:"Enviaré aquí en WhatsApp", aCombinar:"A COORDINAR", ref:"Ref", subtotal:"Subtotal", desconto:"Descuento", total:"TOTAL", pagamento:"Pago", efetivo:"Efectivo", trocoPara:"Vuelto p/", pagDividido:"Pago dividido", formas:"formas", pixChave:"Clave Pix", pixValorReais:"Valor en Reales", aliasLabel:"Alias", pagoPorQr:"Pagado por QR Paraguay (Tigo / Personal / Bancard)", envieComprovante:"¡Envíe el comprobante después del pago!", envieComprovantes:"¡Envíe el/los comprobante(s) después del pago!", formaN:"forma", ruc:"RUC", razao:"Razón Social" },
+    pt: { pedido:"PEDIDO", cliente:"Cliente", tel:"Tel", tipo:"Tipo", delivery:"DELIVERY", local:"COMER NO LOCAL 🍽️", retirada:"RETIRADA", maps:"Maps", freteGratis:"FRETE GRÁTIS", freteValor:"valor", envio:"Delivery", localizacao:"Localização", enviareiZap:"Enviarei aqui no WhatsApp", aCombinar:"A COMBINAR", ref:"Ref", subtotal:"Subtotal", desconto:"Desconto", total:"TOTAL", pagamento:"Pagamento", efetivo:"Efetivo", trocoPara:"Troco p/", pagDividido:"Pagamento dividido", formas:"formas", pixChave:"Chave Pix", pixValorReais:"Valor em Reais", aliasLabel:"Alias", pagoPorQr:"Pago por QR Paraguay (Tigo / Personal / Bancard)", envieComprovante:"Envie o comprovante após o pagamento!", envieComprovantes:"Envie o(s) comprovante(s) após o pagamento!", formaN:"forma", ruc:"RUC", razao:"Razão" },
+    en: { pedido:"ORDER", cliente:"Customer", tel:"Phone", tipo:"Type", delivery:"DELIVERY", local:"DINE IN 🍽️", retirada:"PICKUP", maps:"Maps", freteGratis:"FREE DELIVERY", freteValor:"value", envio:"Delivery", localizacao:"Location", enviareiZap:"I will send it here on WhatsApp", aCombinar:"TO BE ARRANGED", ref:"Ref", subtotal:"Subtotal", desconto:"Discount", total:"TOTAL", pagamento:"Payment", efetivo:"Cash", trocoPara:"Change for", pagDividido:"Split payment", formas:"methods", pixChave:"Pix Key", pixValorReais:"Value in Reais", aliasLabel:"Alias", pagoPorQr:"Paid by QR Paraguay (Tigo / Personal / Bancard)", envieComprovante:"Send the receipt after payment!", envieComprovantes:"Send the receipt(s) after payment!", formaN:"method", ruc:"Tax ID", razao:"Business Name" },
+    de: { pedido:"BESTELLUNG", cliente:"Kunde", tel:"Tel", tipo:"Art", delivery:"LIEFERUNG", local:"VOR ORT ESSEN 🍽️", retirada:"ABHOLUNG", maps:"Maps", freteGratis:"KOSTENLOSE LIEFERUNG", freteValor:"Wert", envio:"Lieferung", localizacao:"Standort", enviareiZap:"Ich sende es hier per WhatsApp", aCombinar:"NACH VEREINBARUNG", ref:"Ref", subtotal:"Zwischensumme", desconto:"Rabatt", total:"GESAMT", pagamento:"Zahlung", efetivo:"Bargeld", trocoPara:"Wechselgeld für", pagDividido:"Geteilte Zahlung", formas:"Methoden", pixChave:"Pix-Schlüssel", pixValorReais:"Wert in Real", aliasLabel:"Alias", pagoPorQr:"Bezahlt per QR Paraguay (Tigo / Personal / Bancard)", envieComprovante:"Senden Sie den Beleg nach der Zahlung!", envieComprovantes:"Senden Sie die Beleg(e) nach der Zahlung!", formaN:"Methode", ruc:"Steuer-ID", razao:"Firmenname" },
+  }[_msgLang] || { pedido:"PEDIDO", cliente:"Cliente", tel:"Tel", tipo:"Tipo", delivery:"DELIVERY", local:"COMER AQUÍ 🍽️", retirada:"RETIRO", maps:"Maps", freteGratis:"ENVÍO GRATIS", freteValor:"valor", envio:"Envío", localizacao:"Ubicación", enviareiZap:"Enviaré aquí en WhatsApp", aCombinar:"A COORDINAR", ref:"Ref", subtotal:"Subtotal", desconto:"Descuento", total:"TOTAL", pagamento:"Pago", efetivo:"Efectivo", trocoPara:"Vuelto p/", pagDividido:"Pago dividido", formas:"formas", pixChave:"Clave Pix", pixValorReais:"Valor en Reales", aliasLabel:"Alias", pagoPorQr:"Pagado por QR Paraguay (Tigo / Personal / Bancard)", envieComprovante:"¡Envíe el comprobante después del pago!", envieComprovantes:"¡Envíe el/los comprobante(s) después del pago!", formaN:"forma", ruc:"RUC", razao:"Razón Social" };
   const _nomeRestaurante = NOME_RESTAURANTE_APP || "Restaurante";
-  let msg = `🛒 PEDIDO #${idDisplay} — ${_nomeRestaurante.toUpperCase()}\n`;
+  let msg = `🛒 ${_wl.pedido} #${idDisplay} — ${_nomeRestaurante.toUpperCase()}\n`;
   msg += `--------------------------\n`;
-  msg += `👤 Cliente: ${nome}\n`;
-  msg += `📱 Tel: ${telCompleto}\n`;
-  msg += `🛵 Tipo: ${modoEntrega === "delivery" ? "DELIVERY" : modoEntrega === "local" ? "COMER NO LOCAL 🍽️" : "RETIRADA"}\n`;
+  msg += `👤 ${_wl.cliente}: ${nome}\n`;
+  msg += `📱 ${_wl.tel}: ${telCompleto}\n`;
+  msg += `🛵 ${_wl.tipo}: ${modoEntrega === "delivery" ? _wl.delivery : modoEntrega === "local" ? _wl.local : _wl.retirada}\n`;
 
   if (modoEntrega === "delivery") {
     if (localCliente) {
-      msg += `📍 Maps: https://maps.google.com/?q=${localCliente.lat},${localCliente.lng}\n`;
+      msg += `📍 ${_wl.maps}: https://maps.google.com/?q=${localCliente.lat},${localCliente.lng}\n`;
       // Frete real (distância) sempre mostrado para motoboy, mesmo se cliente ganhou grátis
       const _freteReal = freteCalculado;
       const _fretePago = freteAplicado;
       if (_freteReal > 0 && _fretePago === 0) {
-        msg += `🛵 Delivery: FRETE GRÁTIS (valor: Gs ${_freteReal.toLocaleString("es-PY")})\n`;
+        msg += `🛵 ${_wl.envio}: ${_wl.freteGratis} (${_wl.freteValor}: Gs ${_freteReal.toLocaleString("es-PY")})\n`;
       } else if (_freteReal > 0) {
-        msg += `🛵 Delivery: Gs ${_fretePago.toLocaleString("es-PY")}\n`;
+        msg += `🛵 ${_wl.envio}: Gs ${_fretePago.toLocaleString("es-PY")}\n`;
       }
     } else if (usouPlanoB) {
-      msg += `📍 *Localização:* Enviarei aqui no WhatsApp 📎\n`;
-      msg += `🛵 *Delivery:* A COMBINAR\n`;
+      msg += `📍 *${_wl.localizacao}:* ${_wl.enviareiZap} 📎\n`;
+      msg += `🛵 *${_wl.envio}:* ${_wl.aCombinar}\n`;
     }
-    msg += `🏠 Ref: ${ref}\n`;
+    msg += `🏠 ${_wl.ref}: ${ref}\n`;
   }
 
   msg += `--------------------------\n`;
@@ -3769,47 +3953,47 @@ async function enviarZap() {
   });
 
   msg += `--------------------------\n`;
-  msg += `Subtotal: Gs ${totalItens.toLocaleString("es-PY")}\n`;
+  msg += `${_wl.subtotal}: Gs ${totalItens.toLocaleString("es-PY")}\n`;
 
   if (desconto > 0) {
-    msg += `Desconto (${cupomAplicado.codigo}): -Gs ${desconto.toLocaleString("es-PY")}\n`;
+    msg += `${_wl.desconto} (${cupomAplicado.codigo}): -Gs ${desconto.toLocaleString("es-PY")}\n`;
   }
 
   if (modoEntrega === "delivery" && !usouPlanoB) {
-    msg += `Delivery: Gs ${freteAplicado.toLocaleString("es-PY")}\n`;
+    msg += `${_wl.envio}: Gs ${freteAplicado.toLocaleString("es-PY")}\n`;
   }
-  msg += `TOTAL: Gs ${totalGeral.toLocaleString("es-PY")}\n`;
+  msg += `${_wl.total}: Gs ${totalGeral.toLocaleString("es-PY")}\n`;
   msg += `--------------------------\n`;
 
   // Pagamento e Troco
   if (pag === "Efetivo") {
     const trocoVal = document.getElementById("troco-valor").value;
-    msg += `💰 Pagamento: Efetivo (Troco p/: ${trocoVal})\n`;
+    msg += `💰 ${_wl.pagamento}: ${_wl.efetivo} (${_wl.trocoPara}: ${trocoVal})\n`;
   } else if (pag === "Multipagamento") {
     const partes = _coletarMultiPagamento();
-    msg += `💰 Pagamento dividido (${partes.length} formas):\n`;
+    msg += `💰 ${_wl.pagDividido} (${partes.length} ${_wl.formas}):\n`;
     partes.forEach((p, i) => {
       msg += `   ${i + 1}. ${p.metodo}: Gs ${p.valor.toLocaleString("es-PY")}`;
       if (p.troco)
-        msg += ` (Troco p/ Gs ${parseFloat(p.troco).toLocaleString("es-PY")})`;
+        msg += ` (${_wl.trocoPara} Gs ${parseFloat(p.troco).toLocaleString("es-PY")})`;
       msg += "\n";
     });
   } else {
-    msg += `💰 Pagamento: ${pag}\n`;
+    msg += `💰 ${_wl.pagamento}: ${pag}\n`;
   }
 
-  // Avisos de Pix/Alias (Bilíngue)
+  // Avisos de Pix/Alias
   if (pag === "Pix" || pag === "Transferencia" || pag === "QrPy") {
     if (pag === "Pix") {
       const totalBrl =
         COTACAO_REAL > 0 ? (totalGeral / COTACAO_REAL).toFixed(2) : "---";
-      msg += `\n💠 Chave Pix: ${CHAVE_PIX}\n`;
-      msg += `💰 Valor em Reais: R$ ${totalBrl}\n`;
+      msg += `\n💠 ${_wl.pixChave}: ${CHAVE_PIX}\n`;
+      msg += `💰 ${_wl.pixValorReais}: R$ ${totalBrl}\n`;
     }
-    if (pag === "Transferencia") msg += `\n📎 Alias: ${ALIAS_PY}\n`;
+    if (pag === "Transferencia") msg += `\n📎 ${_wl.aliasLabel}: ${ALIAS_PY}\n`;
     if (pag === "QrPy")
-      msg += `\n📱 Pago por QR Paraguay (Tigo / Personal / Bancard)\n`;
-    msg += `\n⚠️ *Envie o comprovante após o pagamento!*\n`;
+      msg += `\n📱 ${_wl.pagoPorQr}\n`;
+    msg += `\n⚠️ *${_wl.envieComprovante}*\n`;
   }
 
   // Para multipagamento: avisar sobre Pix ou Transferencia se incluídos
@@ -3819,13 +4003,13 @@ async function enviarZap() {
       if (p.metodo === "Pix") {
         const valBrl =
           COTACAO_REAL > 0 ? (p.valor / COTACAO_REAL).toFixed(2) : "---";
-        msg += `\n💠 Pix (forma ${idx + 1}): Chave ${CHAVE_PIX} — R$ ${valBrl}\n`;
+        msg += `\n💠 Pix (${_wl.formaN} ${idx + 1}): ${_wl.pixChave} ${CHAVE_PIX} — R$ ${valBrl}\n`;
       }
       if (p.metodo === "Transferencia") {
-        msg += `\n📎 Alias (forma ${idx + 1}): ${ALIAS_PY}\n`;
+        msg += `\n📎 ${_wl.aliasLabel} (${_wl.formaN} ${idx + 1}): ${ALIAS_PY}\n`;
       }
       if (p.metodo === "QrPy") {
-        msg += `\n📱 QR Paraguay (forma ${idx + 1}): Tigo / Personal / Bancard\n`;
+        msg += `\n📱 QR Paraguay (${_wl.formaN} ${idx + 1}): Tigo / Personal / Bancard\n`;
       }
     });
     const temDigital = partes.some(
@@ -3835,12 +4019,12 @@ async function enviarZap() {
         p.metodo === "QrPy",
     );
     if (temDigital)
-      msg += `\n⚠️ *Envie o(s) comprovante(s) após o pagamento!*\n`;
+      msg += `\n⚠️ *${_wl.envieComprovantes}*\n`;
   }
 
   // Factura
   if (document.getElementById("check-factura").checked) {
-    msg += `\n📄 RUC: ${document.getElementById("cli-ruc").value}\nRazão: ${document.getElementById("cli-zao").value}\n`;
+    msg += `\n📄 ${_wl.ruc}: ${document.getElementById("cli-ruc").value}\n${_wl.razao}: ${document.getElementById("cli-zao").value}\n`;
   }
 
   // Hash anti-duplicata salvo APENAS na abertura do WhatsApp (em _abrirZapEFechar)
@@ -3849,7 +4033,7 @@ async function enviarZap() {
 
   } catch (err) {
     console.error("[enviarZap] Erro inesperado:", err);
-    alert("Ocorreu um erro ao processar o pedido. Tente novamente.");
+    alert(tt({es:"Ocurrió un error al procesar el pedido. Intente nuevamente.",pt:"Ocorreu um erro ao processar o pedido. Tente novamente.",en:"An error occurred while processing the order. Please try again.",de:"Beim Verarbeiten der Bestellung ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut."}));
   } finally {
     clearTimeout(_timerLiberar);
     _liberarBotao();
@@ -3888,16 +4072,20 @@ function _mostrarModalEnvio(msg, numeroPedido) {
     modal.innerHTML = `
       <div style="background:white;border-radius:20px;padding:30px 24px;max-width:380px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.4)">
         <div style="font-size:3.5rem;margin-bottom:10px">📱</div>
-        <h3 style="margin:0 0 8px;font-size:1.2rem;color:#1a1a2e">Pedido registrado! ✅</h3>
+        <h3 style="margin:0 0 8px;font-size:1.2rem;color:#1a1a2e">${tt({es:"¡Pedido registrado! ✅",pt:"Pedido registrado! ✅",en:"Order registered! ✅",de:"Bestellung registriert! ✅"})}</h3>
         <p style="margin:0 0 20px;font-size:0.93rem;color:#555;line-height:1.55">
-          Para <strong>confirmar seu pedido</strong>, toque no botão abaixo e envie a mensagem no WhatsApp.
-          <br><span style="color:#e74c3c;font-weight:700">Sem o envio, o pedido não será aceito.</span>
+          ${tt({
+            es: `Para <strong>confirmar su pedido</strong>, toque el botón abajo y envíe el mensaje por WhatsApp.<br><span style="color:#e74c3c;font-weight:700">Sin el envío, el pedido no será aceptado.</span>`,
+            pt: `Para <strong>confirmar seu pedido</strong>, toque no botão abaixo e envie a mensagem no WhatsApp.<br><span style="color:#e74c3c;font-weight:700">Sem o envio, o pedido não será aceito.</span>`,
+            en: `To <strong>confirm your order</strong>, tap the button below and send the message via WhatsApp.<br><span style="color:#e74c3c;font-weight:700">Without sending it, the order will not be accepted.</span>`,
+            de: `Um <strong>Ihre Bestellung zu bestätigen</strong>, tippen Sie auf die Schaltfläche unten und senden Sie die Nachricht per WhatsApp.<br><span style="color:#e74c3c;font-weight:700">Ohne das Senden wird die Bestellung nicht akzeptiert.</span>`,
+          })}
         </p>
         <button id="btn-abrir-zap"
           style="width:100%;padding:18px;background:#25D366;color:white;border:none;border-radius:14px;font-size:1.1rem;font-weight:800;cursor:pointer;letter-spacing:0.3px;">
-          <i class="fab fa-whatsapp"></i> &nbsp;Enviar mensagem no WhatsApp
+          <i class="fab fa-whatsapp"></i> &nbsp;${tt({es:"Enviar mensaje por WhatsApp",pt:"Enviar mensagem no WhatsApp",en:"Send message on WhatsApp",de:"Nachricht per WhatsApp senden"})}
         </button>
-        <p style="margin:14px 0 0;font-size:0.75rem;color:#aaa;">Este aviso não fecha sozinho. Envie a mensagem para continuar.</p>
+        <p style="margin:14px 0 0;font-size:0.75rem;color:#aaa;">${tt({es:"Este aviso no se cierra solo. Envíe el mensaje para continuar.",pt:"Este aviso não fecha sozinho. Envie a mensagem para continuar.",en:"This notice does not close on its own. Send the message to continue.",de:"Dieser Hinweis schließt sich nicht von selbst. Senden Sie die Nachricht, um fortzufahren."})}</p>
       </div>`;
     document.body.appendChild(modal);
 
@@ -4013,7 +4201,7 @@ function _atualizarUltimaCompra() {
     btnRep.disabled = !algumDisp;
     btnRep.style.opacity = algumDisp ? "1" : "0.45";
     btnRep.style.cursor  = algumDisp ? "pointer" : "not-allowed";
-    btnRep.title = algumDisp ? "" : "Nenhum item disponível no menu atual";
+    btnRep.title = algumDisp ? "" : tt({es:"Ningún ítem disponible en el menú actual",pt:"Nenhum item disponível no menu atual",en:"No items available in the current menu",de:"Keine Artikel im aktuellen Menü verfügbar"});
   }
 }
 
@@ -4057,12 +4245,17 @@ function repetirPedido() {
   const indisponiveis = last.length - disponiveis.length;
 
   if (disponiveis.length === 0) {
-    mostrarToast("Nenhum item do pedido anterior está disponível no menu atual.", "warning", 4000);
+    mostrarToast(tt({es:"Ningún ítem del pedido anterior está disponible en el menú actual.",pt:"Nenhum item do pedido anterior está disponível no menu atual.",en:"No items from the previous order are available in the current menu.",de:"Keine Artikel der vorherigen Bestellung sind im aktuellen Menü verfügbar."}), "warning", 4000);
     return;
   }
   if (indisponiveis > 0) {
     mostrarToast(
-      `${indisponiveis} item(s) indisponível(is) não foram adicionados.`,
+      tt({
+        es: `${indisponiveis} ítem(s) no disponible(s) no fueron agregados.`,
+        pt: `${indisponiveis} item(s) indisponível(is) não foram adicionados.`,
+        en: `${indisponiveis} unavailable item(s) were not added.`,
+        de: `${indisponiveis} nicht verfügbare(s) Artikel wurden nicht hinzugefügt.`,
+      }),
       "warning", 4000
     );
   }
@@ -4101,20 +4294,58 @@ let _lastMotoboyId = null; // motoboy_id do último polling
 let _lastTrackedSt = ""; // evita re-render sem mudança
 let _trackedId = null; // id do pedido em tracking
 
+function _trackerMsg(status) {
+  const lang = localStorage.getItem("language") || "es";
+  const msgs = {
+    es: {
+      pendente: "¡Pedido recibido! Aguardando confirmación...",
+      em_preparo: "¡Su pedido está siendo preparado!",
+      pronto_entrega: "¡Listo! Esperando repartidor...",
+      saiu_entrega: "¡Su pedido salió para entrega!",
+      entregue: "¡Pedido entregado! Buen provecho! 🎉",
+      cancelado: "Pedido cancelado. Contáctenos.",
+    },
+    pt: {
+      pendente: "Pedido recebido! Aguardando confirmação...",
+      em_preparo: "Seu pedido está sendo preparado!",
+      pronto_entrega: "Pronto! Aguardando motoboy...",
+      saiu_entrega: "Seu pedido saiu para entrega!",
+      entregue: "Pedido entregue! Bom apetite! 🎉",
+      cancelado: "Pedido cancelado. Entre em contato conosco.",
+    },
+    en: {
+      pendente: "Order received! Awaiting confirmation...",
+      em_preparo: "Your order is being prepared!",
+      pronto_entrega: "Ready! Waiting for the driver...",
+      saiu_entrega: "Your order is out for delivery!",
+      entregue: "Order delivered! Enjoy your meal! 🎉",
+      cancelado: "Order cancelled. Contact us.",
+    },
+    de: {
+      pendente: "Bestellung erhalten! Warten auf Bestätigung...",
+      em_preparo: "Ihre Bestellung wird zubereitet!",
+      pronto_entrega: "Fertig! Warten auf den Fahrer...",
+      saiu_entrega: "Ihre Bestellung ist unterwegs!",
+      entregue: "Bestellung geliefert! Guten Appetit! 🎉",
+      cancelado: "Bestellung storniert. Kontaktieren Sie uns.",
+    },
+  };
+  const dict = msgs[lang] || msgs.es;
+  return dict[status] || "";
+}
+
 const TRACKER_STEPS = {
   pendente: {
     step: 1,
     icon: "📥",
-    msg: "Pedido recebido! Aguardando confirmação...",
   },
-  em_preparo: { step: 2, icon: "🔥", msg: "Seu pedido está sendo preparado!" },
-  pronto_entrega: { step: 3, icon: "📦", msg: "Pronto! Aguardando motoboy..." },
-  saiu_entrega: { step: 3, icon: "🛵", msg: "Seu pedido saiu para entrega!" },
-  entregue: { step: 4, icon: "✅", msg: "Pedido entregue! Bom apetite! 🎉" },
+  em_preparo: { step: 2, icon: "🔥" },
+  pronto_entrega: { step: 3, icon: "📦" },
+  saiu_entrega: { step: 3, icon: "🛵" },
+  entregue: { step: 4, icon: "✅" },
   cancelado: {
     step: 0,
     icon: "❌",
-    msg: "Pedido cancelado. Entre em contato conosco.",
   },
 };
 
@@ -4203,7 +4434,7 @@ function _solicitarPermissaoNotificacao(pedidoId) {
     const perm = await Notification.requestPermission();
     if (perm === "granted") {
       _registrarPushSubscription(pedidoId);
-      mostrarToast("\u2705 Notificações ativadas!", "success");
+      mostrarToast(tt({es:"✅ ¡Notificaciones activadas!",pt:"✅ Notificações ativadas!",en:"✅ Notifications enabled!",de:"✅ Benachrichtigungen aktiviert!"}), "success");
     }
   };
   document.getElementById("btn-push-nao").onclick = () => toast.remove();
@@ -4293,7 +4524,7 @@ function _iniciarPollingTracking(pedidoId, uid) {
         TRACKER_STEPS[data.status]
       ) {
         new Notification(NOME_RESTAURANTE_APP || "Pedido", {
-          body: TRACKER_STEPS[data.status].msg,
+          body: _trackerMsg(data.status),
           icon: "/img/icon-192.png",
         });
       }
@@ -4474,7 +4705,7 @@ async function aplicarCupom() {
   const msgBox = document.getElementById("cupom-msg");
 
   if (!codigo) {
-    msgBox.innerHTML = '<span style="color:#e74c3c">Digite um código</span>';
+    msgBox.innerHTML = `<span style="color:#e74c3c">${tt({es:"Ingrese un código",pt:"Digite um código",en:"Enter a code",de:"Geben Sie einen Code ein"})}</span>`;
     msgBox.style.display = "block";
     return;
   }
@@ -4489,7 +4720,7 @@ async function aplicarCupom() {
 
   if (error || !cupom) {
     msgBox.innerHTML =
-      '<span style="color:#e74c3c">❌ Cupom inválido ou inativo</span>';
+      `<span style="color:#e74c3c">❌ ${tt({es:"Cupón inválido o inactivo",pt:"Cupom inválido ou inativo",en:"Invalid or inactive coupon",de:"Ungültiger oder inaktiver Gutschein"})}</span>`;
     msgBox.style.display = "block";
     cupomAplicado = null;
     atualizarTotalCheckout();
@@ -4522,7 +4753,7 @@ async function aplicarCupom() {
 
   const subtotal = carrinho.reduce((a, i) => a + i.preco * i.qtd, 0);
   if (subtotal < cupom.minimo) {
-    msgBox.innerHTML = `<span style="color:#e74c3c">Valor mínimo: Gs ${cupom.minimo.toLocaleString("es-PY")}</span>`;
+    msgBox.innerHTML = `<span style="color:#e74c3c">${tt({es:"Valor mínimo",pt:"Valor mínimo",en:"Minimum value",de:"Mindestwert"})}: Gs ${cupom.minimo.toLocaleString("es-PY")}</span>`;
     msgBox.style.display = "block";
     cupomAplicado = null;
   } else {
@@ -4568,7 +4799,7 @@ async function buscarPedido() {
   const numeroPedido = input ? input.value.trim() : "";
 
   if (!numeroPedido) {
-    alert("Por favor, digite o número do pedido");
+    alert(tt({es:"Por favor, ingrese el número del pedido",pt:"Por favor, digite o número do pedido",en:"Please enter the order number",de:"Bitte geben Sie die Bestellnummer ein"}));
     return;
   }
 
@@ -4576,7 +4807,7 @@ async function buscarPedido() {
   document.getElementById("track-form").style.display = "none";
   document.getElementById("track-result").style.display = "block";
   document.getElementById("track-numero").textContent = numeroPedido;
-  document.getElementById("track-status-msg").textContent = "Buscando...";
+  document.getElementById("track-status-msg").textContent = tt({es:"Buscando...",pt:"Buscando...",en:"Searching...",de:"Suche läuft..."});
 
   try {
     // Busca no Supabase
@@ -4588,7 +4819,7 @@ async function buscarPedido() {
 
     if (error || !pedido) {
       document.getElementById("track-status-msg").textContent =
-        "Pedido não encontrado";
+        tt({es:"Pedido no encontrado",pt:"Pedido não encontrado",en:"Order not found",de:"Bestellung nicht gefunden"});
       document.getElementById("track-icon").textContent = "❌";
       return;
     }
@@ -4601,28 +4832,70 @@ async function buscarPedido() {
   } catch (err) {
     console.error("Erro ao buscar pedido:", err);
     document.getElementById("track-status-msg").textContent =
-      "Erro ao buscar pedido";
+      tt({es:"Error al buscar pedido",pt:"Erro ao buscar pedido",en:"Error fetching order",de:"Fehler beim Abrufen der Bestellung"});
   }
 }
 
 // Atualizar visual do tracking
 function atualizarTrackingVisual(status, motoboy) {
+  const _tLang = localStorage.getItem("language") || "es";
+  const _statusMsgs = {
+    es: {
+      pendente: "Aguardando confirmación...",
+      em_preparo: "🔥 ¡Preparando su pedido!",
+      pronto_entrega: "📦 ¡Listo! Esperando repartidor...",
+      saiu_entrega: "🛵 ¡Su pedido salió para entrega!",
+      entregue: "✅ ¡Pedido entregado! Buen provecho!",
+      cancelado: "❌ Pedido cancelado. Contáctenos.",
+    },
+    pt: {
+      pendente: "Aguardando confirmação...",
+      em_preparo: "🔥 Preparando seu pedido!",
+      pronto_entrega: "📦 Pronto! Aguardando motoboy...",
+      saiu_entrega: "🛵 Seu pedido saiu para entrega!",
+      entregue: "✅ Pedido entregue! Bom apetite!",
+      cancelado: "❌ Pedido cancelado. Fale conosco.",
+    },
+    en: {
+      pendente: "Awaiting confirmation...",
+      em_preparo: "🔥 Preparing your order!",
+      pronto_entrega: "📦 Ready! Waiting for the driver...",
+      saiu_entrega: "🛵 Your order is out for delivery!",
+      entregue: "✅ Order delivered! Enjoy your meal!",
+      cancelado: "❌ Order cancelled. Contact us.",
+    },
+    de: {
+      pendente: "Warten auf Bestätigung...",
+      em_preparo: "🔥 Ihre Bestellung wird zubereitet!",
+      pronto_entrega: "📦 Fertig! Warten auf den Fahrer...",
+      saiu_entrega: "🛵 Ihre Bestellung ist unterwegs!",
+      entregue: "✅ Bestellung geliefert! Guten Appetit!",
+      cancelado: "❌ Bestellung storniert. Kontaktieren Sie uns.",
+    },
+  }[_tLang] || {
+    pendente: "Aguardando confirmación...",
+    em_preparo: "🔥 ¡Preparando su pedido!",
+    pronto_entrega: "📦 ¡Listo! Esperando repartidor...",
+    saiu_entrega: "🛵 ¡Su pedido salió para entrega!",
+    entregue: "✅ ¡Pedido entregado! Buen provecho!",
+    cancelado: "❌ Pedido cancelado. Contáctenos.",
+  };
   const statusMap = {
-    pendente: { msg: "Aguardando confirmação...", icon: "⏳", step: 1 },
-    em_preparo: { msg: "🔥 Preparando seu pedido!", icon: "🔥", step: 2 },
+    pendente: { msg: _statusMsgs.pendente, icon: "⏳", step: 1 },
+    em_preparo: { msg: _statusMsgs.em_preparo, icon: "🔥", step: 2 },
     pronto_entrega: {
-      msg: "📦 Pronto! Aguardando motoboy...",
+      msg: _statusMsgs.pronto_entrega,
       icon: "📦",
       step: 3,
     },
     saiu_entrega: {
-      msg: "🛵 Seu pedido saiu para entrega!",
+      msg: _statusMsgs.saiu_entrega,
       icon: "🛵",
       step: 3,
     },
-    entregue: { msg: "✅ Pedido entregue! Bom apetite!", icon: "✅", step: 4 },
+    entregue: { msg: _statusMsgs.entregue, icon: "✅", step: 4 },
     cancelado: {
-      msg: "❌ Pedido cancelado. Fale conosco.",
+      msg: _statusMsgs.cancelado,
       icon: "❌",
       step: 0,
     },
@@ -4651,7 +4924,7 @@ function atualizarTrackingVisual(status, motoboy) {
     if ((status === "saiu_entrega" || status === "entregue") && motoboy) {
       motoInfo.style.display = "block";
       document.getElementById("track-motoboy-nome").textContent =
-        motoboy.nome || "Não informado";
+        motoboy.nome || tt({es:"No informado",pt:"Não informado",en:"Not provided",de:"Nicht angegeben"});
       const telLink = document.getElementById("track-motoboy-tel");
       if (telLink && motoboy.telefone) {
         telLink.textContent = motoboy.telefone;
@@ -4679,7 +4952,7 @@ function atualizarTrackingVisual(status, motoboy) {
       _btn.onclick = confirmarEntregaCliente;
       _btn.style.cssText =
         "width:100%;margin-top:14px;padding:14px 0;background:linear-gradient(135deg,#27ae60,#2ecc71);color:white;border:none;border-radius:12px;font-weight:700;font-size:1rem;cursor:pointer;letter-spacing:0.3px;box-shadow:0 4px 12px rgba(39,174,96,0.35)";
-      _btn.innerHTML = "✅ Confirmar Recebimento do Pedido";
+      _btn.innerHTML = tt({es:"✅ Confirmar Recepción del Pedido",pt:"✅ Confirmar Recebimento do Pedido",en:"✅ Confirm Order Receipt",de:"✅ Bestellungserhalt bestätigen"});
       _trackResult.appendChild(_btn);
     }
     // Inicia timer auto-confirm se ainda não iniciado
@@ -4697,7 +4970,7 @@ function atualizarTrackingVisual(status, motoboy) {
       _btnEdit.onclick = abrirEdicaoPedido;
       _btnEdit.style.cssText =
         "width:100%;margin-top:10px;padding:12px 0;background:linear-gradient(135deg,#f39c12,#e67e22);color:white;border:none;border-radius:12px;font-weight:700;font-size:0.95rem;cursor:pointer;box-shadow:0 4px 12px rgba(243,156,18,0.35)";
-      _btnEdit.innerHTML = "✏️ Editar Pedido";
+      _btnEdit.innerHTML = tt({es:"✏️ Editar Pedido",pt:"✏️ Editar Pedido",en:"✏️ Edit Order",de:"✏️ Bestellung bearbeiten"});
       _trackResult.appendChild(_btnEdit);
     }
   }
@@ -4727,7 +5000,7 @@ function abrirEdicaoPedido() {
   modal.innerHTML = `
       <div style="background:white;border-radius:20px;padding:28px 22px;max-width:400px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.4)">
         <div style="font-size:2.5rem;margin-bottom:12px">✏️</div>
-        <h3 style="margin:0 0 10px;font-size:1.1rem;color:#1a1a2e">Editar Pedido</h3>
+        <h3 style="margin:0 0 10px;font-size:1.1rem;color:#1a1a2e">${tt({es:"Editar Pedido",pt:"Editar Pedido",en:"Edit Order",de:"Bestellung bearbeiten"})}</h3>
         <p style="margin:0 0 16px;font-size:0.88rem;color:#555;line-height:1.5">
           Seu pedido ainda não foi aceito. Você pode:<br>
           <strong>• Adicionar ou remover itens</strong><br>
@@ -4756,7 +5029,7 @@ async function iniciarEdicaoCarrinho(pedidoId) {
     .eq("id", pedidoId)
     .single();
 
-  if (!p) return alert("Pedido não encontrado.");
+  if (!p) return alert(tt({es:"Pedido no encontrado.",pt:"Pedido não encontrado.",en:"Order not found.",de:"Bestellung nicht gefunden."}));
 
   // Pré-carrega itens no carrinho atual
   if (p.itens && Array.isArray(p.itens)) {
@@ -4789,7 +5062,12 @@ async function iniciarEdicaoCarrinho(pedidoId) {
       banner.style.cssText =
         "background:#fff3cd;border:1.5px solid #f0a500;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:0.82rem;color:#7a5100;font-weight:600";
       banner.innerHTML =
-        "✏️ <strong>Modo Edição</strong> — Modifique seus itens e clique em Enviar Pedido. A loja receberá a versão atualizada.";
+        tt({
+          es: "✏️ <strong>Modo Edición</strong> — Modifique sus ítems y haga clic en Enviar Pedido. La tienda recibirá la versión actualizada.",
+          pt: "✏️ <strong>Modo Edição</strong> — Modifique seus itens e clique em Enviar Pedido. A loja receberá a versão atualizada.",
+          en: "✏️ <strong>Edit Mode</strong> — Modify your items and click Send Order. The store will receive the updated version.",
+          de: "✏️ <strong>Bearbeitungsmodus</strong> — Ändern Sie Ihre Artikel und klicken Sie auf Bestellung senden. Das Geschäft erhält die aktualisierte Version.",
+        });
       checkout.insertBefore(banner, checkout.firstChild);
     }
   }, 100);
@@ -4800,7 +5078,7 @@ async function solicitarCancelamentoCliente() {
   const pedidoId = localStorage.getItem("app_pedido_id");
   if (!pedidoId) return;
 
-  const motivo = prompt("Motivo do cancelamento (obrigatório):");
+  const motivo = prompt(tt({es:"Motivo de la cancelación (obligatorio):",pt:"Motivo do cancelamento (obrigatório):",en:"Cancellation reason (required):",de:"Stornierungsgrund (erforderlich):"}));
   if (!motivo || !motivo.trim()) return;
 
   const { error } = await supa
@@ -4814,9 +5092,9 @@ async function solicitarCancelamentoCliente() {
     .eq("id", parseInt(pedidoId));
 
   if (error) {
-    alert("Erro ao solicitar cancelamento. Contate a loja pelo WhatsApp.");
+    alert(tt({es:"Error al solicitar cancelación. Contacte a la tienda por WhatsApp.",pt:"Erro ao solicitar cancelamento. Contate a loja pelo WhatsApp.",en:"Error requesting cancellation. Contact the store via WhatsApp.",de:"Fehler bei der Stornierungsanfrage. Kontaktieren Sie das Geschäft per WhatsApp."}));
   } else {
-    alert("✅ Solicitação enviada! A loja irá avaliar e responder em breve.");
+    alert(tt({es:"✅ ¡Solicitud enviada! La tienda evaluará y responderá pronto.",pt:"✅ Solicitação enviada! A loja irá avaliar e responder em breve.",en:"✅ Request sent! The store will review and respond shortly.",de:"✅ Anfrage gesendet! Das Geschäft wird prüfen und in Kürze antworten."}));
   }
 }
 
@@ -4869,7 +5147,12 @@ function toggleSaborPizza(saborObj, maxSabores) {
       saboresSelecionados.push(saborObj);
     } else {
       alert(
-        `Você escolheu uma pizza de ${maxSabores} sabores. Remova um para trocar.`,
+        tt({
+        es: `Eligió una pizza de ${maxSabores} sabores. Quite uno para cambiar.`,
+        pt: `Você escolheu uma pizza de ${maxSabores} sabores. Remova um para trocar.`,
+        en: `You chose a pizza with ${maxSabores} flavors. Remove one to change.`,
+        de: `Sie haben eine Pizza mit ${maxSabores} Geschmacksrichtungen gewählt. Entfernen Sie eine, um zu wechseln.`,
+      }),
       );
       return;
     }
@@ -4887,7 +5170,7 @@ function initDeteccaoConexao() {
   // Mostra alerta quando fica offline
   window.addEventListener("offline", () => {
     mostrarToast(
-      "⚠️ Sem conexão com a internet. Algumas funcionalidades podem não funcionar.",
+      tt({es:"⚠️ Sin conexión a internet. Algunas funciones pueden no funcionar.",pt:"⚠️ Sem conexão com a internet. Algumas funcionalidades podem não funcionar.",en:"⚠️ No internet connection. Some features may not work.",de:"⚠️ Keine Internetverbindung. Einige Funktionen funktionieren möglicherweise nicht."}),
       "warning",
       5000,
     );
@@ -4895,7 +5178,7 @@ function initDeteccaoConexao() {
 
   // Mostra alerta quando volta online
   window.addEventListener("online", () => {
-    mostrarToast("✅ Conexão restaurada!", "success", 3000);
+    mostrarToast(tt({es:"✅ ¡Conexión restablecida!",pt:"✅ Conexão restaurada!",en:"✅ Connection restored!",de:"✅ Verbindung wiederhergestellt!"}), "success", 3000);
     // Recarrega dados
     verificarHorario();
   });
@@ -4944,7 +5227,7 @@ function restaurarCarrinhoBackup() {
           if (
             !pedidoAtivo &&
             confirm(
-              "Você tem itens no carrinho de uma sessão anterior. Deseja restaurá-los?",
+              tt({es:"Tiene ítems en el carrito de una sesión anterior. ¿Desea restaurarlos?",pt:"Você tem itens no carrinho de uma sessão anterior. Deseja restaurá-los?",en:"You have items in the cart from a previous session. Do you want to restore them?",de:"Sie haben Artikel im Warenkorb aus einer vorherigen Sitzung. Möchten Sie diese wiederherstellen?"}),
             )
           ) {
             carrinho = carrinhoSalvo;
