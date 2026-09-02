@@ -2383,13 +2383,14 @@ async function carregarHistoricoFechamentos() {
  * mesma lógica usada em fecharCaixaConfirmar(), só que rodando depois,
  * sob demanda, sem gravar nada no banco (é só para exibição).
  */
-async function _calcularResumoSessaoLegado(sessao) {
+async function _calcularResumoSessaoLegado(sessao, fechadoEmOverride) {
+  const fimJanela = fechadoEmOverride || sessao.fechado_em;
   const { data: pedidosData } = await supa
     .from("pedidos")
     .select("*")
     .neq("status", "cancelado")
     .gte("created_at", sessao.aberto_em)
-    .lte("created_at", sessao.fechado_em);
+    .lte("created_at", fimJanela);
   const peds = pedidosData || [];
 
   const { data: movsData } = await supa
@@ -2450,7 +2451,7 @@ async function _calcularResumoSessaoLegado(sessao) {
 
   return {
     abertura_em: sessao.aberto_em,
-    fechamento_em: sessao.fechado_em,
+    fechamento_em: fimJanela,
     valor_abertura: sessao.valor_abertura || 0,
     faturamento,
     qtd_pedidos: qtdPedidos,
@@ -3188,12 +3189,17 @@ async function fecharCaixaResumo() {
     if (!okOutraPessoa) return;
   }
 
-  // Recalcula para garantir dados atualizados
-  await calcularFinanceiro();
-  const s = _caixaState;
+  // ⚠️ CORRIGIDO: antes usava `await calcularFinanceiro(); const s = _caixaState;`
+  // — dependia de estado global (filtro de data da tela, _obterPeriodoFinanceiro,
+  // possíveis chamadas concorrentes) que podia ficar contaminado e zerar o
+  // fechamento mesmo com vendas reais na sessão. Agora calcula de forma
+  // isolada: consulta direto os pedidos/movimentações da janela real da
+  // sessão (aberto_em → agora), sem tocar em nenhum estado compartilhado.
+  const horaServFC = await _obterHoraServidor();
+  const s = await _calcularResumoSessaoLegado(_sessaoCaixaAtiva, horaServFC.iso);
   const fmt = (n) => 'Gs ' + n.toLocaleString('es-PY');
-  const lucro = s.faturamento + s.totalEntradas - s.custoEntregas - s.totalSaidas;
-  const dinheiroCaixa = s.totalEfetivo + s.totalEntradas - s.totalSaidas;
+  const lucro = s.resultado_operacional;
+  const dinheiroCaixa = s.dinheiro_na_gaveta;
 
   // Remove modal antigo se existir
   const oldModal = document.getElementById('modal-fechamento-caixa');
@@ -3219,19 +3225,19 @@ async function fecharCaixaResumo() {
         <div style="display:flex; justify-content:space-between;"><span>Facturación Total:</span><strong>${fmt(s.faturamento)}</strong></div>
         <hr>
         <div style="font-weight:700; margin-top:6px;">💰 Por Método:</div>
-        <div style="display:flex; justify-content:space-between; padding-left:12px;"><span>💵 Dinheiro:</span>${fmt(s.totalEfetivo)}</div>
-        <div style="display:flex; justify-content:space-between; padding-left:12px;"><span>📱 Pix:</span>${fmt(s.totalPix)}</div>
-        <div style="display:flex; justify-content:space-between; padding-left:12px;"><span>💳 Tarjeta:</span>${fmt(s.totalCartao)}</div>
-        <div style="display:flex; justify-content:space-between; padding-left:12px;"><span>🏦 Transferencia:</span>${fmt(s.totalTransf)}</div>
-        <div style="display:flex; justify-content:space-between; padding-left:12px;"><span>📱 QR Celular:</span>${fmt(s.totalQrCelular || 0)}</div>
-        <div style="display:flex; justify-content:space-between; padding-left:12px;"><span>📱 QR Maquina:</span>${fmt(s.totalQrMaquina || 0)}</div>
-        <div style="display:flex; justify-content:space-between; padding-left:12px;"><span>📋 Na Nota (quitado):</span>${fmt(s.totalNaNota)}</div>
+        <div style="display:flex; justify-content:space-between; padding-left:12px;"><span>💵 Dinheiro:</span>${fmt(s.por_forma_pagamento.efetivo)}</div>
+        <div style="display:flex; justify-content:space-between; padding-left:12px;"><span>📱 Pix:</span>${fmt(s.por_forma_pagamento.pix)}</div>
+        <div style="display:flex; justify-content:space-between; padding-left:12px;"><span>💳 Tarjeta:</span>${fmt(s.por_forma_pagamento.cartao)}</div>
+        <div style="display:flex; justify-content:space-between; padding-left:12px;"><span>🏦 Transferencia:</span>${fmt(s.por_forma_pagamento.transferencia)}</div>
+        <div style="display:flex; justify-content:space-between; padding-left:12px;"><span>📱 QR Celular:</span>${fmt(s.por_forma_pagamento.qr_celular || 0)}</div>
+        <div style="display:flex; justify-content:space-between; padding-left:12px;"><span>📱 QR Maquina:</span>${fmt(s.por_forma_pagamento.qr_maquina || 0)}</div>
+        <div style="display:flex; justify-content:space-between; padding-left:12px;"><span>📋 Na Nota (quitado):</span>${fmt(s.por_forma_pagamento.na_nota_quitado)}</div>
         <hr>
-        <div style="display:flex; justify-content:space-between;"><span>📦 Pedidos:</span>${s.qtdPedidos}</div>
-        <div style="display:flex; justify-content:space-between;"><span>🏍️ Custo Entregas:</span>${fmt(s.custoEntregas)}</div>
-        <div style="display:flex; justify-content:space-between;"><span>💸 Salidas (gastos):</span>${fmt(s.totalSaidas)}</div>
-        <div style="display:flex; justify-content:space-between;"><span>➕ Entradas (incl. fundo):</span>${fmt(s.totalEntradas)}</div>
-        <div style="display:flex; justify-content:space-between; padding-left:12px;"><span>└ Fundo de abertura:</span>${fmt(s.fundoAbertura)}</div>
+        <div style="display:flex; justify-content:space-between;"><span>📦 Pedidos:</span>${s.qtd_pedidos}</div>
+        <div style="display:flex; justify-content:space-between;"><span>🏍️ Custo Entregas:</span>${fmt(s.custo_entregas)}</div>
+        <div style="display:flex; justify-content:space-between;"><span>💸 Salidas (gastos):</span>${fmt(s.total_saidas)}</div>
+        <div style="display:flex; justify-content:space-between;"><span>➕ Entradas:</span>${fmt(s.total_entradas)}</div>
+        <div style="display:flex; justify-content:space-between; padding-left:12px;"><span>└ Fundo de abertura:</span>${fmt(s.valor_abertura)}</div>
         <hr>
         <div style="display:flex; justify-content:space-between; font-size:1.1rem; font-weight:800; color:#1a7a2e;"><span>💵 RESULTADO:</span>${fmt(lucro)}</div>
         <div style="display:flex; justify-content:space-between; font-size:1rem; font-weight:700; color:#2980b9; margin-top:6px;"><span>🪙 DINHEIRO NA GAVETA:</span>${fmt(dinheiroCaixa)}</div>
@@ -3244,7 +3250,7 @@ async function fecharCaixaResumo() {
         </label>
         <div id="fecha-delivery-desp-box" style="display:none; margin-top:12px;">
           <div style="font-size:0.8rem; color:#666; margin-bottom:8px;">
-            Costo de entregas del período: <strong>${fmt(s.custoEntregas)}</strong> — ajuste si es necesario.
+            Costo de entregas del período: <strong>${fmt(s.custo_entregas)}</strong> — ajuste si es necesario.
           </div>
           <div style="display:flex; gap:8px; flex-wrap:wrap;">
             <select id="fecha-delivery-forma-pag" style="flex:1; min-width:140px; padding:9px; border:1.5px solid #e0e0e0; border-radius:8px; font-size:0.85rem; font-weight:600;">
@@ -3257,7 +3263,7 @@ async function fecharCaixaResumo() {
             </select>
             <div style="flex:1; min-width:140px; position:relative;">
               <span style="position:absolute; left:8px; top:50%; transform:translateY(-50%); color:#888; font-size:0.8rem; pointer-events:none;">Gs</span>
-              <input type="number" id="fecha-delivery-valor" min="0" step="1000" value="${Math.round(s.custoEntregas)}"
+              <input type="number" id="fecha-delivery-valor" min="0" step="1000" value="${Math.round(s.custo_entregas)}"
                 style="width:100%; padding:9px 9px 9px 28px; border:1.5px solid #e0e0e0; border-radius:8px; font-size:0.9rem; font-weight:700; box-sizing:border-box;">
             </div>
           </div>
@@ -3283,30 +3289,12 @@ async function fecharCaixaResumo() {
   window.fecharCaixaConfirmar = async function() {
     const horaServ = await _obterHoraServidor();
 
-    // ⚠️ NOVO: grava o boletim inteiro em resumo_fechamento — sem isso,
-    // depois que o modal fecha, não sobra nada estruturado pra reabrir
-    // essa sessão e conferir os números de novo.
-    const resumoFechamento = {
-      abertura_em: _sessaoCaixaAtiva.aberto_em,
-      fechamento_em: horaServ.iso,
-      valor_abertura: _sessaoCaixaAtiva.valor_abertura || 0,
-      faturamento: s.faturamento,
-      resultado_operacional: lucro,
-      dinheiro_na_gaveta: dinheiroCaixa,
-      qtd_pedidos: s.qtdPedidos,
-      custo_entregas: s.custoEntregas,
-      total_saidas: s.totalSaidas,
-      total_entradas: s.totalEntradas,
-      por_forma_pagamento: {
-        efetivo: s.totalEfetivo,
-        pix: s.totalPix,
-        cartao: s.totalCartao,
-        transferencia: s.totalTransf,
-        qr_celular: s.totalQrCelular || 0,
-        qr_maquina: s.totalQrMaquina || 0,
-        na_nota_quitado: s.totalNaNota,
-      },
-    };
+    // O boletim completo já está pronto em `s` (calculado de forma
+    // isolada em fecharCaixaResumo, ao abrir este modal) — só
+    // sobrescrevemos o horário de fechamento com o momento real da
+    // confirmação (pode ter passado alguns segundos desde a abertura
+    // do modal).
+    const resumoFechamento = { ...s, fechamento_em: horaServ.iso, resultado_operacional: lucro, dinheiro_na_gaveta: dinheiroCaixa, _calculadoAgora: false };
 
     try {
       await supa
