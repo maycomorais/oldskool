@@ -12,6 +12,8 @@ const ADMIN_LANGS = {
   // PORTUGUÊS (padrão)
   // ══════════════════════════════════════════════════════════
   pt: {
+    'pdv.lancar_pedido': 'Lançar Pedido',
+
     // ── Sidebar ────────────────────────────────────────────
     'sidebar.visao':        'Visão',
     'sidebar.pdv':          'PDV Balcão',
@@ -1609,6 +1611,9 @@ const ADMIN_LANGS = {
     'geral.vence':          'Vence:',
     'geral.vencimento':     'Vencimiento',
     'ft.erro':              'Error: ',
+
+    'pdv.lancar_pedido': 'Lanzar Pedido',
+
 
     // ── Filiais ───────────────────────────────────────────────────
     'filiais.nova_sucursal':     'Nueva Sucursal',

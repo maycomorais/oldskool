@@ -10462,6 +10462,7 @@ function limparCarrinhoPDV() {
   // Atualiza UI do carrinho
   atualizarCarrinhoPDV();
   atualizarBarraMesasAtivas?.();
+  atualizarTextoBotaoPDV(); // <-- NOVA LINHA
 }
 
 // ── Altera quantidade de item no carrinho PDV ────────────────────
@@ -11525,6 +11526,8 @@ function abrirMesaExistente(pedido) {
   const h4 = pdv?.querySelector(".pdv-carrinho-titulo");
   if (h4) h4.after(aviso);
   setTimeout(() => aviso?.remove(), 10000);
+
+  atualizarTextoBotaoPDV(); // <-- NOVA LINHA
 }
 
 async function carregarMonitorMesas() {
@@ -14424,4 +14427,15 @@ async function salvarEdicaoPedidoRelatorio() {
   fecharModal('modal-editar-pedido');
   // Recarrega o relatório para refletir as alterações
   carregarRelatorio();
+}
+
+function atualizarTextoBotaoPDV() {
+  const btnText = document.getElementById('pdv-btn-text');
+  if (!btnText) return;
+  
+  if (window._mesaAbertaId) {
+    btnText.textContent = t('pdv.lancar_pedido');
+  } else {
+    btnText.textContent = t('pdv.receber_finalizar');
+  }
 }
