@@ -43,6 +43,25 @@ const ADMIN_LANGS = {
     'dash.personalizado':   'Personalizado',
     'dash.nenhuma_venda':   'Nenhuma venda no período',
 
+    'mesas.abrir_comanda': 'Abrir Comanda',
+    'mesas.finalizar': 'Finalizar',
+    'mesas.pendente_singular': 'pendente',
+    'mesas.pendente_plural': 'pendentes',
+    'mesas.total': 'Total',
+    'mesas.status_pendente': 'PENDENTE',
+
+    'mesas.abrir_comanda': 'Abrir Comanda',
+    'mesas.finalizar': 'Finalizar',
+    'mesas.pendente_singular': 'pendente',
+    'mesas.pendente_plural': 'pendentes',
+    'mesas.total': 'Total',
+    'mesas.status_pendente': 'PENDENTE',
+    'mesas.mesa_prefixo': 'Mesa',
+    'mesas.nenhuma': 'Nenhuma mesa ativa no momento.',
+    'mesas.editando_mesa': 'Editando Mesa',
+    'mesas.adicione_itens': 'adicione os NOVOS itens e clique em "Lançar Pedido"',
+    'mesas.outros': 'outros',
+
     // ── Pedidos ────────────────────────────────────────────
     'pedidos.title':        'Pedidos',
     'pedidos.cliente':      'Cliente',
@@ -836,6 +855,25 @@ const ADMIN_LANGS = {
     'dash.mes':             'Este mes',
     'dash.personalizado':   'Personalizado',
     'dash.nenhuma_venda':   'Sin ventas en el período',
+
+    'mesas.abrir_comanda': 'Abrir Comanda', // ou 'Abrir Comanda' (mantém)
+    'mesas.finalizar': 'Finalizar',
+    'mesas.pendente_singular': 'pendiente',
+    'mesas.pendente_plural': 'pendientes',
+    'mesas.total': 'Total',
+    'mesas.status_pendente': 'PENDIENTE',
+
+    'mesas.abrir_comanda': 'Abrir Comanda',
+    'mesas.finalizar': 'Finalizar',
+    'mesas.pendente_singular': 'pendiente',
+    'mesas.pendente_plural': 'pendientes',
+    'mesas.total': 'Total',
+    'mesas.status_pendente': 'PENDIENTE',
+    'mesas.mesa_prefixo': 'Mesa',
+    'mesas.nenhuma': 'Ninguna mesa activa en este momento.',
+    'mesas.editando_mesa': 'Editando Mesa',
+    'mesas.adicione_itens': 'añada los NUEVOS items y haga clic en "Lanzar Pedido"',
+    'mesas.outros': 'otros',
 
     // ── Pedidos ────────────────────────────────────────────
     'pedidos.title':        'Pedidos',

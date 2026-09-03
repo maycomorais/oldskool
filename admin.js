@@ -10525,7 +10525,7 @@ function atualizarCarrinhoPDV() {
   if (itensExistentes.length > 0) {
     const sec = document.createElement("div");
     sec.className = "pdv-sec-title";
-    sec.textContent = "Itens já lançados";
+    sec.textContent = t('pdv.itens_lancados');
     lista.appendChild(sec);
 
     itensExistentes.forEach((item, idx) => {
@@ -10538,7 +10538,7 @@ function atualizarCarrinhoPDV() {
       const acoes = entregue
         ? `<span class="pdv-badge-entregue">✓ Entregue</span>`
         : `<button class="pdv-card-btn pdv-card-btn-ok" onclick="baixarItemMesa(${window._mesaAbertaId},${idx})">
-            <i class="fas fa-check"></i> Baixar</button>`;
+            <i class="fas fa-check"></i> ${t('pdv.baixar')}</button>`;
 
       lista.appendChild(_criarCard(
         nome + (entregue ? ' <span class="pdv-badge-entregue">✓</span>' : ""),
@@ -10552,7 +10552,7 @@ function atualizarCarrinhoPDV() {
   if (carrinhoPDV.length > 0) {
     const sec2 = document.createElement("div");
     sec2.className = "pdv-sec-title pdv-sec-novo";
-    sec2.textContent = itensExistentes.length > 0 ? "+ Novos itens" : "Itens do pedido";
+    sec2.textContent = itensExistentes.length > 0 ? "+ Nuevos itens" : "Itens del pedido";
     lista.appendChild(sec2);
 
     carrinhoPDV.forEach((item, idx) => {
@@ -11437,17 +11437,17 @@ async function atualizarBarraMesasAtivas() {
   const vazio = document.getElementById('pdv-mesas-vazio');
   if (!bar) return;
 
-  // Cria ou mantém o botão toggle e o container da lista
-  let toggleBtn = bar.querySelector('.pdv-mesas-toggle');
-  if (!toggleBtn) {
-    toggleBtn = document.createElement('button');
-    toggleBtn.className = 'pdv-mesas-toggle';
-    toggleBtn.textContent = '▼';
-    toggleBtn.title = 'Ocultar mesas';
-    toggleBtn.onclick = toggleMesasBar;
-    bar.prepend(toggleBtn);
-  }
+  // Busca pedidos de balcão com MESA
+  const { data } = await supa
+    .from('pedidos')
+    .select('id, endereco_entrega, cliente_nome, total_geral, status, itens')
+    .eq('tipo_entrega', 'balcao')
+    .neq('status', 'entregue')
+    .neq('status', 'cancelado')
+    .ilike('endereco_entrega', 'Mesa%')   // ← filtro: apenas mesas numeradas
+    .order('id', { ascending: true });
 
+  // Atualiza contêiner de chips
   let list = document.getElementById('pdv-mesas-list');
   if (!list) {
     list = document.createElement('span');
@@ -11464,25 +11464,17 @@ async function atualizarBarraMesasAtivas() {
     }
   }
 
-  // Limpa apenas os chips, mantendo o vazio se existir
+  // Limpa chips antigos
   list.querySelectorAll('.mesa-chip').forEach(c => c.remove());
 
-  // Busca pedidos
-  const { data } = await supa
-    .from('pedidos')
-    .select('id, endereco_entrega, cliente_nome, total_geral, status, itens')
-    .eq('tipo_entrega', 'balcao')
-    .neq('status', 'entregue')
-    .neq('status', 'cancelado')
-    .order('id', { ascending: true });
-
-  // Atualiza vazio
-  if (vazio) vazio.style.display = data && data.length > 0 ? 'none' : 'inline';
-
-  if (!data || data.length === 0) return;
+  if (!data || data.length === 0) {
+    if (vazio) vazio.style.display = 'inline';
+    return;
+  }
+  if (vazio) vazio.style.display = 'none';
 
   data.forEach((p) => {
-    const nrMesa = (p.endereco_entrega || '').replace('Mesa ', '') || p.id;
+    const nrMesa = (p.endereco_entrega || '').replace(/^Mesa\s*/i, '') || p.id;
     const chip = document.createElement('button');
     chip.className =
       'mesa-chip' +
@@ -11494,7 +11486,7 @@ async function atualizarBarraMesasAtivas() {
     chip.title = `${p.cliente_nome || 'Mesa ' + nrMesa} — Gs ${(p.total_geral || 0).toLocaleString('es-PY')} — Clique para adicionar itens`;
     chip.innerHTML = `<span class="mesa-chip-num">${nrMesa}</span><span class="mesa-chip-status">${
       p.status === 'pronto_entrega'
-        ? '✓ Pronto'
+        ? '✓ ' + t('mesas.pronto')
         : p.status === 'em_preparo'
           ? '🔥'
           : '●'
@@ -11509,132 +11501,153 @@ function abrirMesaExistente(pedido) {
   const nrMesa = (pedido.endereco_entrega || "").replace("Mesa ", "") || "";
   const nomeCli = (pedido.cliente_nome || "").replace(/^MESA \d+ - /i, "");
 
-  // Preenche os campos
   const elMesa = document.getElementById("balcao-mesa");
   const elCli = document.getElementById("balcao-cliente");
   if (elMesa) elMesa.value = nrMesa;
   if (elCli) elCli.value = nomeCli === "Cliente" ? "" : nomeCli;
 
-  // ──────────────────────────────────────────────────────────────────
-  // MUDANÇA: carrinhoPDV fica VAZIO — só recebe os NOVOS itens.
-  // Os itens existentes ficam em window._mesaAbertaPedido (snapshot do DB).
-  // Na hora do save, fazemos merge: existentes (intactos) + novos (pendente).
-  // ──────────────────────────────────────────────────────────────────
   carrinhoPDV = [];
   window._mesaAbertaId = pedido.id;
   window._mesaAbertaTotal = pedido.total_geral || 0;
-  window._mesaAbertaPedido = pedido; // guarda snapshot completo
+  window._mesaAbertaPedido = pedido;
 
   atualizarCarrinhoPDV();
+  pdvMudarView('venda');
 
-  // Scroll para o topo do PDV
   const pdv = document.getElementById("pdv");
   if (pdv) pdv.scrollIntoView({ behavior: "smooth", block: "start" });
 
-  // Aviso visual
   const aviso = document.createElement("div");
   aviso.className = "pdv-mesa-aviso";
-  aviso.innerHTML = `<i class="fas fa-edit"></i> Editando Mesa ${nrMesa} — adicione os NOVOS itens e clique em Lançar`;
+  aviso.innerHTML = `<i class="fas fa-edit"></i> ${t('mesas.editando_mesa')} ${nrMesa} — ${t('mesas.adicione_itens')}`;
   const existing = pdv?.querySelector(".pdv-mesa-aviso");
   if (existing) existing.remove();
   const h4 = pdv?.querySelector(".pdv-carrinho-titulo");
   if (h4) h4.after(aviso);
-  setTimeout(() => aviso?.remove(), 8000);
+  setTimeout(() => aviso?.remove(), 10000);
 }
 
 async function carregarMonitorMesas() {
-  // Atualiza barra de chips de mesas no PDV junto com o monitor
-  atualizarBarraMesasAtivas();
-  // Busca pedidos de Balcão que NÃO foram finalizados (entregues)
-  const { data } = await supa
+  const div = document.getElementById("lista-mesas-andamento");
+  if (!div) return;
+
+  // Busca pedidos de Balcão com número de mesa
+  const { data, error } = await supa
     .from("pedidos")
     .select("*")
     .eq("tipo_entrega", "balcao")
-    .neq("status", "entregue") // Traz 'pendente', 'em_preparo' e 'pronto_entrega'
+    .neq("status", "entregue")
+    .ilike("endereco_entrega", "Mesa%")
     .order("id", { ascending: false });
 
-  const div = document.getElementById("lista-mesas-andamento");
-  if (!div) return;
+  if (error) {
+    console.error("Erro ao carregar mesas:", error);
+    div.innerHTML = `<p class="mesa-grid-empty">${t('geral.erro')}</p>`;
+    return;
+  }
 
   div.innerHTML = "";
 
   if (!data || data.length === 0) {
-    div.innerHTML = '<p class="mesa-monitor-vazio">Ningún pedido activo.</p>';
+    div.innerHTML = `
+      <div class="mesa-grid-empty">
+        <i class="fas fa-chair" style="font-size:2rem;color:#ccc;"></i>
+        <p>${t('mesas.nenhuma')}</p>
+      </div>
+    `;
     return;
   }
 
-  data.forEach((p) => {
-    let statusHtml = "";
-    let acaoHtml = "";
-    let cardClass = "mesa-monitor-card";
+  const grid = document.createElement("div");
+  grid.className = "mesa-grid";
 
-    // Lógica Visual do Status — usa classes CSS
-    if (p.status === "em_preparo") {
-      cardClass += " mesa-preparo";
-      statusHtml =
-        '<span class="mesa-monitor-status-cozinha"><i class="fas fa-fire"></i> Na Cozinha</span>';
-      acaoHtml =
-        '<small class="mesa-monitor-status-cozinha">Aguardando cozinha...</small>';
-    } else if (p.status === "pronto_entrega") {
-      cardClass += " mesa-pronta";
-      statusHtml =
-        '<span class="mesa-monitor-status-pronto"><i class="fas fa-check-circle"></i> PRONTO!</span>';
-      acaoHtml = `<button class="btn btn-sm btn-success btn-block-pdv" onclick="finalizarMesa(${p.id})">Entregar / Baixar</button>`;
+  data.forEach((pedido) => {
+    const nrMesa = (pedido.endereco_entrega || "").replace("Mesa ", "") || pedido.uid_temporal || pedido.id;
+    const itens = Array.isArray(pedido.itens) ? pedido.itens : [];
+    const pendentes = itens.filter(i => !i.status_item || i.status_item === "pendente");
+    const totalItens = itens.length;
+    const pendentesCount = pendentes.length;
+
+    // Status com tradução
+    let statusLabel = "";
+    let statusClass = "";
+    if (pedido.status === "pronto_entrega") {
+      statusLabel = t('status.pronto_entrega');
+      statusClass = "status-pronto";
+    } else if (pedido.status === "em_preparo") {
+      statusLabel = t('status.em_preparo');
+      statusClass = "status-preparo";
     } else {
-      statusHtml = `<span class="mesa-monitor-valor">${p.status}</span>`;
+      statusLabel = t('mesas.status_pendente');
+      statusClass = "status-pendente";
     }
 
-    const nrMesa =
-      (p.endereco_entrega || "").replace("Mesa ", "") || p.uid_temporal || p.id;
+    // Texto de pendentes com plural/singular
+    const pendenteTexto = pendentesCount === 1
+      ? t('mesas.pendente_singular')
+      : t('mesas.pendente_plural');
 
-    // Lista de itens com status visual por item
-    const itens = Array.isArray(p.itens) ? p.itens : [];
-    const pendentes = itens.filter(
-      (i) => !i.status_item || i.status_item === "pendente",
-    );
-    const entregues = itens.filter((i) => i.status_item === "entregue");
+    // Resumo dos itens (máx 2)
+    const itensResumo = itens.slice(0, 2).map(item => {
+      const nome = item.nome || item.n || "Item";
+      const qtd = item.qtd || item.q || 1;
+      return `${qtd}x ${nome}`;
+    }).join(", ");
+    const maisItens = itens.length > 2 ? ` + ${itens.length - 2} ${t('mesas.outros')}` : "";
 
-    let itensListHtml = itens
-      .map((item, idx) => {
-        const isEntregue = item.status_item === "entregue";
-        const nome = item.nome || item.n || "Item";
-        const qtd = item.qtd || item.q || 1;
-        return `
-        <div class="monitor-item-row ${isEntregue ? "monitor-item-entregue" : ""}">
-          <span class="monitor-item-nome">${qtd}x ${nome}</span>
-          ${
-            isEntregue
-              ? '<span class="monitor-item-badge-entregue">✓ Entregue</span>'
-              : `<button class="btn btn-xs btn-outline-success monitor-btn-baixar"
-                title="Marcar como entregue"
-                onclick="baixarItemMesa(${p.id}, ${idx})">
-                <i class="fas fa-check"></i>
-               </button>`
-          }
-        </div>`;
-      })
-      .join("");
-
-    // Contador de pendentes no cabeçalho
-    const cntPendente =
-      pendentes.length > 0
-        ? `<span class="mesa-monitor-cnt-pendente">${pendentes.length} pendente${pendentes.length > 1 ? "s" : ""}</span>`
-        : "";
-
+    // Cria o card
     const card = document.createElement("div");
-    card.className = cardClass;
+    card.className = `mesa-card ${statusClass}`;
+    card.style.cursor = "pointer";
+
     card.innerHTML = `
-      <div class="mesa-monitor-titulo">Mesa ${nrMesa} ${cntPendente}</div>
-      <div class="mesa-monitor-cliente">${p.cliente_nome || "-"}</div>
-      <div class="mesa-monitor-itens-lista">${itensListHtml}</div>
-      <div class="mesa-monitor-rodape">
-        ${statusHtml}
-        <span class="mesa-monitor-valor">Gs ${(p.total_geral || 0).toLocaleString("es-PY")}</span>
+      <div class="mesa-card-header">
+        <span class="mesa-numero">${t('mesas.mesa_prefixo')} ${nrMesa}</span>
+        <span class="mesa-status-badge ${statusClass}">${statusLabel}</span>
       </div>
-      ${acaoHtml}
+      <div class="mesa-card-cliente">
+        <i class="fas fa-user"></i> ${pedido.cliente_nome || "Cliente"}
+      </div>
+      <div class="mesa-card-itens">
+        <span class="mesa-item-count">${pendentesCount} ${pendenteTexto} / ${totalItens} ${t('mesas.total')}</span>
+        <span class="mesa-item-resumo">${itensResumo}${maisItens}</span>
+      </div>
+      <div class="mesa-card-total">
+        <span class="mesa-total-label">${t('mesas.total')}</span>
+        <span class="mesa-total-valor">Gs ${(pedido.total_geral || 0).toLocaleString("es-PY")}</span>
+      </div>
+      <div class="mesa-card-actions">
+        <button class="btn btn-primary btn-sm btn-abrir-comanda" type="button">
+          <i class="fas fa-pen"></i> ${t('mesas.abrir_comanda')}
+        </button>
+        <button class="btn btn-success btn-sm btn-finalizar-mesa" type="button">
+          <i class="fas fa-check-circle"></i> ${t('mesas.finalizar')}
+        </button>
+      </div>
     `;
-    div.appendChild(card);
+
+    // Eventos (mesma lógica)
+    card.addEventListener("click", (e) => {
+      if (e.target.closest("button")) return;
+      abrirMesaExistente(pedido);
+    });
+
+    const btnAbrir = card.querySelector(".btn-abrir-comanda");
+    btnAbrir.addEventListener("click", (e) => {
+      e.stopPropagation();
+      abrirMesaExistente(pedido);
+    });
+
+    const btnFinalizar = card.querySelector(".btn-finalizar-mesa");
+    btnFinalizar.addEventListener("click", (e) => {
+      e.stopPropagation();
+      finalizarMesa(pedido.id);
+    });
+
+    grid.appendChild(card);
   });
+
+  div.appendChild(grid);
 }
 
 // ── Baixa parcial: marca 1 item como 'entregue' no banco ──────────
@@ -11678,18 +11691,16 @@ async function baixarItemMesa(pedidoId, itemIdx) {
 
 // Função para dar baixa na mesa (Muda status para 'entregue' e sai da lista)
 async function finalizarMesa(id) {
-  if (confirm("¿Confirmar entrega y pago de esta mesa?")) {
-    await supa
-      .from("pedidos")
-      .update({
-        status: "entregue",
-        tempo_entregue: new Date().toISOString(),
-      })
-      .eq("id", id);
-    carregarMonitorMesas();
-    if (typeof calcularFinanceiro === "function") calcularFinanceiro();
-    // Gaveta: não abre no fechamento de mesa — apenas vendas PDV abrem a gaveta.
-  }
+  if (!confirm(t('mesas.confirmar_finalizar'))) return;
+  await supa
+    .from("pedidos")
+    .update({
+      status: "entregue",
+      tempo_entregue: new Date().toISOString(),
+    })
+    .eq("id", id);
+  carregarMonitorMesas();
+  if (typeof calcularFinanceiro === "function") calcularFinanceiro();
 }
 
 // Utilitários de Modal e Checkbox
