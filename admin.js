@@ -79,6 +79,14 @@ if (typeof t === "undefined") {
     "Preencha seu nome completo e RUC/C.I. para assinar.": "Complete su nombre completo y RUC/C.I. para firmar.",
     "Erro ao registrar assinatura:": "Error al registrar la firma:",
 
+    "Nenhuma mesa aberta na comanda.": "Ninguna mesa abierta en la comanda.",
+    "Esta mesa não tem itens.": "Esta mesa no tiene ítems.",
+    "Saldo financeiro do mensalista insuficiente.": "Saldo financiero del mensualista insuficiente.",
+    "Continuar mesmo assim?": "¿Continuar de todos modos?",
+    "Venda registrada!": "¡Venta registrada!",
+    "Só bebidas — direto ao balcão.": "Solo bebidas — directo al mostrador.",
+    "Enviado para a Cozinha!": "¡Enviado a la Cocina!",
+
     // Confirms
     "Remover a extensão de horário de hoje?": "¿Remover la extensión de horario de hoy?",
     "Deseja pausar este produto?": "¿Desea pausar este producto?",
@@ -125,6 +133,9 @@ if (typeof t === "undefined") {
   window.prompt = function(msg, defaultVal) {
     return origPrompt(translateText(msg), defaultVal);
   };
+  // Exposta para uso em outros lugares que mostram texto ao usuário
+  // fora de alert/confirm/prompt — ex.: o toast do PDV (_pdvToast).
+  window._translateText = translateText;
 })();
 
 
@@ -11130,14 +11141,15 @@ async function salvarPedidoBalcao() {
       0,
     );
 
+    // Nota: "Lançar Pedido" apenas envia os itens novos para a cozinha —
+    // a forma de pagamento só é definida ao "Finalizar Pedido" (fechar a
+    // mesa), então não sobrescrevemos forma_pagamento/obs_pagamento aqui.
     const { error } = await supa
       .from("pedidos")
       .update({
         itens: itensMerged,
         total_geral: novoTotal,
         subtotal: novoTotal,
-        forma_pagamento: pagFinalPDV,
-        obs_pagamento: obsPagPDV,
         cliente_nome: nomeFinal,
         cliente_telefone: tel,
         status: "em_preparo",
@@ -11151,6 +11163,9 @@ async function salvarPedidoBalcao() {
     // Descontar estoque dos novos itens adicionados
     await _descontarEstoqueVendaItens(novosItens);
 
+    // Imprime para a cozinha SOMENTE os itens novos (a mesa continua aberta)
+    _imprimirItensCozinhaMesaPDV(novosItens, `Mesa ${mesa}`, nomeFinal, window._mesaAbertaId);
+
     // Reset
     window._mesaAbertaId = null;
     window._mesaAbertaTotal = 0;
@@ -11163,6 +11178,7 @@ async function salvarPedidoBalcao() {
     atualizarCarrinhoPDV();
     atualizarBarraMesasAtivas();
     carregarMonitorMesas();
+    atualizarTextoBotaoPDV();
     alert(`✅ ${novosItens.length} item(s) enviado(s) para a cozinha!`);
     return;
   }
@@ -11404,6 +11420,7 @@ async function salvarPedidoBalcao() {
   atualizarCarrinhoPDV();
   atualizarBarraMesasAtivas();
   carregarMonitorMesas();
+  atualizarTextoBotaoPDV();
   // Toast não-bloqueante (alert segurava o popup de impressão)
   const _msgFinal = _soKg
     ? "✅ Venda registrada!"
@@ -11413,6 +11430,283 @@ async function salvarPedidoBalcao() {
   _pdvToast(_msgFinal);
 }
 
+// ── Imprime para a cozinha apenas os itens novos de uma mesa ──────────
+// Usado tanto ao "Lançar Pedido" (mesa continua aberta) quanto ao
+// "Finalizar Pedido" (se o operador acrescentou itens antes de fechar).
+function _imprimirItensCozinhaMesaPDV(novosItens, mesaLabel, clienteNome, mesaId) {
+  if (!Array.isArray(novosItens) || novosItens.length === 0) return;
+  const dadosImpressao = {
+    id: mesaId,
+    cliente: { nome: clienteNome, tel: "" },
+    entrega: { tipo: "mesa", ref: mesaLabel },
+    itens: novosItens.map((i) => ({
+      q: i.qtd || 1,
+      n: i.nome,
+      p: i.preco,
+      t: i.variacao || "",
+      pr: i.preparo || "",
+      m: i.montagem || [],
+      o: i.obs || "",
+      peso_gramas: i.peso_gramas,
+      _isKg: i._isKg,
+    })),
+    valores: { sub: 0, desconto: 0, frete: 0, total: 0 },
+    pagamento: { metodo: "", obs: "" },
+    data: new Date().toLocaleString("pt-BR"),
+  };
+  const base64 = btoa(unescape(encodeURIComponent(JSON.stringify(dadosImpressao))))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+  window.open(
+    `imprimir.html?d=${base64}`,
+    `PrintCozinhaMesa_${mesaId}_${Date.now()}`,
+    "width=400,height=600",
+  );
+}
+
+// ── Finaliza (fecha) uma mesa: escolhe forma de pagamento, dá baixa no
+//    pedido inteiro e sai da lista de mesas ativas ─────────────────────
+async function finalizarPedidoMesaPDV() {
+  if (!window._mesaAbertaId) {
+    alert("Nenhuma mesa aberta na comanda.");
+    return;
+  }
+
+  const mesa = document.getElementById("balcao-mesa").value.trim();
+  const cli =
+    document.getElementById("balcao-cliente").value.trim() || "Cliente";
+  const tel = document.getElementById("balcao-telefone").value.trim() || "";
+
+  let dadosFactura = null;
+  if (document.getElementById("pdv-check-factura")?.checked) {
+    const ruc = document.getElementById("pdv-cli-ruc").value.trim();
+    const razao = document.getElementById("pdv-cli-razao").value.trim();
+    dadosFactura = ruc || razao ? { ruc, razao } : { ruc: "", razao: "Consumidor Final" };
+  }
+
+  let pag = document.getElementById("balcao-pag").value;
+  const pagFinalPDV =
+    pag === "CartaoBR"
+      ? _cartaoBRTipoPDV === "debito"
+        ? "Cartão BR - Débito"
+        : "Cartão BR - Crédito"
+      : pag;
+
+  const nomeFinal = `MESA ${mesa} - ${cli}`;
+
+  // ── Itens: existentes da mesa + eventuais itens ainda não lançados ──
+  const itensExistentes = Array.isArray(window._mesaAbertaPedido?.itens)
+    ? window._mesaAbertaPedido.itens
+    : [];
+  const novosItens = carrinhoPDV.map((i) => ({
+    id: i.id || Date.now() + Math.random(),
+    nome: i.nome,
+    preco: i.preco,
+    qtd: i.qtd,
+    variacao: i.variacao || "",
+    montagem: i.montagem || [],
+    obs: i.obs || "",
+    categoria_slug: i.categoria_slug || "",
+    es_bebida: i.es_bebida || false,
+    promocao_dia: i.promocao_dia || false,
+    ...(i._isKg
+      ? { peso_gramas: i.peso_gramas, preco_kg: i.preco_kg, _isKg: true }
+      : {}),
+    status_item: "pendente",
+    lancado_em: new Date().toISOString(),
+  }));
+  const itensMerged = [...itensExistentes, ...novosItens];
+
+  if (itensMerged.length === 0) {
+    alert("Esta mesa não tem itens.");
+    return;
+  }
+
+  // ── Desconto manual ─────────────────────────────────────────────
+  const descTipo = document.getElementById("pdv-desconto-tipo")?.value || "fixo";
+  const descValRaw = parseFloat(document.getElementById("pdv-desconto-val")?.value || "0") || 0;
+  const subtotalBruto = itensMerged.reduce(
+    (acc, i) => acc + (i._isKg ? i.preco || 0 : (i.preco || 0) * (i.qtd || 1)),
+    0,
+  );
+  let descontoAplicado = 0;
+  if (descValRaw > 0) {
+    descontoAplicado =
+      descTipo === "percentual"
+        ? Math.round((subtotalBruto * descValRaw) / 100)
+        : Math.round(descValRaw);
+    descontoAplicado = Math.min(descontoAplicado, subtotalBruto);
+  }
+  const fretePDV = parseInt(document.getElementById("balcao-frete")?.value || "0") || 0;
+  const totalFinal = subtotalBruto - descontoAplicado + fretePDV;
+
+  // ── Tratamento Multipagamento ─────────────────────────────────
+  let obsPagPDV = "Pagamento no Balcão";
+  if (pag === "Multipagamento") {
+    const partesPDV = _coletarMultiPagamentoPDV();
+    if (partesPDV.length === 0) {
+      alert("Adicione ao menos 1 forma de pagamento!");
+      return;
+    }
+    const somaPartes = partesPDV.reduce((a, p) => a + p.valor, 0);
+    if (Math.abs(somaPartes - totalFinal) > 1) {
+      alert(
+        `⚠️ El total de las formas (Gs ${somaPartes.toLocaleString("es-PY")}) no coincide con el total del pedido (Gs ${totalFinal.toLocaleString("es-PY")}).`,
+      );
+      return;
+    }
+    obsPagPDV = JSON.stringify(partesPDV);
+  }
+
+  // ── Validação Mensalista ────────────────────────────────────────
+  if (pag === "Mensalista") {
+    if (!_pdvMensalistaSel) {
+      alert("Seleccione un mensualista antes de finalizar.");
+      return;
+    }
+    const saldoVal = Math.round(_pdvMensalistaSel.valor_restante || 0);
+    if (totalFinal > saldoVal) {
+      const ok = confirm(
+        `⚠️ Saldo financeiro do mensalista insuficiente.\n\nSaldo: Gs ${saldoVal.toLocaleString("es-PY")}\nTotal: Gs ${totalFinal.toLocaleString("es-PY")}\n\nContinuar mesmo assim?`,
+      );
+      if (!ok) return;
+    }
+    obsPagPDV = `Mensalista: ${_pdvMensalistaSel.clientes?.nome || ""} (plano #${_pdvMensalistaSel.id})`;
+  }
+
+  // ── Validação Na Nota ────────────────────────────────────────────
+  if (pag === "NaNota") {
+    if (!_pdvClienteNotaSel) {
+      alert("Seleccione el cliente para poner en la cuenta.");
+      return;
+    }
+    obsPagPDV = `Na Nota: ${_pdvClienteNotaSel.nome} (${_pdvClienteNotaSel.telefone || ""})`;
+  }
+
+  const _agora = new Date().toISOString();
+  const { error } = await supa
+    .from("pedidos")
+    .update({
+      itens: itensMerged,
+      subtotal: subtotalBruto,
+      desconto_pdv_valor: descontoAplicado,
+      desconto_pdv_tipo: descontoAplicado > 0 ? descTipo : null,
+      frete_cobrado_cliente: fretePDV,
+      total_geral: totalFinal,
+      forma_pagamento: pagFinalPDV,
+      obs_pagamento: obsPagPDV,
+      cliente_nome: nomeFinal,
+      cliente_telefone: tel,
+      dados_factura: dadosFactura,
+      status: "entregue",
+      tempo_entregue: _agora,
+    })
+    .eq("id", window._mesaAbertaId);
+
+  if (error) {
+    alert("Error al finalizar mesa: " + error.message);
+    return;
+  }
+
+  const mesaIdFechada = window._mesaAbertaId;
+
+  // Descontar estoque de itens ainda não descontados (só os novos, lançados agora)
+  if (novosItens.length > 0) {
+    await _descontarEstoqueVendaItens(novosItens);
+    _imprimirItensCozinhaMesaPDV(novosItens, `Mesa ${mesa}`, nomeFinal, mesaIdFechada);
+  }
+
+  // ── Mensalista: desconta saldo financeiro ───────────────────────
+  if (pag === "Mensalista" && _pdvMensalistaSel) {
+    const pm = _pdvMensalistaSel;
+    const novoValorRestante = Math.round((pm.valor_restante || 0) - totalFinal);
+    await supa
+      .from("planos_mensalistas")
+      .update({ valor_restante: novoValorRestante })
+      .eq("id", pm.id);
+    await supa.from("mensalista_entregas").insert([{
+      plano_id: pm.id,
+      cliente_id: pm.clientes?.id || null,
+      produto_nome: pm.produto_nome,
+      observacoes: `Mesa ${mesa} — Pedido #${mesaIdFechada}`,
+      itens_extras: itensMerged.length > 0 ? itensMerged : null,
+      valor_extras: Math.round(totalFinal),
+    }]);
+    _pdvMensalistaSel.valor_restante = novoValorRestante;
+  }
+
+  // ── Na Nota: vincula telefone do cliente ────────────────────────
+  if (pag === "NaNota" && _pdvClienteNotaSel) {
+    await supa.from("pedidos")
+      .update({ cliente_telefone: _pdvClienteNotaSel.telefone || "" })
+      .eq("id", mesaIdFechada);
+  }
+
+  // ── Gaveta automática ────────────────────────────────────────────
+  if (typeof _gavetaDeveAbrir === "function" && _gavetaDeveAbrir(pag, obsPagPDV)) {
+    _abrirGavetaDC335(`mesa ${mesa} — ${pag}`);
+  }
+
+  // ── Cashback ──────────────────────────────────────────────────────
+  if (tel && typeof crmGerarCashback === "function") {
+    await crmGerarCashback(tel, totalFinal, mesaIdFechada);
+  }
+
+  // ── Impressão do comprovante final da mesa (todos os itens) ────────
+  const dadosImpressaoFinal = {
+    id: mesaIdFechada,
+    cliente: { nome: nomeFinal, tel },
+    entrega: { tipo: "mesa", ref: `Mesa ${mesa}` },
+    itens: itensMerged.map((i) => ({
+      q: i.qtd || 1,
+      n: i.nome,
+      p: i.preco,
+      t: i.variacao || "",
+      pr: i.preparo || "",
+      m: i.montagem || [],
+      o: i.obs || "",
+      peso_gramas: i.peso_gramas,
+      _isKg: i._isKg,
+    })),
+    valores: {
+      sub: subtotalBruto,
+      desconto: descontoAplicado,
+      frete: fretePDV,
+      total: totalFinal,
+    },
+    pagamento: { metodo: pag, obs: obsPagPDV },
+    data: new Date().toLocaleString("pt-BR"),
+  };
+  const base64Final = btoa(unescape(encodeURIComponent(JSON.stringify(dadosImpressaoFinal))))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+  window.open(
+    `imprimir.html?d=${base64Final}`,
+    `PrintFinalMesa_${mesaIdFechada}_${Date.now()}`,
+    "width=400,height=600",
+  );
+
+  // ── Reset da comanda ────────────────────────────────────────────
+  window._mesaAbertaId = null;
+  window._mesaAbertaTotal = 0;
+  window._mesaAbertaPedido = null;
+  carrinhoPDV = [];
+  document.getElementById("balcao-cliente").value = "";
+  document.getElementById("balcao-mesa").value = "";
+  document.getElementById("balcao-telefone").value = "";
+  document.querySelector(".pdv-mesa-aviso")?.remove();
+  document.getElementById("balcao-pag").value = "Efetivo";
+  atualizarCarrinhoPDV();
+  atualizarBarraMesasAtivas();
+  carregarMonitorMesas();
+  atualizarTextoBotaoPDV();
+  if (typeof calcularFinanceiro === "function") calcularFinanceiro();
+  const _langFinal = localStorage.getItem("admin_lang") || "es";
+  _pdvToast(_langFinal === "es" ? `✅ ¡Mesa ${mesa} finalizada!` : `✅ Mesa ${mesa} finalizada!`);
+}
+
 // ── Toast não-bloqueante do PDV ───────────────────────────────
 function _pdvToast(msg, duracao = 3000) {
   document.getElementById("_pdv-toast")?.remove();
@@ -11420,7 +11714,7 @@ function _pdvToast(msg, duracao = 3000) {
   t.id = "_pdv-toast";
   t.style.cssText =
     "position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a7a2e;color:#fff;padding:12px 28px;border-radius:30px;font-size:1rem;font-weight:700;z-index:999999;box-shadow:0 4px 20px rgba(0,0,0,0.25);pointer-events:none;animation:_toastIn 0.2s ease";
-  t.textContent = msg;
+  t.textContent = typeof window._translateText === "function" ? window._translateText(msg) : msg;
   if (!document.getElementById("_pdv-toast-style")) {
     const s = document.createElement("style");
     s.id = "_pdv-toast-style";
@@ -11644,7 +11938,10 @@ async function carregarMonitorMesas() {
     const btnFinalizar = card.querySelector(".btn-finalizar-mesa");
     btnFinalizar.addEventListener("click", (e) => {
       e.stopPropagation();
-      finalizarMesa(pedido.id);
+      // Abre a comanda desta mesa no PDV: lá o operador escolhe a forma de
+      // pagamento e clica em "Finalizar Pedido" para fechar de fato — antes
+      // esse botão dava baixa direto, sem nunca perguntar a forma de pagamento.
+      abrirMesaExistente(pedido);
     });
 
     grid.appendChild(card);
@@ -14431,11 +14728,23 @@ async function salvarEdicaoPedidoRelatorio() {
 
 function atualizarTextoBotaoPDV() {
   const btnText = document.getElementById('pdv-btn-text');
-  if (!btnText) return;
-  
+  const btnFinalizarMesa = document.getElementById('pdv-btn-finalizar-mesa');
+  const mesaVal = document.getElementById('balcao-mesa')?.value.trim() || '';
+
   if (window._mesaAbertaId) {
-    btnText.textContent = t('pdv.lancar_pedido');
+    // Mesa já existente sendo editada: pode lançar itens novos OU finalizar
+    // (fechar a mesa de vez, escolhendo a forma de pagamento).
+    if (btnText) btnText.textContent = t('pdv.lancar_pedido', 'Lançar Pedido');
+    if (btnFinalizarMesa) btnFinalizarMesa.style.display = '';
+  } else if (mesaVal) {
+    // Número de mesa preenchido mas o pedido ainda nem existe no banco:
+    // é a abertura da mesa, então só envia para a cozinha — nada de
+    // "Finalizar a venda" aqui, pois ainda não é hora de cobrar.
+    if (btnText) btnText.textContent = t('pdv.lancar_pedido', 'Lançar Pedido');
+    if (btnFinalizarMesa) btnFinalizarMesa.style.display = 'none';
   } else {
-    btnText.textContent = t('pdv.receber_finalizar');
+    // Venda avulta de balcão/retirada/delivery: fluxo de sempre.
+    if (btnText) btnText.textContent = t('pdv.receber_finalizar', 'Receber e Finalizar');
+    if (btnFinalizarMesa) btnFinalizarMesa.style.display = 'none';
   }
 }
