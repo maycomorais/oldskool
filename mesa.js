@@ -254,6 +254,49 @@ if (typeof supa === "undefined") {
 // 2. ESTADO DA APLICAÇÃO (Variáveis Globais)
 // ==========================================
 let carrinho = [];
+
+// ── "Mesa aberta" neste navegador (por até 24h) ─────────────────────────
+// Permite que o cliente volte ao cardápio e acrescente novos itens ao
+// MESMO pedido da mesa, em vez de abrir um pedido novo desconectado —
+// igual à lógica de "Lançar Pedido" numa mesa já aberta no PDV do admin.
+const MESA_LS_KEY = "_mesaPedidoAtivo";
+const MESA_LS_TTL_MS = 24 * 60 * 60 * 1000; // 24 horas
+
+function _mesaLerAtivo() {
+  try {
+    const raw = localStorage.getItem(MESA_LS_KEY);
+    if (!raw) return null;
+    const obj = JSON.parse(raw);
+    if (!obj || !obj.pedidoId || !obj.mesa || !obj.criadoEm) {
+      localStorage.removeItem(MESA_LS_KEY);
+      return null;
+    }
+    if (Date.now() - obj.criadoEm > MESA_LS_TTL_MS) {
+      localStorage.removeItem(MESA_LS_KEY);
+      return null;
+    }
+    return obj;
+  } catch (_) {
+    localStorage.removeItem(MESA_LS_KEY);
+    return null;
+  }
+}
+
+function _mesaSalvarAtivo(pedidoId, mesa) {
+  try {
+    localStorage.setItem(
+      MESA_LS_KEY,
+      JSON.stringify({ pedidoId, mesa: String(mesa), criadoEm: Date.now() }),
+    );
+  } catch (_) {}
+}
+
+function _mesaLimparAtivo() {
+  try {
+    localStorage.removeItem(MESA_LS_KEY);
+  } catch (_) {}
+}
+
 let freteCalculado = 0;
 // Marca quando o frete foi resolvido via fallback (GPS falhou, aplicou
 // o mínimo da tabela) — usada na validação do checkout pra não travar
@@ -261,7 +304,7 @@ let freteCalculado = 0;
 let _freteResolvidoSemGps = false;
 let freteMotoboy = 0; // Valor pago ao motoboy (da tabela de frete)
 let localCliente = null;
-let modoEntrega = "delivery";
+let modoEntrega = "balcao"; // fixo: cardápio de Mesa só tem esse modo (dine-in)
 let prodAtual = null,
   optAtual = null,
   qtd = 1;
@@ -310,6 +353,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   try {
     // 1. Carrega dados salvos (Nome, Tel, Último Pedido)
     carregarDadosLocal();
+
+    // 1b. Se este navegador já tem uma mesa aberta (últimas 24h), pré-preenche
+    // o número da mesa — ao enviar, os itens serão acrescentados ao mesmo pedido.
+    const _mesaAtivaInit = _mesaLerAtivo();
+    if (_mesaAtivaInit) {
+      const elMesaInit = document.getElementById("cli-mesa");
+      if (elMesaInit && !elMesaInit.value) elMesaInit.value = _mesaAtivaInit.mesa;
+    }
+    if (typeof atualizarBotaoPedidoMesa === "function") atualizarBotaoPedidoMesa();
 
     // 2. Renderiza o Menu vindo do Banco de Dados
     await renderMenu();
@@ -408,82 +460,10 @@ async function verificarHorario() {
   if (data.qr_py_url) QR_PY_URL = data.qr_py_url;
   if (data.whatsapp_loja) WHATSAPP_LOJA_APP = data.whatsapp_loja;
 
-  const agora = new Date();
-  const horaAtual = agora.getHours() * 60 + agora.getMinutes();
-  // 0=Dom,1=Seg...6=Sab → mapeia para as chaves do objeto
-  const diaKeys = ["dom", "seg", "ter", "qua", "qui", "sex", "sab"];
-  const diaKey = diaKeys[agora.getDay()];
-
-  function horaParaMin(str) {
-    if (!str) return null;
-    const [h, m] = str.split(":").map(Number);
-    return h * 60 + m;
-  }
-
-  function turnoAtivo(turno) {
-    const abre = horaParaMin(turno.abre);
-    const fecha = horaParaMin(turno.fecha);
-    if (abre === null || fecha === null) return false;
-    // Suporte a virada de meia-noite (ex: 18:30 às 01:00)
-    if (fecha < abre) return horaAtual >= abre || horaAtual < fecha;
-    return horaAtual >= abre && horaAtual < fecha;
-  }
-
-  // Lógica de Aberto/Fechado usando grade semanal
-  let estaAberto = false;
-  if (data.loja_aberta) {
-    const hs = data.horarios_semanais;
-    if (hs && hs[diaKey]) {
-      const diaConfig = hs[diaKey];
-
-      // Dia explicitamente fechado na grade
-      if (diaConfig.fechado) {
-        estaAberto = false;
-      } else {
-        // Filtra turnos válidos (exclui {abre:"", fecha:""})
-        const turnosValidos = (diaConfig.turnos || []).filter(
-          (t) => t.abre && t.fecha,
-        );
-
-        if (turnosValidos.length > 0) {
-          // Há turnos configurados → segue o horário
-          estaAberto = turnosValidos.some(turnoAtivo);
-        } else {
-          // Dia não está fechado mas não tem horário definido → considera aberto
-          estaAberto = true;
-        }
-      }
-    } else if (hs && Object.keys(hs).length > 0) {
-      // Grade existe mas não tem entrada para hoje → aberto
-      estaAberto = true;
-    } else {
-      // Sem grade configurada → loja_aberta=true é suficiente para abrir
-      estaAberto = true;
-    }
-  }
-
-  const badge = document.querySelector(".badge-status");
-  if (badge) {
-    // Obtém o idioma atual para traduzir Aberto/Fechado
-    const lang = localStorage.getItem("language") || "es";
-    const textos = {
-      es: { aberto: "Abierto", fechado: "Cerrado" },
-      pt: { aberto: "Aberto", fechado: "Fechado" },
-      en: { aberto: "Open", fechado: "Closed" },
-      de: { aberto: "Geöffnet", fechado: "Geschlossen" },
-    };
-    const t = textos[lang] || textos.es;
-
-    if (estaAberto) {
-      badge.innerText = t.aberto;
-      badge.classList.remove("closed");
-      badge.classList.add("open");
-    } else {
-      badge.innerText = t.fechado;
-      badge.classList.remove("open");
-      badge.classList.add("closed");
-    }
-  }
+  // Nota: este cardápio é de Mesa — não calculamos "aberto/fechado" a
+  // partir do horário do Delivery (loja_aberta/horarios_semanais), pois
+  // o cliente já está fisicamente no restaurante. O badge do cabeçalho é
+  // fixo ("🍽️ Mesa disponible").
 
   // Atualiza Banners Promocionais (banner 1 e banner 2)
   const bannerImgs = [
@@ -595,11 +575,10 @@ function _aplicarFormasPagamentoCliente(features) {
 // ── Verifica se a loja está aberta para receber pedidos agora ─────────────
 // Retorna { aberto: true/false, proximoDia: string|null }
 function verificarLojaAbertaParaPedido() {
-  const badge = document.querySelector(".badge-status");
-  const estaAberto = badge && badge.classList.contains("open");
-  // Se não conseguiu determinar pelo badge, assume aberto (evita bloquear por engano)
-  if (!badge) return { aberto: true, proximoDia: null };
-  return { aberto: estaAberto, proximoDia: null };
+  // Cardápio de Mesa: não bloqueia pedido por horário de Delivery — o
+  // cliente já está no restaurante, então o "horário de funcionamento"
+  // que importa aqui é o do salão, não o do delivery.
+  return { aberto: true, proximoDia: null };
 }
 
 // ── Mostra alerta quando a loja está fechada ──────────────────────────────
@@ -658,11 +637,12 @@ async function renderMenu() {
   } catch (_) {
     subcatsDb = [];
   }
+  // Cardápio de Mesa: mostra também os produtos marcados "somente balcão",
+  // já que o cliente está fisicamente no restaurante (mesma lógica do PDV).
   const { data: produtos } = await supa
     .from("produtos")
     .select("*")
-    .eq("ativo", true)
-    .or("somente_balcao.is.null,somente_balcao.eq.false");
+    .eq("ativo", true);
 
   if (!produtos || !categsDb) {
     console.error(
@@ -2686,6 +2666,7 @@ function abrirCheckout() {
 
   renderCarrinho();
   renderUpsell();
+  atualizarBotaoPedidoMesa();
 
   // Mostra indicador de agendamento se ativo
   if (MODO_AGENDAMENTO) {
@@ -3538,506 +3519,286 @@ function calcularDistancia(lat1, lon1, lat2, lon2) {
 // ── Trava global anti-duplo-clique ──────────────────────────────
 let _enviandoPedido = false;
 
-async function enviarZap() {
+async function enviarPedidoMesa() {
   // Bloqueia se já está processando
   if (_enviandoPedido) return;
   _enviandoPedido = true;
 
-  // Desabilita e sinaliza o botão visualmente
-  const _btnEnviar = document.querySelector("[onclick=\"enviarZap()\"]")
-                  || document.querySelector("[onclick='enviarZap()']");
+  const _btnEnviar = document.getElementById("btn-finalizar-pedido-mesa");
   const _textoOriginal = _btnEnviar ? _btnEnviar.innerHTML : "";
   if (_btnEnviar) {
-    _btnEnviar.disabled     = true;
+    _btnEnviar.disabled = true;
     _btnEnviar.style.opacity = "0.6";
-    _btnEnviar.innerHTML    = "⏳ Processando...";
+    _btnEnviar.innerHTML = "⏳ ...";
   }
 
-  // Libera automaticamente após 60 s (garante que não trava para sempre)
   const _liberarBotao = () => {
     _enviandoPedido = false;
     if (_btnEnviar) {
-      _btnEnviar.disabled     = false;
+      _btnEnviar.disabled = false;
       _btnEnviar.style.opacity = "1";
-      _btnEnviar.innerHTML    = _textoOriginal;
+      _btnEnviar.innerHTML = _textoOriginal;
     }
   };
   const _timerLiberar = setTimeout(_liberarBotao, 60000);
 
   try {
-
-  const nome = document.getElementById("cli-nome").value.trim();
-  const ddi = document.getElementById("cli-ddi").value;
-  const tel = document.getElementById("cli-tel").value.trim();
-  const pag = document.getElementById("forma-pag").value;
-  const nasc = document.getElementById("cli-nasc")
-    ? document.getElementById("cli-nasc").value
-    : null;
-
-  // Resolve o nome final do método de pagamento (CartaoBR tem sub-tipos)
-  const pagFinal =
-    pag === "CartaoBR"
-      ? _cartaoBRTipo === "debito"
-        ? tt({es:"Tarjeta BR - Débito",pt:"Cartão BR - Débito",en:"Card BR - Debit",de:"Karte BR - Debit"})
-        : tt({es:"Tarjeta BR - Crédito",pt:"Cartão BR - Crédito",en:"Card BR - Credit",de:"Karte BR - Kredit"})
-      : pag;
-
-  if (!nome || !tel || !pag)
-    return alert(tt({es:"¡Complete todos los campos obligatorios!",pt:"Preencha todos os campos obrigatórios!",en:"Fill in all required fields!",de:"Füllen Sie alle Pflichtfelder aus!"}));
-
-  // Troco obrigatório quando pagamento em Efetivo
-  if (pag === "Efetivo") {
-    const trocoVal = document.getElementById("troco-valor").value.trim();
-    if (!trocoVal || parseFloat(trocoVal.replace(/[^\d]/g, "")) <= 0) {
-      document.getElementById("troco-valor").focus();
-      document.getElementById("troco-valor").style.borderColor = "#e74c3c";
-      return alert(tt({es:"⚠️ ¡Ingrese el valor en efectivo para calcular el vuelto!",pt:"⚠️ Informe o valor em dinheiro para cálculo do troco!",en:"⚠️ Enter the cash amount to calculate change!",de:"⚠️ Geben Sie den Bargeldbetrag zur Wechselgeldberechnung ein!"}));
+    if (carrinho.length === 0) {
+      return alert(tt({es:"¡Carrito vacío!",pt:"Carrinho vazio!",en:"Empty cart!",de:"Warenkorb leer!"}));
     }
-    document.getElementById("troco-valor").style.borderColor = "";
-  }
 
-  // Promoções do dia: bloquear pagamento com Cartão
-  const temPromoItem = carrinho.some((item) => {
-    // Verifica se algum item do carrinho pertence a categoria promocoes_do_dia
-    for (const key in MENU) {
-      if (key === "promocoes_do_dia") {
-        const found = MENU[key].find(
-          (m) => m.id === item.id || m.nome === item.nome,
-        );
-        if (found) return true;
+    const nome = document.getElementById("cli-nome").value.trim();
+    const ddi = document.getElementById("cli-ddi").value;
+    const tel = document.getElementById("cli-tel").value.trim();
+    const mesa = document.getElementById("cli-mesa")?.value.trim() || "";
+
+    if (!nome || !tel) {
+      return alert(tt({es:"¡Complete todos los campos obligatorios!",pt:"Preencha todos os campos obrigatórios!",en:"Fill in all required fields!",de:"Füllen Sie alle Pflichtfelder aus!"}));
+    }
+
+    // Número de mesa é obrigatório neste cardápio (pedido "Comer no Local")
+    if (!mesa) {
+      const elMesa = document.getElementById("cli-mesa");
+      if (elMesa) {
+        elMesa.focus();
+        elMesa.style.borderColor = "#e74c3c";
       }
+      return alert(tt({es:"⚠️ Ingrese el número de su mesa antes de confirmar.",pt:"⚠️ Informe o número da sua mesa antes de confirmar.",en:"⚠️ Enter your table number before confirming.",de:"⚠️ Geben Sie Ihre Tischnummer ein, bevor Sie bestätigen."}));
     }
-    return false;
-  });
-  if (temPromoItem && pag === "Cartao") {
-    return alert(
-      tt({es:'⚠️ Los productos de la "Promoción del Día" no aceptan pago con Tarjeta.',pt:'⚠️ Produtos da "Promoção do Dia" não aceitam pagamento com Cartão.',en:'⚠️ "Deal of the Day" products do not accept Card payment.',de:'⚠️ Produkte des "Angebots des Tages" akzeptieren keine Kartenzahlung.'}),
-    );
-  }
 
-  // Pedido duplo: bloqueia se mesmo carrinho enviado no último 1h
-  const _agora = Date.now();
-  const _ultimoHash = localStorage.getItem("app_last_hash");
-  const _ultimoTs = parseInt(localStorage.getItem("app_last_ts") || "0");
-  const _hashAtual = carrinho
-    .map((i) => i.nome + i.qtd)
-    .sort()
-    .join("|");
-  if (_ultimoHash === _hashAtual && _agora - _ultimoTs < 3600000) {
-    return alert(
-      tt({es:"🚫 Su pedido anterior fue registrado, estamos bloqueando este segundo intento.",pt:"🚫 Seu pedido anterior foi computado, estamos bloqueando esta segunda tentativa.",en:"🚫 Your previous order was registered, we are blocking this second attempt.",de:"🚫 Ihre vorherige Bestellung wurde registriert, wir blockieren diesen zweiten Versuch."}),
-    );
-  }
-
-  // Valida multipagamento
-  if (pag === "Multipagamento") {
-    const partes = _coletarMultiPagamento();
-    if (partes.length < 2)
-      return alert(
-        tt({es:"Agregue al menos 2 formas de pago para el pago múltiple.",pt:"Adicione pelo menos 2 formas de pagamento para o multipagamento.",en:"Add at least 2 payment methods for split payment.",de:"Fügen Sie mindestens 2 Zahlungsmethoden für die Mehrfachzahlung hinzu."}),
-      );
-    const somaPartes = partes.reduce((s, p) => s + p.valor, 0);
-    const totalCheck =
-      carrinho.reduce((a, i) => a + i.preco * i.qtd, 0) -
-      (cupomAplicado?.tipo === "percentual"
-        ? Math.round(
-            carrinho.reduce((a, i) => a + i.preco * i.qtd, 0) *
-              (cupomAplicado.valor / 100),
-          )
-        : 0) +
-      (modoEntrega === "delivery"
-        ? cupomAplicado?.tipo === "frete"
-          ? 0
-          : freteCalculado
-        : 0);
-    if (Math.abs(somaPartes - totalCheck) > 1) {
-      return alert(
-        tt({
-        es: `La suma de los pagos (Gs ${somaPartes.toLocaleString("es-PY")}) no coincide con el total del pedido (Gs ${totalCheck.toLocaleString("es-PY")}). Ajuste los valores.`,
-        pt: `A soma dos pagamentos (Gs ${somaPartes.toLocaleString("es-PY")}) não confere com o total do pedido (Gs ${totalCheck.toLocaleString("es-PY")}). Ajuste os valores.`,
-        en: `The sum of payments (Gs ${somaPartes.toLocaleString("es-PY")}) does not match the order total (Gs ${totalCheck.toLocaleString("es-PY")}). Adjust the values.`,
-        de: `Die Summe der Zahlungen (Gs ${somaPartes.toLocaleString("es-PY")}) stimmt nicht mit der Bestellsumme (Gs ${totalCheck.toLocaleString("es-PY")}) überein. Passen Sie die Werte an.`,
-      }),
-      );
+    // Pedido duplo: bloqueia se mesmo carrinho enviado no último 1h
+    const _agora = Date.now();
+    const _ultimoHash = localStorage.getItem("app_last_hash");
+    const _ultimoTs = parseInt(localStorage.getItem("app_last_ts") || "0");
+    const _hashAtual = carrinho.map((i) => i.nome + i.qtd).sort().join("|");
+    if (_ultimoHash === _hashAtual && _agora - _ultimoTs < 3600000) {
+      return alert(tt({es:"🚫 Su pedido anterior fue registrado, estamos bloqueando este segundo intento.",pt:"🚫 Seu pedido anterior foi computado, estamos bloqueando esta segunda tentativa.",en:"🚫 Your previous order was registered, we are blocking this second attempt.",de:"🚫 Ihre vorherige Bestellung wurde registriert, wir blockieren diesen zweiten Versuch."}));
     }
-  }
 
-  if (
-    modoEntrega === "delivery" &&
-    !localCliente &&
-    !_freteResolvidoSemGps &&
-    !document.getElementById("check-sem-gps")?.checked
-  ) {
-    alert(
-      tt({es:"Por favor, calcule el envío o marque la opción de enviar ubicación por WhatsApp",pt:"Por favor, calcule o frete ou marque a opção de enviar localização pelo WhatsApp",en:"Please calculate the delivery fee or check the option to send location via WhatsApp",de:"Bitte berechnen Sie die Lieferung oder aktivieren Sie die Option, den Standort per WhatsApp zu senden"}),
-    );
-    return;
-  }
-
-  const usouPlanoB = document.getElementById("check-sem-gps")?.checked;
-  const ref = document.getElementById("cli-ref").value || "";
-  const telCompleto = ddi + tel;
-
-  const totalItens = carrinho.reduce((a, i) => a + i.preco * i.qtd, 0);
-  let desconto = 0;
-  let freteAplicado = Math.max(0, freteCalculado); // guard: -1 = a combinar => 0
-
-  if (cupomAplicado) {
-    if (cupomAplicado.tipo === "percentual") {
+    const telCompleto = ddi + tel;
+    const totalItens = carrinho.reduce((a, i) => a + i.preco * i.qtd, 0);
+    let desconto = 0;
+    if (cupomAplicado?.tipo === "percentual") {
       desconto = Math.round(totalItens * (cupomAplicado.valor / 100));
-    } else if (cupomAplicado.tipo === "frete") {
-      freteAplicado = 0;
     }
-  }
+    const totalGeral = totalItens - desconto;
 
-  const totalGeral =
-    totalItens - desconto + (modoEntrega === "delivery" ? freteAplicado : 0);
+    let pedidoDbId = null;
+    let numeroPedido = null;
 
-  // 1. Salva no Banco PRIMEIRO para pegar o ID real
-  let pedidoDbId = null;
-  let numeroPedido = null;
+    // ── Verifica se já existe um pedido de mesa aberto (mesmo navegador,
+    //    mesmo número de mesa, últimas 24h) para acrescentar itens nele ──
+    let _pedidoMesaExistente = null;
+    const _mesaAtiva = _mesaLerAtivo();
+    if (_mesaAtiva && String(_mesaAtiva.mesa) === String(mesa)) {
+      try {
+        const { data: _pedidoAtual } = await supa
+          .from("pedidos")
+          .select("id,status,itens,subtotal,total_geral")
+          .eq("id", _mesaAtiva.pedidoId)
+          .maybeSingle();
+        if (_pedidoAtual && !["entregue", "cancelado"].includes(_pedidoAtual.status)) {
+          _pedidoMesaExistente = _pedidoAtual;
+        } else {
+          _mesaLimparAtivo(); // mesa já foi fechada — começa um pedido novo
+        }
+      } catch (_) {
+        _mesaLimparAtivo();
+      }
+    } else if (_mesaAtiva) {
+      // Número de mesa diferente do último salvo — não é a mesma comanda
+      _mesaLimparAtivo();
+    }
 
-  if (typeof supa !== "undefined") {
-    const pedidoDb = {
-      status: "pendente",
-      tipo_entrega: modoEntrega,
-      subtotal: totalItens,
-      frete_cobrado_cliente: modoEntrega === "delivery" ? freteAplicado : 0,
-      frete_motoboy: modoEntrega === "delivery" ? freteMotoboy : 0,
-      desconto_cupom: desconto,
-      total_geral: totalGeral,
-      forma_pagamento: pagFinal,
-      obs_pagamento:
-        pag === "Efetivo"
-          ? document.getElementById("troco-valor").value
-          : pag === "Multipagamento"
-            ? JSON.stringify(_coletarMultiPagamento())
-            : "",
-      itens: carrinho.map((i) => ({
-        n: i.nome,
-        nome: i.nome, // alias legível para admin/motoboy
-        p: i.preco,
-        q: i.qtd,
-        qtd: i.qtd, // alias legível
-        produto_id: i.produto_id || null, // ID real — desconto de estoque
-        t: i.variacao || "",
-        pr: i.preparo || "",
-        m: i.montagem,
-        o: i.obs,
-        categoria_slug: i.categoria_slug || i.cat || "", // para filtro de bebidas no motoboy
-        es_bebida: i.es_bebida || false,
-      })),
-      endereco_entrega: ref,
-      geo_lat: localCliente ? localCliente.lat.toString() : null,
-      geo_lng: localCliente ? localCliente.lng.toString() : null,
-      cliente_nome: nome,
-      cliente_telefone: telCompleto,
-      dados_factura: document.getElementById("check-factura")?.checked
-        ? {
-            ruc: document.getElementById("cli-ruc")?.value || "",
-            razao: document.getElementById("cli-zao")?.value || "",
-          }
-        : null,
-    };
+    if (typeof supa === "undefined") {
+      alert(tt({es:"⚠️ No se pudo conectar con el sistema. Intente nuevamente.",pt:"⚠️ Não foi possível conectar ao sistema. Tente novamente.",en:"⚠️ Could not connect to the system. Please try again.",de:"⚠️ Verbindung zum System fehlgeschlagen. Bitte versuchen Sie es erneut."}));
+      return;
+    }
 
-    // Tenta INSERT; se falhar por coluna inexistente (dados_factura), faz fallback sem ela
-    let payloadFinal = { ...pedidoDb };
-    let { data: pedidoSalvo, error } = await supa
-      .from("pedidos")
-      .insert([payloadFinal])
-      .select()
-      .single();
+    const itensNovos = carrinho.map((i) => ({
+      n: i.nome,
+      nome: i.nome, // alias legível para admin
+      p: i.preco,
+      q: i.qtd,
+      qtd: i.qtd, // alias legível
+      produto_id: i.produto_id || null, // ID real — desconto de estoque
+      t: i.variacao || "",
+      pr: i.preparo || "",
+      m: i.montagem,
+      o: i.obs,
+      categoria_slug: i.categoria_slug || i.cat || "",
+      es_bebida: i.es_bebida || false,
+      status_item: "pendente",
+      lancado_em: new Date().toISOString(),
+    }));
+
+    let pedidoSalvo, error;
+
+    if (_pedidoMesaExistente) {
+      // ── Acrescenta os itens novos ao pedido já aberto desta mesa ──
+      // (mesma lógica de "Lançar Pedido" numa mesa já aberta no PDV)
+      const itensMerge = [
+        ...(Array.isArray(_pedidoMesaExistente.itens) ? _pedidoMesaExistente.itens : []),
+        ...itensNovos,
+      ];
+      const upd = await supa
+        .from("pedidos")
+        .update({
+          itens: itensMerge,
+          subtotal: (_pedidoMesaExistente.subtotal || 0) + totalItens,
+          total_geral: (_pedidoMesaExistente.total_geral || 0) + totalGeral,
+          status: "em_preparo",
+          cliente_nome: nome,
+          cliente_telefone: telCompleto,
+        })
+        .eq("id", _pedidoMesaExistente.id)
+        .select()
+        .single();
+      pedidoSalvo = upd.data;
+      error = upd.error;
+    } else {
+      // Pagamento é combinado presencialmente com o garçom ao fechar a
+      // mesa — não perguntamos forma de pagamento aqui.
+      const pedidoDb = {
+        status: "pendente",
+        tipo_entrega: "balcao",
+        subtotal: totalItens,
+        frete_cobrado_cliente: 0,
+        frete_motoboy: 0,
+        desconto_cupom: desconto,
+        total_geral: totalGeral,
+        forma_pagamento: "A definir en mesa",
+        obs_pagamento: "",
+        itens: itensNovos,
+        endereco_entrega: `Mesa ${mesa}`,
+        geo_lat: null,
+        geo_lng: null,
+        cliente_nome: nome,
+        cliente_telefone: telCompleto,
+        dados_factura: null,
+      };
+      const ins = await supa.from("pedidos").insert([pedidoDb]).select().single();
+      pedidoSalvo = ins.data;
+      error = ins.error;
+    }
 
     if (error) {
-      console.error(
-        "Erro ao salvar pedido — código:",
-        error.code,
-        "| msg:",
-        error.message,
-        "| hint:",
-        error.hint,
-      );
-
-      // Fallback: coluna dados_factura pode não existir ainda no banco
-      // SQL para criar: ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS dados_factura JSONB;
-      if (
-        (error.code === "42703" || error.message?.includes("dados_factura")) &&
-        payloadFinal.dados_factura !== undefined
-      ) {
-        console.warn(
-          "[pedido] Coluna dados_factura ausente — tentando sem ela...",
-        );
-        delete payloadFinal.dados_factura;
-        const res2 = await supa
-          .from("pedidos")
-          .insert([payloadFinal])
-          .select()
-          .single();
-        if (res2.error) {
-          console.error("Erro no insert de fallback:", res2.error);
-          alert(
-            tt({
-            es: `⚠️ Error al guardar pedido.\n\nDetalle: ${res2.error.message}\n\nMuestre este error al soporte.`,
-            pt: `⚠️ Erro ao salvar pedido.\n\nDetalhe: ${res2.error.message}\n\nMostre este erro ao suporte.`,
-            en: `⚠️ Error saving order.\n\nDetail: ${res2.error.message}\n\nShow this error to support.`,
-            de: `⚠️ Fehler beim Speichern der Bestellung.\n\nDetail: ${res2.error.message}\n\nZeigen Sie diesen Fehler dem Support.`,
-          }),
-          );
-          return;
-        }
-        pedidoSalvo = res2.data;
-      } else {
-        alert(
-          tt({
-          es: `⚠️ Error al guardar pedido en el sistema.\n\nDetalle: ${error.message}\n\nIntente nuevamente o contacte al soporte.`,
-          pt: `⚠️ Erro ao salvar pedido no sistema.\n\nDetalhe: ${error.message}\n\nTente novamente ou contate o suporte.`,
-          en: `⚠️ Error saving order in the system.\n\nDetail: ${error.message}\n\nTry again or contact support.`,
-          de: `⚠️ Fehler beim Speichern der Bestellung im System.\n\nDetail: ${error.message}\n\nVersuchen Sie es erneut oder kontaktieren Sie den Support.`,
+      console.error("Erro ao salvar pedido:", error);
+      alert(
+        tt({
+          es: `⚠️ Error al guardar el pedido.\n\nDetalle: ${error.message}\n\nIntente nuevamente o avise al mozo.`,
+          pt: `⚠️ Erro ao salvar o pedido.\n\nDetalhe: ${error.message}\n\nTente novamente ou avise o garçom.`,
+          en: `⚠️ Error saving the order.\n\nDetail: ${error.message}\n\nTry again or ask a waiter for help.`,
+          de: `⚠️ Fehler beim Speichern der Bestellung.\n\nDetail: ${error.message}\n\nVersuchen Sie es erneut oder informieren Sie den Kellner.`,
         }),
-        );
-        return;
-      }
+      );
+      return;
     }
 
-    if (pedidoSalvo) {
-      pedidoDbId = pedidoSalvo.id;
-      numeroPedido = pedidoSalvo.id; // USA O ID DO BANCO
-      console.log("✅ Pedido salvo com ID:", pedidoDbId);
+    if (!pedidoSalvo) return;
 
-      // Cadastra ou atualiza o cliente automaticamente pelo frontend
-      if (typeof supa !== "undefined" && nasc) {
-        try {
-          const telClean = telCompleto.replace(/\D/g, "");
-          let { data: clienteEx } = await supa
+    pedidoDbId = pedidoSalvo.id;
+    numeroPedido = pedidoSalvo.id;
+
+    // Guarda o vínculo "mesa aberta" neste navegador por até 24h, para que
+    // um novo pedido nesta mesma mesa acrescente itens neste pedido em vez
+    // de criar um pedido novo desconectado (mesma lógica da mesa no PDV).
+    _mesaSalvarAtivo(pedidoDbId, mesa);
+
+    // Gera cashback para o cliente (lógica local — crm.js não é carregado no app)
+    try {
+      const telCashback = telCompleto;
+      if (telCashback && totalGeral > 0) {
+        const { data: cfgCash } = await supa
+          .from("configuracoes")
+          .select("cashback_percentual, cashback_validade_dias")
+          .maybeSingle();
+        const pctCash = cfgCash?.cashback_percentual ?? 10;
+        const valDias = cfgCash?.cashback_validade_dias ?? 30;
+        const valorCash = Math.round((totalGeral * pctCash) / 100);
+        if (valorCash > 0) {
+          const telCleanCash = telCashback.replace(/\D/g, "");
+          let { data: cliCash } = await supa
             .from("clientes")
-            .select("id")
-            .or(`telefone.eq.${telCompleto},telefone.eq.${telClean}`)
+            .select("id, saldo_cashback, total_gasto")
+            .or(`telefone.eq.${telCashback},telefone.eq.${telCleanCash}`)
             .maybeSingle();
-
-          if (!clienteEx) {
-            await supa.from("clientes").insert([
-              {
-                nome: nome,
-                telefone: telCompleto,
-                data_nascimento: nasc,
-                saldo_cashback: 0,
-                total_gasto: totalGeral,
-              },
-            ]);
-            console.log(
-              "✅ Novo cliente criado automaticamente com data de nascimento!",
-            );
-          } else {
-            // Atualiza apenas se a data de nascimento estiver vazia
-            await supa
-              .from("clientes")
-              .update({ data_nascimento: nasc })
-              .eq("id", clienteEx.id)
-              .is("data_nascimento", null);
-          }
-        } catch (e) {
-          console.error("Erro ao salvar cliente automaticamente:", e);
-        }
-      }
-
-      // Gera cashback para o cliente (lógica local — crm.js não é carregado no app)
-      try {
-        const telCashback = telCompleto;
-        if (telCashback && totalGeral > 0) {
-          // Busca configuração de cashback
-          const { data: cfgCash } = await supa
-            .from('configuracoes')
-            .select('cashback_percentual, cashback_validade_dias')
-            .maybeSingle();
-          const pctCash  = cfgCash?.cashback_percentual   ?? 10;
-          const valDias  = cfgCash?.cashback_validade_dias ?? 30;
-          const valorCash = Math.round(totalGeral * pctCash / 100);
-          if (valorCash > 0) {
-            // Busca cliente pelo telefone
-            const telCleanCash = telCashback.replace(/\D/g, '');
-            let { data: cliCash } = await supa
-              .from('clientes')
-              .select('id, saldo_cashback, total_gasto')
-              .or(`telefone.eq.${telCashback},telefone.eq.${telCleanCash}`)
-              .maybeSingle();
-            if (cliCash) {
-              const expiraCash = new Date();
-              expiraCash.setDate(expiraCash.getDate() + valDias);
-              await supa.from('cashback_transacoes').insert([{
-                cliente_id:       cliCash.id,
-                cliente_telefone: telCashback,
-                pedido_id:        pedidoDbId,
-                tipo:             'credito',
-                valor:            valorCash,
-                validade_dias:    valDias,
-                expira_em:        expiraCash.toISOString(),
-                usado:            false,
-              }]);
-              await supa.from('clientes')
-                .update({
-                  saldo_cashback: (cliCash.saldo_cashback || 0) + valorCash,
-                  total_gasto:    (cliCash.total_gasto    || 0) + totalGeral,
-                })
-                .eq('id', cliCash.id);
-              console.log(`✅ Cashback gerado: Gs ${valorCash} para ${telCashback}`);
-            }
+          if (cliCash) {
+            const expiraCash = new Date();
+            expiraCash.setDate(expiraCash.getDate() + valDias);
+            await supa.from("cashback_transacoes").insert([{
+              cliente_id: cliCash.id,
+              cliente_telefone: telCashback,
+              pedido_id: pedidoDbId,
+              tipo: "credito",
+              valor: valorCash,
+              validade_dias: valDias,
+              expira_em: expiraCash.toISOString(),
+              usado: false,
+            }]);
+            await supa.from("clientes").update({
+              saldo_cashback: (cliCash.saldo_cashback || 0) + valorCash,
+              total_gasto: (cliCash.total_gasto || 0) + totalGeral,
+            }).eq("id", cliCash.id);
           }
         }
-      } catch (eCash) {
-        console.warn('Cashback não gerado (não crítico):', eCash.message);
       }
-
-      // Incrementa contador de usos do cupom com UPDATE atômico (evita race condition)
-      if (cupomAplicado?.id) {
-        await supa
-          .rpc("incrementar_uso_cupom", { cupom_id: cupomAplicado.id })
-          .then(({ error }) => {
-            if (error) {
-              // Fallback: update simples se RPC não existir
-              const novosUsos = (cupomAplicado.usos_realizados || 0) + 1;
-              return supa
-                .from("cupons")
-                .update({ usos_realizados: novosUsos })
-                .eq("id", cupomAplicado.id);
-            }
-          })
-          .catch(() => {});
-      }
+    } catch (eCash) {
+      console.warn("Cashback não gerado (não crítico):", eCash.message);
     }
-  }
 
-  // Salva localmente para "Repetir Pedido"
-  localStorage.setItem("app_last", JSON.stringify(carrinho));
-  localStorage.setItem("app_user", JSON.stringify({ nome, tel, nasc }));
-
-  // 2. Usa o número real do pedido na mensagem
-  const idDisplay = numeroPedido || "TEMP";
-
-  // 3. Monta Mensagem WhatsApp (rótulos no idioma selecionado pelo cliente)
-  const _msgLang = localStorage.getItem("language") || "es";
-  const _wl = {
-    es: { pedido:"PEDIDO", cliente:"Cliente", tel:"Tel", tipo:"Tipo", delivery:"DELIVERY", local:"COMER AQUÍ 🍽️", retirada:"RETIRO", maps:"Maps", freteGratis:"ENVÍO GRATIS", freteValor:"valor", envio:"Envío", localizacao:"Ubicación", enviareiZap:"Enviaré aquí en WhatsApp", aCombinar:"A COORDINAR", ref:"Ref", subtotal:"Subtotal", desconto:"Descuento", total:"TOTAL", pagamento:"Pago", efetivo:"Efectivo", trocoPara:"Vuelto p/", pagDividido:"Pago dividido", formas:"formas", pixChave:"Clave Pix", pixValorReais:"Valor en Reales", aliasLabel:"Alias", pagoPorQr:"Pagado por QR Paraguay (Tigo / Personal / Bancard)", envieComprovante:"¡Envíe el comprobante después del pago!", envieComprovantes:"¡Envíe el/los comprobante(s) después del pago!", formaN:"forma", ruc:"RUC", razao:"Razón Social" },
-    pt: { pedido:"PEDIDO", cliente:"Cliente", tel:"Tel", tipo:"Tipo", delivery:"DELIVERY", local:"COMER NO LOCAL 🍽️", retirada:"RETIRADA", maps:"Maps", freteGratis:"FRETE GRÁTIS", freteValor:"valor", envio:"Delivery", localizacao:"Localização", enviareiZap:"Enviarei aqui no WhatsApp", aCombinar:"A COMBINAR", ref:"Ref", subtotal:"Subtotal", desconto:"Desconto", total:"TOTAL", pagamento:"Pagamento", efetivo:"Efetivo", trocoPara:"Troco p/", pagDividido:"Pagamento dividido", formas:"formas", pixChave:"Chave Pix", pixValorReais:"Valor em Reais", aliasLabel:"Alias", pagoPorQr:"Pago por QR Paraguay (Tigo / Personal / Bancard)", envieComprovante:"Envie o comprovante após o pagamento!", envieComprovantes:"Envie o(s) comprovante(s) após o pagamento!", formaN:"forma", ruc:"RUC", razao:"Razão" },
-    en: { pedido:"ORDER", cliente:"Customer", tel:"Phone", tipo:"Type", delivery:"DELIVERY", local:"DINE IN 🍽️", retirada:"PICKUP", maps:"Maps", freteGratis:"FREE DELIVERY", freteValor:"value", envio:"Delivery", localizacao:"Location", enviareiZap:"I will send it here on WhatsApp", aCombinar:"TO BE ARRANGED", ref:"Ref", subtotal:"Subtotal", desconto:"Discount", total:"TOTAL", pagamento:"Payment", efetivo:"Cash", trocoPara:"Change for", pagDividido:"Split payment", formas:"methods", pixChave:"Pix Key", pixValorReais:"Value in Reais", aliasLabel:"Alias", pagoPorQr:"Paid by QR Paraguay (Tigo / Personal / Bancard)", envieComprovante:"Send the receipt after payment!", envieComprovantes:"Send the receipt(s) after payment!", formaN:"method", ruc:"Tax ID", razao:"Business Name" },
-    de: { pedido:"BESTELLUNG", cliente:"Kunde", tel:"Tel", tipo:"Art", delivery:"LIEFERUNG", local:"VOR ORT ESSEN 🍽️", retirada:"ABHOLUNG", maps:"Maps", freteGratis:"KOSTENLOSE LIEFERUNG", freteValor:"Wert", envio:"Lieferung", localizacao:"Standort", enviareiZap:"Ich sende es hier per WhatsApp", aCombinar:"NACH VEREINBARUNG", ref:"Ref", subtotal:"Zwischensumme", desconto:"Rabatt", total:"GESAMT", pagamento:"Zahlung", efetivo:"Bargeld", trocoPara:"Wechselgeld für", pagDividido:"Geteilte Zahlung", formas:"Methoden", pixChave:"Pix-Schlüssel", pixValorReais:"Wert in Real", aliasLabel:"Alias", pagoPorQr:"Bezahlt per QR Paraguay (Tigo / Personal / Bancard)", envieComprovante:"Senden Sie den Beleg nach der Zahlung!", envieComprovantes:"Senden Sie die Beleg(e) nach der Zahlung!", formaN:"Methode", ruc:"Steuer-ID", razao:"Firmenname" },
-  }[_msgLang] || { pedido:"PEDIDO", cliente:"Cliente", tel:"Tel", tipo:"Tipo", delivery:"DELIVERY", local:"COMER AQUÍ 🍽️", retirada:"RETIRO", maps:"Maps", freteGratis:"ENVÍO GRATIS", freteValor:"valor", envio:"Envío", localizacao:"Ubicación", enviareiZap:"Enviaré aquí en WhatsApp", aCombinar:"A COORDINAR", ref:"Ref", subtotal:"Subtotal", desconto:"Descuento", total:"TOTAL", pagamento:"Pago", efetivo:"Efectivo", trocoPara:"Vuelto p/", pagDividido:"Pago dividido", formas:"formas", pixChave:"Clave Pix", pixValorReais:"Valor en Reales", aliasLabel:"Alias", pagoPorQr:"Pagado por QR Paraguay (Tigo / Personal / Bancard)", envieComprovante:"¡Envíe el comprobante después del pago!", envieComprovantes:"¡Envíe el/los comprobante(s) después del pago!", formaN:"forma", ruc:"RUC", razao:"Razón Social" };
-  const _nomeRestaurante = NOME_RESTAURANTE_APP || "Restaurante";
-  let msg = `🛒 ${_wl.pedido} #${idDisplay} — ${_nomeRestaurante.toUpperCase()}\n`;
-  msg += `--------------------------\n`;
-  msg += `👤 ${_wl.cliente}: ${nome}\n`;
-  msg += `📱 ${_wl.tel}: ${telCompleto}\n`;
-  msg += `🛵 ${_wl.tipo}: ${modoEntrega === "delivery" ? _wl.delivery : modoEntrega === "local" ? _wl.local : _wl.retirada}\n`;
-
-  if (modoEntrega === "delivery") {
-    if (localCliente) {
-      msg += `📍 ${_wl.maps}: https://maps.google.com/?q=${localCliente.lat},${localCliente.lng}\n`;
-      // Frete real (distância) sempre mostrado para motoboy, mesmo se cliente ganhou grátis
-      const _freteReal = freteCalculado;
-      const _fretePago = freteAplicado;
-      if (_freteReal > 0 && _fretePago === 0) {
-        msg += `🛵 ${_wl.envio}: ${_wl.freteGratis} (${_wl.freteValor}: Gs ${_freteReal.toLocaleString("es-PY")})\n`;
-      } else if (_freteReal > 0) {
-        msg += `🛵 ${_wl.envio}: Gs ${_fretePago.toLocaleString("es-PY")}\n`;
-      }
-    } else if (usouPlanoB) {
-      msg += `📍 *${_wl.localizacao}:* ${_wl.enviareiZap} 📎\n`;
-      msg += `🛵 *${_wl.envio}:* ${_wl.aCombinar}\n`;
+    // Incrementa contador de usos do cupom com UPDATE atômico (evita race condition)
+    if (cupomAplicado?.id) {
+      await supa
+        .rpc("incrementar_uso_cupom", { cupom_id: cupomAplicado.id })
+        .then(({ error: errCupom }) => {
+          if (errCupom) {
+            const novosUsos = (cupomAplicado.usos_realizados || 0) + 1;
+            return supa.from("cupons").update({ usos_realizados: novosUsos }).eq("id", cupomAplicado.id);
+          }
+        })
+        .catch(() => {});
     }
-    msg += `🏠 ${_wl.ref}: ${ref}\n`;
-  }
 
-  msg += `--------------------------\n`;
-  carrinho.forEach((item) => {
-    msg += `${item.qtd}x ${item.nome}`;
-    if (item.variacao) msg += ` — ${item.variacao}`;
-    if (item.preparo) msg += ` [${item.preparo}]`;
-    msg += `\n`;
-    if (item.montagem && item.montagem.length > 0)
-      msg += `   + ${item.montagem.join(", ")}\n`;
-    if (item.obs) msg += `   Obs: ${item.obs}\n`;
-  });
+    // Salva localmente para "Repetir Pedido" e hash anti-duplicata
+    localStorage.setItem("app_last", JSON.stringify(carrinho));
+    localStorage.setItem("app_user", JSON.stringify({ nome, tel }));
+    try {
+      localStorage.setItem("app_last_hash", _hashAtual);
+      localStorage.setItem("app_last_ts", Date.now().toString());
+    } catch (_) {}
 
-  msg += `--------------------------\n`;
-  msg += `${_wl.subtotal}: Gs ${totalItens.toLocaleString("es-PY")}\n`;
+    // Limpa carrinho e fecha checkout
+    carrinho = [];
+    cupomAplicado = null;
+    MODO_AGENDAMENTO = false;
+    DATA_AGENDAMENTO = null;
+    const indicador = document.getElementById("indicador-agendamento");
+    if (indicador) indicador.remove();
+    try {
+      localStorage.removeItem("app_carrinho_backup");
+      localStorage.removeItem("app_carrinho_backup_time");
+    } catch (_) {}
 
-  if (desconto > 0) {
-    msg += `${_wl.desconto} (${cupomAplicado.codigo}): -Gs ${desconto.toLocaleString("es-PY")}\n`;
-  }
+    updateUI();
+    fecharCheckout();
+    atualizarBotaoPedidoMesa();
 
-  if (modoEntrega === "delivery" && !usouPlanoB) {
-    msg += `${_wl.envio}: Gs ${freteAplicado.toLocaleString("es-PY")}\n`;
-  }
-  msg += `${_wl.total}: Gs ${totalGeral.toLocaleString("es-PY")}\n`;
-  msg += `--------------------------\n`;
-
-  // Pagamento e Troco
-  if (pag === "Efetivo") {
-    const trocoVal = document.getElementById("troco-valor").value;
-    msg += `💰 ${_wl.pagamento}: ${_wl.efetivo} (${_wl.trocoPara}: ${trocoVal})\n`;
-  } else if (pag === "Multipagamento") {
-    const partes = _coletarMultiPagamento();
-    msg += `💰 ${_wl.pagDividido} (${partes.length} ${_wl.formas}):\n`;
-    partes.forEach((p, i) => {
-      msg += `   ${i + 1}. ${p.metodo}: Gs ${p.valor.toLocaleString("es-PY")}`;
-      if (p.troco)
-        msg += ` (${_wl.trocoPara} Gs ${parseFloat(p.troco).toLocaleString("es-PY")})`;
-      msg += "\n";
-    });
-  } else {
-    msg += `💰 ${_wl.pagamento}: ${pag}\n`;
-  }
-
-  // Avisos de Pix/Alias
-  if (pag === "Pix" || pag === "Transferencia" || pag === "QrPy") {
-    if (pag === "Pix") {
-      const totalBrl =
-        COTACAO_REAL > 0 ? (totalGeral / COTACAO_REAL).toFixed(2) : "---";
-      msg += `\n💠 ${_wl.pixChave}: ${CHAVE_PIX}\n`;
-      msg += `💰 ${_wl.pixValorReais}: R$ ${totalBrl}\n`;
+    // Card de tracking + persistir ID para timer/confirmação/cancelamento
+    if (numeroPedido) {
+      mostrarCardTracking(numeroPedido);
+      iniciarTracking(numeroPedido, numeroPedido);
     }
-    if (pag === "Transferencia") msg += `\n📎 ${_wl.aliasLabel}: ${ALIAS_PY}\n`;
-    if (pag === "QrPy")
-      msg += `\n📱 ${_wl.pagoPorQr}\n`;
-    msg += `\n⚠️ *${_wl.envieComprovante}*\n`;
-  }
 
-  // Para multipagamento: avisar sobre Pix ou Transferencia se incluídos
-  if (pag === "Multipagamento") {
-    const partes = _coletarMultiPagamento();
-    partes.forEach((p, idx) => {
-      if (p.metodo === "Pix") {
-        const valBrl =
-          COTACAO_REAL > 0 ? (p.valor / COTACAO_REAL).toFixed(2) : "---";
-        msg += `\n💠 Pix (${_wl.formaN} ${idx + 1}): ${_wl.pixChave} ${CHAVE_PIX} — R$ ${valBrl}\n`;
-      }
-      if (p.metodo === "Transferencia") {
-        msg += `\n📎 ${_wl.aliasLabel} (${_wl.formaN} ${idx + 1}): ${ALIAS_PY}\n`;
-      }
-      if (p.metodo === "QrPy") {
-        msg += `\n📱 QR Paraguay (${_wl.formaN} ${idx + 1}): Tigo / Personal / Bancard\n`;
-      }
-    });
-    const temDigital = partes.some(
-      (p) =>
-        p.metodo === "Pix" ||
-        p.metodo === "Transferencia" ||
-        p.metodo === "QrPy",
+    mostrarToast(
+      _pedidoMesaExistente
+        ? tt({es:"✅ ¡Ítems agregados a su pedido!",pt:"✅ Itens acrescentados ao seu pedido!",en:"✅ Items added to your order!",de:"✅ Artikel zu Ihrer Bestellung hinzugefügt!"})
+        : tt({es:"✅ ¡Pedido enviado a la cocina!",pt:"✅ Pedido enviado para a cozinha!",en:"✅ Order sent to the kitchen!",de:"✅ Bestellung an die Küche gesendet!"}),
+      "success",
+      4000,
     );
-    if (temDigital)
-      msg += `\n⚠️ *${_wl.envieComprovantes}*\n`;
-  }
-
-  // Factura
-  if (document.getElementById("check-factura").checked) {
-    msg += `\n📄 ${_wl.ruc}: ${document.getElementById("cli-ruc").value}\n${_wl.razao}: ${document.getElementById("cli-zao").value}\n`;
-  }
-
-  // Hash anti-duplicata salvo APENAS na abertura do WhatsApp (em _abrirZapEFechar)
-  // Modal de confirmação 5s antes de abrir WhatsApp
-  await _mostrarModalEnvio(msg, numeroPedido);
-
   } catch (err) {
-    console.error("[enviarZap] Erro inesperado:", err);
+    console.error("[enviarPedidoMesa] Erro inesperado:", err);
     alert(tt({es:"Ocurrió un error al procesar el pedido. Intente nuevamente.",pt:"Ocorreu um erro ao processar o pedido. Tente novamente.",en:"An error occurred while processing the order. Please try again.",de:"Beim Verarbeiten der Bestellung ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut."}));
   } finally {
     clearTimeout(_timerLiberar);
@@ -4045,102 +3806,22 @@ async function enviarZap() {
   }
 }
 
-// Modal: "Seu pedido será validado somente após enviar no WhatsApp"
-function _mostrarModalEnvio(msg, numeroPedido) {
-  return new Promise((resolve) => {
-    const _old = document.getElementById("modal-envio-zap");
-    if (_old) _old.remove();
-
-    // Injeta animação de pulsar (só uma vez)
-    if (!document.getElementById("zap-pulse-style")) {
-      const st = document.createElement("style");
-      st.id = "zap-pulse-style";
-      st.textContent = `
-        @keyframes zapPulse {
-          0%   { box-shadow: 0 0 0 0 rgba(37,211,102,0.7); transform: scale(1); }
-          50%  { box-shadow: 0 0 0 14px rgba(37,211,102,0); transform: scale(1.03); }
-          100% { box-shadow: 0 0 0 0 rgba(37,211,102,0); transform: scale(1); }
-        }
-        #btn-abrir-zap { animation: zapPulse 1.2s ease-in-out infinite; }
-      `;
-      document.head.appendChild(st);
-    }
-
-    const modal = document.createElement("div");
-    modal.id = "modal-envio-zap";
-    modal.style.cssText = [
-      "position:fixed;inset:0;z-index:99999",
-      "background:rgba(0,0,0,0.75)",
-      "display:flex;align-items:center;justify-content:center",
-      "padding:20px;box-sizing:border-box",
-    ].join(";");
-    modal.innerHTML = `
-      <div style="background:white;border-radius:20px;padding:30px 24px;max-width:380px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.4)">
-        <div style="font-size:3.5rem;margin-bottom:10px">📱</div>
-        <h3 style="margin:0 0 8px;font-size:1.2rem;color:#1a1a2e">${tt({es:"¡Pedido registrado! ✅",pt:"Pedido registrado! ✅",en:"Order registered! ✅",de:"Bestellung registriert! ✅"})}</h3>
-        <p style="margin:0 0 20px;font-size:0.93rem;color:#555;line-height:1.55">
-          ${tt({
-            es: `Para <strong>confirmar su pedido</strong>, toque el botón abajo y envíe el mensaje por WhatsApp.<br><span style="color:#e74c3c;font-weight:700">Sin el envío, el pedido no será aceptado.</span>`,
-            pt: `Para <strong>confirmar seu pedido</strong>, toque no botão abaixo e envie a mensagem no WhatsApp.<br><span style="color:#e74c3c;font-weight:700">Sem o envio, o pedido não será aceito.</span>`,
-            en: `To <strong>confirm your order</strong>, tap the button below and send the message via WhatsApp.<br><span style="color:#e74c3c;font-weight:700">Without sending it, the order will not be accepted.</span>`,
-            de: `Um <strong>Ihre Bestellung zu bestätigen</strong>, tippen Sie auf die Schaltfläche unten und senden Sie die Nachricht per WhatsApp.<br><span style="color:#e74c3c;font-weight:700">Ohne das Senden wird die Bestellung nicht akzeptiert.</span>`,
-          })}
-        </p>
-        <button id="btn-abrir-zap"
-          style="width:100%;padding:18px;background:#25D366;color:white;border:none;border-radius:14px;font-size:1.1rem;font-weight:800;cursor:pointer;letter-spacing:0.3px;">
-          <i class="fab fa-whatsapp"></i> &nbsp;${tt({es:"Enviar mensaje por WhatsApp",pt:"Enviar mensagem no WhatsApp",en:"Send message on WhatsApp",de:"Nachricht per WhatsApp senden"})}
-        </button>
-        <p style="margin:14px 0 0;font-size:0.75rem;color:#aaa;">${tt({es:"Este aviso no se cierra solo. Envíe el mensaje para continuar.",pt:"Este aviso não fecha sozinho. Envie a mensagem para continuar.",en:"This notice does not close on its own. Send the message to continue.",de:"Dieser Hinweis schließt sich nicht von selbst. Senden Sie die Nachricht, um fortzufahren."})}</p>
-      </div>`;
-    document.body.appendChild(modal);
-
-    document.getElementById("btn-abrir-zap").onclick = () => {
-      _abrirZapEFechar(msg, numeroPedido, modal, resolve);
-    };
-  });
-}
-
-function _abrirZapEFechar(msg, numeroPedido, modal, resolve) {
-  window.open(
-    `https://wa.me/${WHATSAPP_LOJA_APP || FONE_LOJA}?text=${encodeURIComponent(msg)}`,
-    "_blank",
-  );
-  if (modal) modal.remove();
-
-  // Salva hash anti-duplicata apenas após WhatsApp abrir
-  try {
-    const _hashFinal = (typeof carrinho !== "undefined" ? carrinho : [])
-      .map((i) => i.nome + i.qtd)
-      .sort()
-      .join("|");
-    localStorage.setItem("app_last_hash", _hashFinal);
-    localStorage.setItem("app_last_ts", Date.now().toString());
-  } catch (e) {}
-
-  // Limpa carrinho e fecha checkout
-  carrinho = [];
-  cupomAplicado = null;
-  MODO_AGENDAMENTO = false;
-  DATA_AGENDAMENTO = null;
-  const indicador = document.getElementById("indicador-agendamento");
-  if (indicador) indicador.remove();
-
-  // Limpa backup imediatamente para não restaurar na próxima visita
-  try {
-    localStorage.removeItem("app_carrinho_backup");
-    localStorage.removeItem("app_carrinho_backup_time");
-  } catch (e) {}
-
-  updateUI();
-  fecharCheckout();
-
-  // Card de tracking + persistir ID para timer/confirmação/cancelamento
-  if (numeroPedido) {
-    mostrarCardTracking(numeroPedido);
-    iniciarTracking(numeroPedido, numeroPedido);
-  }
-
-  resolve();
+// ── Atualiza o texto do botão final: "Fazer Pedido" (mesa nova) ou
+//    "Acrescentar Itens" (já existe um pedido aberto para esta mesa) ──
+function atualizarBotaoPedidoMesa() {
+  const span = document.getElementById("btn-finalizar-mesa-texto");
+  if (!span) return;
+  const mesaVal = document.getElementById("cli-mesa")?.value.trim() || "";
+  const ativa = _mesaLerAtivo();
+  const lang = localStorage.getItem("language") || "es";
+  const textos = {
+    es: { novo: "🍽️ Hacer Pedido", add: "➕ Agregar Ítems al Pedido" },
+    pt: { novo: "🍽️ Fazer Pedido", add: "➕ Acrescentar Itens ao Pedido" },
+    en: { novo: "🍽️ Place Order", add: "➕ Add Items to Order" },
+    de: { novo: "🍽️ Bestellen", add: "➕ Artikel zur Bestellung hinzufügen" },
+  };
+  const t = textos[lang] || textos.es;
+  span.textContent = ativa && String(ativa.mesa) === String(mesaVal) ? t.add : t.novo;
 }
 
 // ==========================================
@@ -4305,33 +3986,33 @@ function _trackerMsg(status) {
     es: {
       pendente: "¡Pedido recibido! Aguardando confirmación...",
       em_preparo: "¡Su pedido está siendo preparado!",
-      pronto_entrega: "¡Listo! Esperando repartidor...",
-      saiu_entrega: "¡Su pedido salió para entrega!",
-      entregue: "¡Pedido entregado! Buen provecho! 🎉",
+      pronto_entrega: "🍽️ ¡Listo! Ya está yendo a su mesa...",
+      saiu_entrega: "🍽️ ¡Su pedido está siendo servido!",
+      entregue: "¡Pedido servido! Buen provecho! 🎉",
       cancelado: "Pedido cancelado. Contáctenos.",
     },
     pt: {
       pendente: "Pedido recebido! Aguardando confirmação...",
       em_preparo: "Seu pedido está sendo preparado!",
-      pronto_entrega: "Pronto! Aguardando motoboy...",
-      saiu_entrega: "Seu pedido saiu para entrega!",
-      entregue: "Pedido entregue! Bom apetite! 🎉",
+      pronto_entrega: "🍽️ Pronto! Já está indo para sua mesa...",
+      saiu_entrega: "🍽️ Seu pedido está sendo servido!",
+      entregue: "Pedido servido! Bom apetite! 🎉",
       cancelado: "Pedido cancelado. Entre em contato conosco.",
     },
     en: {
       pendente: "Order received! Awaiting confirmation...",
       em_preparo: "Your order is being prepared!",
-      pronto_entrega: "Ready! Waiting for the driver...",
-      saiu_entrega: "Your order is out for delivery!",
-      entregue: "Order delivered! Enjoy your meal! 🎉",
+      pronto_entrega: "🍽️ Ready! On its way to your table...",
+      saiu_entrega: "🍽️ Your order is being served!",
+      entregue: "Order served! Enjoy your meal! 🎉",
       cancelado: "Order cancelled. Contact us.",
     },
     de: {
       pendente: "Bestellung erhalten! Warten auf Bestätigung...",
       em_preparo: "Ihre Bestellung wird zubereitet!",
-      pronto_entrega: "Fertig! Warten auf den Fahrer...",
-      saiu_entrega: "Ihre Bestellung ist unterwegs!",
-      entregue: "Bestellung geliefert! Guten Appetit! 🎉",
+      pronto_entrega: "🍽️ Fertig! Es ist unterwegs zu Ihrem Tisch...",
+      saiu_entrega: "🍽️ Ihre Bestellung wird serviert!",
+      entregue: "Bestellung serviert! Guten Appetit! 🎉",
       cancelado: "Bestellung storniert. Kontaktieren Sie uns.",
     },
   };
@@ -4345,8 +4026,8 @@ const TRACKER_STEPS = {
     icon: "📥",
   },
   em_preparo: { step: 2, icon: "🔥" },
-  pronto_entrega: { step: 3, icon: "📦" },
-  saiu_entrega: { step: 3, icon: "🛵" },
+  pronto_entrega: { step: 3, icon: "🍽️" },
+  saiu_entrega: { step: 3, icon: "🍽️" },
   entregue: { step: 4, icon: "✅" },
   cancelado: {
     step: 0,
@@ -4848,41 +4529,41 @@ function atualizarTrackingVisual(status, motoboy) {
     es: {
       pendente: "Aguardando confirmación...",
       em_preparo: "🔥 ¡Preparando su pedido!",
-      pronto_entrega: "📦 ¡Listo! Esperando repartidor...",
-      saiu_entrega: "🛵 ¡Su pedido salió para entrega!",
-      entregue: "✅ ¡Pedido entregado! Buen provecho!",
+      pronto_entrega: "🍽️ ¡Listo! Ya está yendo a su mesa...",
+      saiu_entrega: "🍽️ ¡Su pedido está siendo servido!",
+      entregue: "✅ ¡Pedido servido! Buen provecho!",
       cancelado: "❌ Pedido cancelado. Contáctenos.",
     },
     pt: {
       pendente: "Aguardando confirmação...",
       em_preparo: "🔥 Preparando seu pedido!",
-      pronto_entrega: "📦 Pronto! Aguardando motoboy...",
-      saiu_entrega: "🛵 Seu pedido saiu para entrega!",
-      entregue: "✅ Pedido entregue! Bom apetite!",
+      pronto_entrega: "🍽️ Pronto! Já está indo para sua mesa...",
+      saiu_entrega: "🍽️ Seu pedido está sendo servido!",
+      entregue: "✅ Pedido servido! Bom apetite!",
       cancelado: "❌ Pedido cancelado. Fale conosco.",
     },
     en: {
       pendente: "Awaiting confirmation...",
       em_preparo: "🔥 Preparing your order!",
-      pronto_entrega: "📦 Ready! Waiting for the driver...",
-      saiu_entrega: "🛵 Your order is out for delivery!",
-      entregue: "✅ Order delivered! Enjoy your meal!",
+      pronto_entrega: "🍽️ Ready! On its way to your table...",
+      saiu_entrega: "🍽️ Your order is being served!",
+      entregue: "✅ Order served! Enjoy your meal!",
       cancelado: "❌ Order cancelled. Contact us.",
     },
     de: {
       pendente: "Warten auf Bestätigung...",
       em_preparo: "🔥 Ihre Bestellung wird zubereitet!",
-      pronto_entrega: "📦 Fertig! Warten auf den Fahrer...",
-      saiu_entrega: "🛵 Ihre Bestellung ist unterwegs!",
-      entregue: "✅ Bestellung geliefert! Guten Appetit!",
+      pronto_entrega: "🍽️ Fertig! Es ist unterwegs zu Ihrem Tisch...",
+      saiu_entrega: "🍽️ Ihre Bestellung wird serviert!",
+      entregue: "✅ Bestellung serviert! Guten Appetit!",
       cancelado: "❌ Bestellung storniert. Kontaktieren Sie uns.",
     },
   }[_tLang] || {
     pendente: "Aguardando confirmación...",
     em_preparo: "🔥 ¡Preparando su pedido!",
-    pronto_entrega: "📦 ¡Listo! Esperando repartidor...",
-    saiu_entrega: "🛵 ¡Su pedido salió para entrega!",
-    entregue: "✅ ¡Pedido entregado! Buen provecho!",
+    pronto_entrega: "🍽️ ¡Listo! Ya está yendo a su mesa...",
+    saiu_entrega: "🍽️ ¡Su pedido está siendo servido!",
+    entregue: "✅ ¡Pedido servido! Buen provecho!",
     cancelado: "❌ Pedido cancelado. Contáctenos.",
   };
   const statusMap = {
@@ -4890,12 +4571,12 @@ function atualizarTrackingVisual(status, motoboy) {
     em_preparo: { msg: _statusMsgs.em_preparo, icon: "🔥", step: 2 },
     pronto_entrega: {
       msg: _statusMsgs.pronto_entrega,
-      icon: "📦",
+      icon: "🍽️",
       step: 3,
     },
     saiu_entrega: {
       msg: _statusMsgs.saiu_entrega,
-      icon: "🛵",
+      icon: "🍽️",
       step: 3,
     },
     entregue: { msg: _statusMsgs.entregue, icon: "✅", step: 4 },

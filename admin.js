@@ -454,19 +454,33 @@ async function uploadImageToImgbb(file, quality = 80) {
 }
 
 /**
- * Converte um File/Blob para WebP com qualidade ajustável.
+ * Converte um File/Blob para WebP com qualidade ajustável, redimensionando
+ * antes se a imagem for muito grande. Fotos de celular saem com 3000-4000px
+ * de largura — sem esse limite, mesmo em WebP o arquivo final fica pesado
+ * (às vezes vários MB) para uma imagem que no site aparece com ~130px.
+ * Isso é a causa mais provável de imagens "lentas" no cardápio.
  */
-function convertToWebP(file, quality = 80) {
+function convertToWebP(file, quality = 80, maxDimensao = 1280) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       const img = new Image();
       img.onload = () => {
+        let { width, height } = img;
+        if (width > maxDimensao || height > maxDimensao) {
+          if (width >= height) {
+            height = Math.round((height * maxDimensao) / width);
+            width = maxDimensao;
+          } else {
+            width = Math.round((width * maxDimensao) / height);
+            height = maxDimensao;
+          }
+        }
         const canvas = document.createElement('canvas');
-        canvas.width = img.width;
-        canvas.height = img.height;
+        canvas.width = width;
+        canvas.height = height;
         const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0);
+        ctx.drawImage(img, 0, 0, width, height);
         canvas.toBlob((blob) => {
           if (blob) resolve(blob);
           else reject(new Error('Falha na conversão para WebP'));
@@ -6129,9 +6143,14 @@ async function carregarCategorias() {
     const cJson = JSON.stringify(c)
       .replace(/'/g, "&apos;")
       .replace(/"/g, "&quot;");
+    const temHorario = c.hora_inicio && c.hora_fim;
+    const temDias = Array.isArray(c.dias_semana) && c.dias_semana.length > 0;
+    const diasTxt = temDias
+      ? c.dias_semana.map((d) => DIA_SEMANA_LABEL[d] || d).join(",")
+      : "";
     const horarioBadge =
-      c.hora_inicio && c.hora_fim
-        ? `<span class="cat-badge cat-badge-horario">🕐 ${c.hora_inicio}–${c.hora_fim}${Array.isArray(c.dias_semana) && c.dias_semana.length ? " (" + c.dias_semana.join(",") + ")" : ""}</span>`
+      temHorario || temDias
+        ? `<span class="cat-badge cat-badge-horario">🕐 ${temHorario ? `${c.hora_inicio}–${c.hora_fim}` : "todo el día"}${temDias ? " (" + diasTxt + ")" : ""}</span>`
         : `<span class="cat-badge cat-badge-sempre">✅ Siempre visible</span>`;
 
     const card = document.createElement("div");
@@ -6573,6 +6592,19 @@ function gerarSlug(texto) {
 }
 
 // Abre Modal de Edição (Recebe o objeto c inteiro)
+// Mapa dia-da-semana ⇄ valor dos checkboxes .cat-dia-check — a coluna
+// categorias.dias_semana é ARRAY DE INTEGER no banco (0=Dom...6=Sáb,
+// igual ao Date.getDay() do JS), então não podemos salvar "dom"/"ter"
+// direto — por isso o erro "invalid input syntax for type integer".
+const DIA_SEMANA_MAP = { dom: 0, seg: 1, ter: 2, qua: 3, qui: 4, sex: 5, sab: 6 };
+const DIA_SEMANA_LABEL = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+
+function _catDiasCheckedParaInteiros() {
+  return Array.from(document.querySelectorAll(".cat-dia-check:checked")).map(
+    (cb) => DIA_SEMANA_MAP[cb.value],
+  );
+}
+
 function editarCategoria(c) {
   document.getElementById("titulo-modal-cat").innerText = "Editar Categoría";
   document.getElementById("cat-modo-edicao").value = "sim";
@@ -6588,7 +6620,7 @@ function editarCategoria(c) {
   document.getElementById("cat-hora-fim").value = c.hora_fim || "";
   const diasSalvos = Array.isArray(c.dias_semana) ? c.dias_semana : [];
   document.querySelectorAll(".cat-dia-check").forEach((cb) => {
-    cb.checked = diasSalvos.includes(cb.value);
+    cb.checked = diasSalvos.includes(DIA_SEMANA_MAP[cb.value]);
   });
 
   document.getElementById("modal-cat").style.display = "flex";
@@ -6630,9 +6662,7 @@ async function salvarCategoria() {
       // 1. Insere novo registro com o novo slug
       const horaIni = document.getElementById("cat-hora-inicio").value || null;
       const horaFim = document.getElementById("cat-hora-fim").value || null;
-      const dias = Array.from(
-        document.querySelectorAll(".cat-dia-check:checked"),
-      ).map((cb) => cb.value);
+      const dias = _catDiasCheckedParaInteiros();
       const { error: insErr } = await supa.from("categorias").insert([
         {
           slug,
@@ -6679,9 +6709,7 @@ async function salvarCategoria() {
           hora_inicio: document.getElementById("cat-hora-inicio").value || null,
           hora_fim: document.getElementById("cat-hora-fim").value || null,
           dias_semana: (() => {
-            const d = Array.from(
-              document.querySelectorAll(".cat-dia-check:checked"),
-            ).map((cb) => cb.value);
+            const d = _catDiasCheckedParaInteiros();
             return d.length > 0 ? d : null;
           })(),
         })
@@ -6698,9 +6726,7 @@ async function salvarCategoria() {
         hora_inicio: document.getElementById("cat-hora-inicio").value || null,
         hora_fim: document.getElementById("cat-hora-fim").value || null,
         dias_semana: (() => {
-          const d = Array.from(
-            document.querySelectorAll(".cat-dia-check:checked"),
-          ).map((cb) => cb.value);
+          const d = _catDiasCheckedParaInteiros();
           return d.length > 0 ? d : null;
         })(),
       },
