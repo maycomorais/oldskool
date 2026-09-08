@@ -752,6 +752,7 @@ function _aplicarVisibilidadeAbas() {
     "menu-produtos":      "produtos",
     "menu-mensalistas":   "mensalistas",
     "menu-notas":         "notas",
+    "menu-facturacion":   "facturacion",
   };
   // adminMaster nunca sofre restrições — ele define as regras
   if (perfilUsuario === "adminMaster") return;
@@ -836,7 +837,7 @@ async function salvarFeatures() {
   const ABAS_PERM = [
     "pedidos","cozinha","pdv","financeiro","inventario","produtos",
     "equipe","configuracoes","dashboard","estatisticas","ficha-tecnica",
-    "crm","mensalistas","turnos",
+    "crm","mensalistas","turnos","notas","facturacion",
   ];
   CARGOS_PERM.forEach(cargo => {
     const tabsPermitidas = ABAS_PERM.filter(aba => {
@@ -908,6 +909,8 @@ async function renderPainelFeatures() {
     ["crm",           "🤝 CRM Clientes"],
     ["mensalistas",   "🗓️ Mensalistas"],
     ["turnos",        "📺 Painel Turnos/TV"],
+    ["notas",         "🧾 Notas/Facturas"],
+    ["facturacion",   "🧮 Facturación"],
   ].map(([k, l]) => _chk("data-feat-tab", k, tabs[k], l, "#f0f9ff")).join("");
 
   // ── Tipos de produto (gastronomia + varejo) ───────────────────────
@@ -932,6 +935,10 @@ async function renderPainelFeatures() {
   ].map(([k, l]) => _chk("data-feat-tipo", k, tipos[k], l, "#fdf9ff")).join("");
 
   // ── Formas de pagamento ───────────────────────────────────────────
+  // OBS: o app do cliente usa a opção unificada "QrPy"; o PDV do balcão
+  // (admin) distingue "QrMaquina" (posnet) de "QrCelular" (QR no celular
+  // do garçom) — por isso os dois têm checkbox próprio, mesmo controlando
+  // o mesmo método de pagamento em telas diferentes.
   const pags = f.pagamentos || {};
   const chkPags = [
     ["Efetivo",        "💵 Efectivo/Dinheiro"],
@@ -939,8 +946,12 @@ async function renderPainelFeatures() {
     ["CartaoBR",       "💳🇧🇷 Tarjeta BR (R$)"],
     ["Pix",            "🟢 Pix (BR)"],
     ["Transferencia",  "🏦 Alias/Transferência PY"],
-    ["QrPy",           "📱 QR Paraguay"],
+    ["QrPy",           "📱 QR Paraguay (App Cliente)"],
+    ["QrMaquina",      "📱 QR Máquina (PDV)"],
+    ["QrCelular",      "📱 QR Celular (PDV)"],
     ["Multipagamento", "🔀 Dividir Pagamento"],
+    ["Mensalista",     "🎫 Mensalista"],
+    ["NaNota",         "📋 Colocar na Nota"],
   ].map(([k, l]) => _chk("data-feat-pag", k, pags[k], l, "#f0fff4")).join("");
 
   // ── Funcionalidades ───────────────────────────────────────────────
@@ -975,6 +986,7 @@ async function renderPainelFeatures() {
     ["equipe","👥 Equipe"],["configuracoes","⚙️ Config"],["dashboard","📊 Dashboard"],
     ["estatisticas","📈 Estatísticas"],["ficha-tecnica","📝 Ficha Técnica"],
     ["crm","🤝 CRM"],["mensalistas","🗓️ Mensalistas"],["turnos","📺 Turnos"],
+    ["notas","🧾 Notas"],["facturacion","🧮 Facturación"],
   ];
   const pCargos = f.permissoes_cargo || {};
 
@@ -2007,6 +2019,7 @@ async function calcularFinanceiro() {
   let faturamento = 0, totalPix = 0, totalTransf = 0, totalCartao = 0,
       totalEfetivo = 0, totalNaNota = 0, totalQrCelular = 0, totalQrMaquina = 0;
   let custoEntregas = 0, qtdPedidos = 0;
+  let totalTaxaServico = 0, qtdPedidosComTaxaServico = 0;
   const motoMap = {};
 
   function _acumularMetodo(metodoRaw, valor) {
@@ -2036,6 +2049,13 @@ async function calcularFinanceiro() {
     const val = safeNum(p.total_geral);
     faturamento += val;
     qtdPedidos++;
+
+    // Taxa de Serviço: valor a repassar aos funcionários (KPI separado)
+    const taxaServ = safeNum(p.taxa_servico_valor);
+    if (taxaServ > 0) {
+      totalTaxaServico += taxaServ;
+      qtdPedidosComTaxaServico++;
+    }
 
     // NaNota QUITADO: soma na forma de pagamento real, NÃO entra em totalNaNota
     if (isNaNota && isQuitado) {
@@ -2091,6 +2111,9 @@ async function calcularFinanceiro() {
   setV("card-faturamento",  fmt(faturamento));
   setV("card-custo-moto",   fmt(custoEntregas));
   setV("card-lucro",        fmt(lucro));
+  // Taxa de Serviço: valor total a repassar aos funcionários (se o card existir na tela)
+  setV("card-taxa-servico", fmt(totalTaxaServico));
+  setV("card-taxa-servico-qtd", qtdPedidosComTaxaServico + (qtdPedidosComTaxaServico === 1 ? " pedido" : " pedidos"));
 
   const totalPixBRL = COTACAO_REAL > 0 ? totalPix / COTACAO_REAL : 0;
   const pixDisplay = totalPix > 0 ? `${fmt(totalPix)} (≈ ${fmtBRL(totalPixBRL)})` : fmt(totalPix);
@@ -7339,6 +7362,19 @@ function _lerGradeSemanal() {
   return horarios;
 }
 
+async function salvarTaxasCartao() {
+  const taxaDebito = parseFloat(document.getElementById("cfg-taxa-debito")?.value) || 0;
+  const taxaCredito = parseFloat(document.getElementById("cfg-taxa-credito")?.value) || 0;
+  const { error } = await supa
+    .from("configuracoes")
+    .update({ taxa_debito: taxaDebito, taxa_credito: taxaCredito })
+    .gt("id", 0);
+  if (error) return alert("Error: " + error.message);
+  _taxaDebitoPDV = taxaDebito;
+  _taxaCreditoPDV = taxaCredito;
+  alert("✅ ¡Tasas de tarjeta guardadas! Se aplican tanto a la Tarjeta local como a la Tarjeta Brasileña, en el PDV y en el app del cliente.");
+}
+
 async function carregarConfiguracoes() {
   // Gestão de cupons: apenas dono, gerente e adminMaster
   const _cardCupons = document.getElementById("card-cupons-cfg");
@@ -7368,6 +7404,10 @@ async function carregarConfiguracoes() {
   // Operação
   s("cfg-aberta", data.loja_aberta ? "true" : "false");
   s("cfg-cotacao", data.cotacao_real);
+
+  // Taxa de cartão repassada ao cliente (Cartao PY + CartaoBR)
+  s("cfg-taxa-debito", data.taxa_debito ?? 1.99);
+  s("cfg-taxa-credito", data.taxa_credito ?? 4.98);
 
   // Identidade da loja
   s("cfg-nome-restaurante", data.nome_restaurante);
@@ -8508,6 +8548,19 @@ let _cotacaoPDV = 1100;
 let _taxaDebitoPDV = 1.99;
 let _taxaCreditoPDV = 4.98;
 let _cartaoBRTipoPDV = "debito";
+let _cartaoPYTipoPDV = "debito"; // idem, para a Tarjeta local (Cartao) no PDV
+
+// Resolve o texto final da forma de pagamento pro banco — CartaoBR e
+// Cartao (tarjeta local) têm sub-tipo Débito/Crédito com taxa diferente.
+function _resolvePagFinalPDV(pag) {
+  if (pag === "CartaoBR") {
+    return _cartaoBRTipoPDV === "debito" ? "Cartão BR - Débito" : "Cartão BR - Crédito";
+  }
+  if (pag === "Cartao") {
+    return _cartaoPYTipoPDV === "debito" ? "Cartão - Débito" : "Cartão - Crédito";
+  }
+  return pag;
+}
 
 // Mapa global: inventario_id -> { quantidade, quantidade_minima }.
 // Alimenta os badges de estoque baixo tanto no PDV (_criarCardPDV) quanto
@@ -10664,6 +10717,7 @@ function atualizarCarrinhoPDV() {
     document.getElementById("balcao-tipo-entrega")?.value || "balcao";
   const totalFinal = totalComDesc + (tipoEntrega === "delivery" ? frete : 0);
   if (totalEl) totalEl.innerText = totalFinal.toLocaleString("es-PY");
+  window._pdvTotalBaseSemTaxas = totalFinal;
 
   // Atualiza barra inferior mobile
   const mobileQtd = document.getElementById("pdv-mobile-qtd");
@@ -10674,6 +10728,45 @@ function atualizarCarrinhoPDV() {
   if (mobileTot) mobileTot.textContent = totalFinal.toLocaleString("es-PY");
 
   atualizarInfoPagPDV(totalFinal);
+}
+
+// Soma taxa de cartão + taxa de serviço (se marcadas) sobre o total-base
+// e atualiza os elementos de total na tela, sem re-renderizar o carrinho
+// inteiro (evita recursão com atualizarCarrinhoPDV -> atualizarInfoPagPDV).
+function _pdvAtualizarTotalComTaxas() {
+  const base = window._pdvTotalBaseSemTaxas || 0;
+  const taxaCartao = window._pdvTaxaCartaoValor || 0;
+  const taxaServico = window._pdvTaxaServicoValor || 0;
+  const totalComTaxas = base + taxaCartao + taxaServico;
+  const totalEl = document.getElementById("balcao-total");
+  const mobileTot = document.getElementById("pdv-mobile-total-val");
+  if (totalEl) totalEl.innerText = totalComTaxas.toLocaleString("es-PY");
+  if (mobileTot) mobileTot.textContent = totalComTaxas.toLocaleString("es-PY");
+}
+
+// ── Taxa de Serviço (opcional, cobrada só no PDV — venda presencial) ──
+function pdvToggleTaxaServico() {
+  const chk = document.getElementById("pdv-check-taxa-servico");
+  const pctInput = document.getElementById("pdv-taxa-servico-pct");
+  if (pctInput) pctInput.style.display = chk?.checked ? "" : "none";
+  pdvAtualizarPctServico();
+}
+
+function pdvAtualizarPctServico() {
+  const chk = document.getElementById("pdv-check-taxa-servico");
+  const pctInput = document.getElementById("pdv-taxa-servico-pct");
+  const pctLabel = document.getElementById("pdv-taxa-servico-pct-label");
+  const pct = parseFloat(pctInput?.value) || 0;
+  if (pctLabel) pctLabel.textContent = pct;
+  if (chk && chk.checked && pct > 0) {
+    const base = window._pdvTotalBaseSemTaxas || 0;
+    window._pdvTaxaServicoValor = Math.round(base * (pct / 100));
+    window._pdvTaxaServicoPct = pct;
+  } else {
+    window._pdvTaxaServicoValor = 0;
+    window._pdvTaxaServicoPct = 0;
+  }
+  _pdvAtualizarTotalComTaxas();
 }
 
 function atualizarInfoPagPDV(total) {
@@ -10712,15 +10805,21 @@ function atualizarInfoPagPDV(total) {
     }
   }
 
-  if (pag === "CartaoBR" && total > 0) {
+  // Reseta o valor de taxa de cartão calculado (recalculado abaixo se aplicável)
+  window._pdvTaxaCartaoValor = 0;
+  window._pdvTaxaCartaoPct = 0;
+
+  if (pag === "CartaoBR" && total > 0 && (_taxaDebitoPDV > 0 || _taxaCreditoPDV > 0)) {
     infoBox.style.display = "block";
     const _renderCarBR = () => {
       const taxa =
         _cartaoBRTipoPDV === "debito" ? _taxaDebitoPDV : _taxaCreditoPDV;
+      const taxaValor = Math.round(total * (taxa / 100));
+      window._pdvTaxaCartaoValor = taxaValor;
+      window._pdvTaxaCartaoPct = taxa;
+      const totalComTaxa = total + taxaValor;
       const brl =
-        _cotacaoPDV > 0
-          ? ((total / _cotacaoPDV) * (1 + taxa / 100)).toFixed(2)
-          : "---";
+        _cotacaoPDV > 0 ? (totalComTaxa / _cotacaoPDV).toFixed(2) : "---";
       infoBox.innerHTML = `
         <div style="font-size:0.78rem;font-weight:700;margin-bottom:6px">💳🇧🇷 Tarjeta Brasileña</div>
         <div style="display:flex;gap:6px;margin-bottom:8px">
@@ -10737,7 +10836,11 @@ function atualizarInfoPagPDV(total) {
                    color:${_cartaoBRTipoPDV === "credito" ? "#1a7a2e" : "#555"}">
             Crédito<br><small>${_taxaCreditoPDV.toFixed(2)}%</small></button>
         </div>
-        <div style="text-align:center;font-size:1rem;font-weight:900;color:#1a7a2e">R$ ${brl}</div>`;
+        <div style="text-align:center">
+          <div style="font-size:0.72rem;color:#666">+ Gs ${taxaValor.toLocaleString("es-PY")} de taxa → Total: Gs ${totalComTaxa.toLocaleString("es-PY")}</div>
+          <div style="font-size:1rem;font-weight:900;color:#1a7a2e">R$ ${brl}</div>
+        </div>`;
+      _pdvAtualizarTotalComTaxas();
     };
     window._setPDVBRTipo = (tipo) => {
       _cartaoBRTipoPDV = tipo;
@@ -10745,6 +10848,41 @@ function atualizarInfoPagPDV(total) {
     };
     window._renderCarBRPDV = _renderCarBR;
     _renderCarBR();
+  } else if (pag === "Cartao" && total > 0 && (_taxaDebitoPDV > 0 || _taxaCreditoPDV > 0)) {
+    infoBox.style.display = "block";
+    const _renderCarPY = () => {
+      const taxa =
+        _cartaoPYTipoPDV === "debito" ? _taxaDebitoPDV : _taxaCreditoPDV;
+      const taxaValor = Math.round(total * (taxa / 100));
+      window._pdvTaxaCartaoValor = taxaValor;
+      window._pdvTaxaCartaoPct = taxa;
+      const totalComTaxa = total + taxaValor;
+      infoBox.innerHTML = `
+        <div style="font-size:0.78rem;font-weight:700;margin-bottom:6px">💳 Tarjeta</div>
+        <div style="display:flex;gap:6px;margin-bottom:8px">
+          <button type="button" onclick="_setPDVPYTipo('debito')"
+            style="flex:1;padding:6px 4px;border-radius:6px;font-weight:700;cursor:pointer;font-size:0.75rem;
+                   border:2px solid ${_cartaoPYTipoPDV === "debito" ? "#1a7a2e" : "#ccc"};
+                   background:${_cartaoPYTipoPDV === "debito" ? "#eafaf1" : "#f8f9fa"};
+                   color:${_cartaoPYTipoPDV === "debito" ? "#1a7a2e" : "#555"}">
+            Débito<br><small>${_taxaDebitoPDV.toFixed(2)}%</small></button>
+          <button type="button" onclick="_setPDVPYTipo('credito')"
+            style="flex:1;padding:6px 4px;border-radius:6px;font-weight:700;cursor:pointer;font-size:0.75rem;
+                   border:2px solid ${_cartaoPYTipoPDV === "credito" ? "#1a7a2e" : "#ccc"};
+                   background:${_cartaoPYTipoPDV === "credito" ? "#eafaf1" : "#f8f9fa"};
+                   color:${_cartaoPYTipoPDV === "credito" ? "#1a7a2e" : "#555"}">
+            Crédito<br><small>${_taxaCreditoPDV.toFixed(2)}%</small></button>
+        </div>
+        <div style="font-size:0.72rem;color:#666;text-align:center;margin-bottom:2px">+ Gs ${taxaValor.toLocaleString("es-PY")} de taxa</div>
+        <div style="text-align:center;font-size:1rem;font-weight:900;color:#1a7a2e">Gs ${totalComTaxa.toLocaleString("es-PY")}</div>`;
+      _pdvAtualizarTotalComTaxas();
+    };
+    window._setPDVPYTipo = (tipo) => {
+      _cartaoPYTipoPDV = tipo;
+      _renderCarPY();
+    };
+    window._renderCarPYPDV = _renderCarPY;
+    _renderCarPY();
   } else if (pag === "Pix" && total > 0) {
     const valorReais = (total / _cotacaoPDV).toFixed(2);
     infoBox.style.display = "block";
@@ -10776,6 +10914,14 @@ function atualizarInfoPagPDV(total) {
   if (pag !== "NaNota") {
     const b = document.getElementById("box-nanota-pdv");
     if (b) b.style.display = "none";
+  }
+
+  // Recalcula a taxa de serviço (se marcada) sobre o total-base atual e
+  // atualiza o total exibido somando taxa de cartão + taxa de serviço.
+  if (document.getElementById("pdv-check-taxa-servico")) {
+    pdvAtualizarPctServico();
+  } else {
+    _pdvAtualizarTotalComTaxas();
   }
 }
 
@@ -10912,11 +11058,7 @@ function voltarPagamentoPDVUnico() {
   document.getElementById("multi-partes-pdv").innerHTML = "";
   document.getElementById("balcao-pag").style.display = "";
   _multiContadorPDV = 0;
-  atualizarInfoPagPDV(
-    parseInt(
-      document.getElementById("balcao-total").innerText.replace(/\D/g, ""),
-    ) || 0,
-  );
+  atualizarInfoPagPDV(window._pdvTotalBaseSemTaxas || 0);
 }
 
 function adicionarPartePagamentoPDV() {
@@ -10932,7 +11074,12 @@ function adicionarPartePagamentoPDV() {
     { v: "Pix", l: "🟢 Pix" },
     { v: "Transferencia", l: "🏦 Alias" },
     { v: "QrPy", l: "📱 QR Paraguay" },
+    { v: "QrMaquina", l: "📱 QR Máquina" },
+    { v: "QrCelular", l: "📱 QR Celular" },
   ]
+    // Não deixa escolher, no "Dividir Pagamento", uma forma que o
+    // adminMaster desativou globalmente em Configurações → Controle de Features.
+    .filter((m) => FEATURES_ATIVAS?.pagamentos?.[m.v] !== false)
     .map((m) => `<option value="${m.v}">${m.l}</option>`)
     .join("");
 
@@ -11060,12 +11207,7 @@ async function salvarPedidoBalcao() {
     document.getElementById("balcao-cliente").value.trim() || "Cliente";
   const tel = document.getElementById("balcao-telefone").value.trim() || "";
   let pag = document.getElementById("balcao-pag").value;
-  const pagFinalPDV =
-    pag === "CartaoBR"
-      ? _cartaoBRTipoPDV === "debito"
-        ? "Cartão BR - Débito"
-        : "Cartão BR - Crédito"
-      : pag;
+  const pagFinalPDV = _resolvePagFinalPDV(pag);
 
   const nomeFinal = mesa
     ? `MESA ${mesa} - ${cli}`
@@ -11199,6 +11341,12 @@ async function salvarPedidoBalcao() {
     carrinhoPDV = [];
     document.getElementById("balcao-cliente").value = "";
     document.getElementById("balcao-mesa").value = "";
+    window._pdvTaxaCartaoValor = 0; window._pdvTaxaCartaoPct = 0;
+    window._pdvTaxaServicoValor = 0; window._pdvTaxaServicoPct = 0;
+    const _chkTS = document.getElementById("pdv-check-taxa-servico");
+    if (_chkTS) _chkTS.checked = false;
+    const _pctTS = document.getElementById("pdv-taxa-servico-pct");
+    if (_pctTS) _pctTS.style.display = "none";
     document.getElementById("balcao-telefone").value = "";
     document.querySelector(".pdv-mesa-aviso")?.remove();
     atualizarCarrinhoPDV();
@@ -11228,8 +11376,31 @@ async function salvarPedidoBalcao() {
   const _geoLat = document.getElementById("balcao-geo-lat")?.value || null;
   const _geoLng = document.getElementById("balcao-geo-lng")?.value || null;
 
+  // ── Bloqueia abrir uma mesa com número já em uso por outro pedido ativo ──
+  if (mesa && tipoEntregaPDV !== "delivery") {
+    const { data: mesaExistente } = await supa
+      .from("pedidos")
+      .select("id, cliente_nome")
+      .eq("tipo_entrega", "balcao")
+      .neq("status", "entregue")
+      .neq("status", "cancelado")
+      .ilike("endereco_entrega", `Mesa ${mesa}`)
+      .maybeSingle();
+    if (mesaExistente) {
+      alert(
+        `⚠️ A Mesa ${mesa} já está aberta (pedido #${mesaExistente.id}${mesaExistente.cliente_nome ? " — " + mesaExistente.cliente_nome : ""}).\n\nAbra a comanda existente na aba Mesas em vez de criar um pedido novo, ou escolha outro número de mesa.`,
+      );
+      return;
+    }
+  }
+
   const subtotalLiquido = subtotalBruto - descontoAplicado;
-  const totalNovo = subtotalLiquido + fretePDV;
+  const _taxaCartaoValorPDV = window._pdvTaxaCartaoValor || 0;
+  const _taxaCartaoPctPDV = window._pdvTaxaCartaoPct || 0;
+  const _taxaServicoValorPDV = window._pdvTaxaServicoValor || 0;
+  const _taxaServicoPctPDV = window._pdvTaxaServicoPct || 0;
+  const totalNovo =
+    subtotalLiquido + fretePDV + _taxaCartaoValorPDV + _taxaServicoValorPDV;
   const _agora = new Date().toISOString();
   const pedido = {
     // uid_temporal removido: pedidos de balcão passam a exibir o ID
@@ -11247,7 +11418,11 @@ async function salvarPedidoBalcao() {
     desconto_pdv_tipo: descontoAplicado > 0 ? descTipo : null,
     frete_cobrado_cliente: fretePDV,
     total_geral: totalNovo,
-    forma_pagamento: pag,
+    forma_pagamento: pagFinalPDV,
+    taxa_cartao_percentual: _taxaCartaoValorPDV > 0 ? _taxaCartaoPctPDV : null,
+    taxa_cartao_valor: _taxaCartaoValorPDV,
+    taxa_servico_percentual: _taxaServicoValorPDV > 0 ? _taxaServicoPctPDV : null,
+    taxa_servico_valor: _taxaServicoValorPDV,
     itens: novosItens,
     endereco_entrega: enderecoPDV,
     cliente_nome: nomeFinal,
@@ -11348,12 +11523,30 @@ async function salvarPedidoBalcao() {
 
   // ── Impressão automática ───────────────────────────────────────
   if (novoPedido?.id) {
+    // Linhas extras impressas na nota (taxa de cartão / taxa de serviço),
+    // como itens visuais — garante que apareçam no ticket independente
+    // de o imprimir.html reconhecer campos novos em "valores".
+    const itensParaImpressao = [...novosItens];
+    if (_taxaServicoValorPDV > 0) {
+      itensParaImpressao.push({
+        nome: `Taxa de Serviço (${_taxaServicoPctPDV}%)`,
+        preco: _taxaServicoValorPDV,
+        qtd: 1,
+      });
+    }
+    if (_taxaCartaoValorPDV > 0) {
+      itensParaImpressao.push({
+        nome: `Taxa de Cartão (${_taxaCartaoPctPDV}%)`,
+        preco: _taxaCartaoValorPDV,
+        qtd: 1,
+      });
+    }
     // Monta dados direto (sem segunda busca no banco)
     const dadosImpressao = {
       id: novoPedido.uid_temporal || novoPedido.id,
       cliente: { nome: nomeFinal, tel: tel },
       entrega: { tipo: tipoEntregaPDV, ref: pedido.endereco_entrega },
-      itens: novosItens.map((i) => ({
+      itens: itensParaImpressao.map((i) => ({
         q: i.qtd || 1,
         n: i.nome,
         p: i.preco,
@@ -11368,9 +11561,11 @@ async function salvarPedidoBalcao() {
         sub: subtotalBruto,
         desconto: descontoAplicado,
         frete: fretePDV,
+        taxa_servico: _taxaServicoValorPDV,
+        taxa_cartao: _taxaCartaoValorPDV,
         total: totalNovo,
       },
-      pagamento: { metodo: pag, obs: obsPagPDV },
+      pagamento: { metodo: pagFinalPDV, obs: obsPagPDV },
       data: new Date().toLocaleString("pt-BR"),
     };
     const base64 = btoa(
@@ -11389,6 +11584,10 @@ async function salvarPedidoBalcao() {
   carrinhoPDV = [];
   document.getElementById("balcao-cliente").value = "";
   document.getElementById("balcao-mesa").value = "";
+  window._pdvTaxaCartaoValor = 0; window._pdvTaxaCartaoPct = 0;
+  window._pdvTaxaServicoValor = 0; window._pdvTaxaServicoPct = 0;
+  { const _chkTS = document.getElementById("pdv-check-taxa-servico"); if (_chkTS) _chkTS.checked = false; }
+  { const _pctTS = document.getElementById("pdv-taxa-servico-pct"); if (_pctTS) _pctTS.style.display = "none"; }
   document.getElementById("balcao-telefone").value = "";
   // Reset tipo entrega e campos de delivery
   const tipoSelPDV = document.getElementById("balcao-tipo-entrega");
@@ -11512,12 +11711,7 @@ async function finalizarPedidoMesaPDV() {
   }
 
   let pag = document.getElementById("balcao-pag").value;
-  const pagFinalPDV =
-    pag === "CartaoBR"
-      ? _cartaoBRTipoPDV === "debito"
-        ? "Cartão BR - Débito"
-        : "Cartão BR - Crédito"
-      : pag;
+  const pagFinalPDV = _resolvePagFinalPDV(pag);
 
   const nomeFinal = `MESA ${mesa} - ${cli}`;
 
@@ -11565,7 +11759,12 @@ async function finalizarPedidoMesaPDV() {
     descontoAplicado = Math.min(descontoAplicado, subtotalBruto);
   }
   const fretePDV = parseInt(document.getElementById("balcao-frete")?.value || "0") || 0;
-  const totalFinal = subtotalBruto - descontoAplicado + fretePDV;
+  const _taxaCartaoValorPDV = window._pdvTaxaCartaoValor || 0;
+  const _taxaCartaoPctPDV = window._pdvTaxaCartaoPct || 0;
+  const _taxaServicoValorPDV = window._pdvTaxaServicoValor || 0;
+  const _taxaServicoPctPDV = window._pdvTaxaServicoPct || 0;
+  const totalFinal =
+    subtotalBruto - descontoAplicado + fretePDV + _taxaCartaoValorPDV + _taxaServicoValorPDV;
 
   // ── Tratamento Multipagamento ─────────────────────────────────
   let obsPagPDV = "Pagamento no Balcão";
@@ -11620,6 +11819,10 @@ async function finalizarPedidoMesaPDV() {
       desconto_pdv_tipo: descontoAplicado > 0 ? descTipo : null,
       frete_cobrado_cliente: fretePDV,
       total_geral: totalFinal,
+      taxa_cartao_percentual: _taxaCartaoValorPDV > 0 ? _taxaCartaoPctPDV : null,
+      taxa_cartao_valor: _taxaCartaoValorPDV,
+      taxa_servico_percentual: _taxaServicoValorPDV > 0 ? _taxaServicoPctPDV : null,
+      taxa_servico_valor: _taxaServicoValorPDV,
       forma_pagamento: pagFinalPDV,
       obs_pagamento: obsPagPDV,
       cliente_nome: nomeFinal,
@@ -11680,11 +11883,26 @@ async function finalizarPedidoMesaPDV() {
   }
 
   // ── Impressão do comprovante final da mesa (todos os itens) ────────
+  const itensParaImpressaoFinal = [...itensMerged];
+  if (_taxaServicoValorPDV > 0) {
+    itensParaImpressaoFinal.push({
+      nome: `Taxa de Serviço (${_taxaServicoPctPDV}%)`,
+      preco: _taxaServicoValorPDV,
+      qtd: 1,
+    });
+  }
+  if (_taxaCartaoValorPDV > 0) {
+    itensParaImpressaoFinal.push({
+      nome: `Taxa de Cartão (${_taxaCartaoPctPDV}%)`,
+      preco: _taxaCartaoValorPDV,
+      qtd: 1,
+    });
+  }
   const dadosImpressaoFinal = {
     id: mesaIdFechada,
     cliente: { nome: nomeFinal, tel },
     entrega: { tipo: "mesa", ref: `Mesa ${mesa}` },
-    itens: itensMerged.map((i) => ({
+    itens: itensParaImpressaoFinal.map((i) => ({
       q: i.qtd || 1,
       n: i.nome,
       p: i.preco,
@@ -11699,9 +11917,11 @@ async function finalizarPedidoMesaPDV() {
       sub: subtotalBruto,
       desconto: descontoAplicado,
       frete: fretePDV,
+      taxa_servico: _taxaServicoValorPDV,
+      taxa_cartao: _taxaCartaoValorPDV,
       total: totalFinal,
     },
-    pagamento: { metodo: pag, obs: obsPagPDV },
+    pagamento: { metodo: pagFinalPDV, obs: obsPagPDV },
     data: new Date().toLocaleString("pt-BR"),
   };
   const base64Final = btoa(unescape(encodeURIComponent(JSON.stringify(dadosImpressaoFinal))))
@@ -11721,6 +11941,10 @@ async function finalizarPedidoMesaPDV() {
   carrinhoPDV = [];
   document.getElementById("balcao-cliente").value = "";
   document.getElementById("balcao-mesa").value = "";
+  window._pdvTaxaCartaoValor = 0; window._pdvTaxaCartaoPct = 0;
+  window._pdvTaxaServicoValor = 0; window._pdvTaxaServicoPct = 0;
+  { const _chkTS = document.getElementById("pdv-check-taxa-servico"); if (_chkTS) _chkTS.checked = false; }
+  { const _pctTS = document.getElementById("pdv-taxa-servico-pct"); if (_pctTS) _pctTS.style.display = "none"; }
   document.getElementById("balcao-telefone").value = "";
   document.querySelector(".pdv-mesa-aviso")?.remove();
   document.getElementById("balcao-pag").value = "Efetivo";
@@ -11850,6 +12074,51 @@ function abrirMesaExistente(pedido) {
   atualizarTextoBotaoPDV(); // <-- NOVA LINHA
 }
 
+// ── Imprime a "Comanda" de uma mesa: todo o consumo (baixado ou não) ──
+function imprimirComandaMesa(pedido) {
+  const itens = Array.isArray(pedido.itens) ? pedido.itens : [];
+  if (itens.length === 0) {
+    alert("Esta mesa não tem itens lançados ainda.");
+    return;
+  }
+  const nrMesa = (pedido.endereco_entrega || "").replace("Mesa ", "") || pedido.id;
+  const total = itens.reduce(
+    (acc, i) => acc + (i._isKg ? i.preco || 0 : (i.preco || i.p || 0) * (i.qtd || i.q || 1)),
+    0,
+  );
+  const dadosImpressao = {
+    id: pedido.id,
+    cliente: { nome: pedido.cliente_nome || `Mesa ${nrMesa}`, tel: pedido.cliente_telefone || "" },
+    entrega: { tipo: "mesa", ref: `Mesa ${nrMesa} — COMANDA (consumo total)` },
+    itens: itens.map((i) => {
+      const entregue = i.status_item === "entregue";
+      return {
+        q: i.qtd || i.q || 1,
+        n: (i.nome || i.n || "Item") + (entregue ? " ✓" : " (pendente)"),
+        p: i.preco || i.p || 0,
+        t: i.variacao || i.t || "",
+        pr: i.preparo || i.pr || "",
+        m: i.montagem || i.m || [],
+        o: i.obs || i.o || "",
+        peso_gramas: i.peso_gramas,
+        _isKg: i._isKg,
+      };
+    }),
+    valores: { sub: total, desconto: 0, frete: 0, total: total },
+    pagamento: { metodo: "", obs: "Comanda — ainda não finalizada" },
+    data: new Date().toLocaleString("pt-BR"),
+  };
+  const base64 = btoa(unescape(encodeURIComponent(JSON.stringify(dadosImpressao))))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+  window.open(
+    `imprimir.html?d=${base64}`,
+    `PrintComandaMesa_${pedido.id}_${Date.now()}`,
+    "width=400,height=600",
+  );
+}
+
 async function carregarMonitorMesas() {
   const div = document.getElementById("lista-mesas-andamento");
   if (!div) return;
@@ -11943,6 +12212,9 @@ async function carregarMonitorMesas() {
         <button class="btn btn-primary btn-sm btn-abrir-comanda" type="button">
           <i class="fas fa-pen"></i> ${t('mesas.abrir_comanda')}
         </button>
+        <button class="btn btn-secondary btn-sm btn-imprimir-comanda" type="button" title="Imprimir Comanda">
+          <i class="fas fa-print"></i> <span data-i18n="mesas.imprimir_comanda">Imprimir</span>
+        </button>
         <button class="btn btn-success btn-sm btn-finalizar-mesa" type="button">
           <i class="fas fa-check-circle"></i> ${t('mesas.finalizar')}
         </button>
@@ -11959,6 +12231,12 @@ async function carregarMonitorMesas() {
     btnAbrir.addEventListener("click", (e) => {
       e.stopPropagation();
       abrirMesaExistente(pedido);
+    });
+
+    const btnImprimir = card.querySelector(".btn-imprimir-comanda");
+    btnImprimir.addEventListener("click", (e) => {
+      e.stopPropagation();
+      imprimirComandaMesa(pedido);
     });
 
     const btnFinalizar = card.querySelector(".btn-finalizar-mesa");

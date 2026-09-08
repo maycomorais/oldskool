@@ -254,6 +254,7 @@ if (typeof supa === "undefined") {
 // 2. ESTADO DA APLICAÇÃO (Variáveis Globais)
 // ==========================================
 let carrinho = [];
+let FEATURES_PAGAMENTOS_CLIENTE = null; // features_ativas.pagamentos (controlado pelo adminMaster)
 let freteCalculado = 0;
 // Marca quando o frete foi resolvido via fallback (GPS falhou, aplicou
 // o mínimo da tabela) — usada na validação do checkout pra não travar
@@ -395,6 +396,7 @@ async function verificarHorario() {
   if (data.limite_distancia_km != null)
     LIMITE_DISTANCIA_KM = parseFloat(data.limite_distancia_km) || null;
   // Aplica visibilidade das formas de pagamento conforme configuração
+  FEATURES_PAGAMENTOS_CLIENTE = data.features_ativas?.pagamentos || null;
   _aplicarFormasPagamentoCliente(data.features_ativas);
   if (data.taxa_debito != null) TAXA_DEBITO_BR = Number(data.taxa_debito);
   if (data.taxa_credito != null) TAXA_CREDITO_BR = Number(data.taxa_credito);
@@ -3011,7 +3013,7 @@ function verificarPagamento() {
 let _multiContador = 0;
 
 function _getMetodosPag() {
-  return tt({
+  const todos = tt({
     es: [
       { value: "Efetivo", label: "💵 Efectivo" },
       { value: "Cartao", label: "💳 Tarjeta" },
@@ -3045,6 +3047,10 @@ function _getMetodosPag() {
       { value: "QrPy", label: "📱 QR Paraguay" },
     ],
   });
+  // Não deixa escolher, no "Dividir Pagamento", uma forma que o adminMaster
+  // desativou globalmente em Configurações → Controle de Features.
+  if (!FEATURES_PAGAMENTOS_CLIENTE) return todos;
+  return todos.filter((m) => FEATURES_PAGAMENTOS_CLIENTE[m.value] !== false);
 }
 const METODOS_PAG = [
   { value: "Efetivo", label: "💵 Efectivo" },

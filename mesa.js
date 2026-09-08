@@ -3610,6 +3610,24 @@ async function enviarPedidoMesa() {
       _mesaLimparAtivo();
     }
 
+    // Ninguém neste navegador tem vínculo salvo com essa mesa — mas ela
+    // pode já ter sido aberta por OUTRO cliente (outro celular) na mesma
+    // mesa física. Busca no banco antes de criar um pedido duplicado.
+    if (!_pedidoMesaExistente) {
+      try {
+        const { data: _pedidoOutroCliente } = await supa
+          .from("pedidos")
+          .select("id,status,itens,subtotal,total_geral")
+          .eq("tipo_entrega", "balcao")
+          .not("status", "in", "(entregue,cancelado)")
+          .ilike("endereco_entrega", `Mesa ${mesa}`)
+          .maybeSingle();
+        if (_pedidoOutroCliente) _pedidoMesaExistente = _pedidoOutroCliente;
+      } catch (_) {
+        /* segue normalmente para criar um pedido novo */
+      }
+    }
+
     if (typeof supa === "undefined") {
       alert(tt({es:"⚠️ No se pudo conectar con el sistema. Intente nuevamente.",pt:"⚠️ Não foi possível conectar ao sistema. Tente novamente.",en:"⚠️ Could not connect to the system. Please try again.",de:"⚠️ Verbindung zum System fehlgeschlagen. Bitte versuchen Sie es erneut."}));
       return;

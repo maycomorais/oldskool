@@ -670,7 +670,7 @@
               <!-- Pagamento -->
               <div style="padding:4px 8px 0">
                 <select id="balcao-pag" class="pdv-dir-input"
-                  onchange="atualizarInfoPagPDV(parseInt(document.getElementById('balcao-total').innerText.replace(/\D/g,'')))">
+                  onchange="atualizarInfoPagPDV(window._pdvTotalBaseSemTaxas || 0)">
                   <option value="Efetivo">💵 Efectivo</option>
                   <option value="Cartao">💳 Tarjeta PY</option>
                   <option value="CartaoBR">💳🇧🇷 Tarjeta BR</option>
@@ -683,6 +683,17 @@
                   <option value="NaNota">📋 Colocar na Nota</option>
                 </select>
                 <div id="balcao-pag-info" style="display:none;background:#e8f5e9;border:1px solid #4caf50;border-radius:5px;padding:5px 8px;font-size:0.82rem;color:#1b5e20;margin-top:3px"></div>
+
+                <!-- Taxa de Serviço (opcional, presume-se consumo no local) -->
+                <div style="display:flex;align-items:center;gap:8px;background:#fff8e1;border:1.5px solid #f0c14b;border-radius:8px;padding:8px 10px;margin-top:6px">
+                  <input type="checkbox" id="pdv-check-taxa-servico" onchange="pdvToggleTaxaServico()" style="width:18px;height:18px;flex-shrink:0">
+                  <label for="pdv-check-taxa-servico" style="font-size:0.82rem;font-weight:700;color:#7a5c00;flex:1;cursor:pointer" data-i18n="pdv.taxa_servico_label">
+                    Cobrar <span id="pdv-taxa-servico-pct-label">10</span>% de taxa de Serviço
+                  </label>
+                  <input type="number" id="pdv-taxa-servico-pct" value="10" min="0" max="100" step="1"
+                    style="width:52px;padding:4px;border:1px solid #f0c14b;border-radius:5px;text-align:center;font-size:0.8rem;display:none"
+                    oninput="pdvAtualizarPctServico()">
+                </div>
               </div>
 
               <!-- Box Efetivo: valor recebido + troco -->
@@ -950,6 +961,11 @@
     <div class="kpi-card">
       <h3 data-i18n="fin.lucro">Lucro Operacional</h3>
       <div class="value" id="card-lucro" style="color: green">Gs 0</div>
+    </div>
+    <div class="kpi-card" style="border-top:3px solid #f0c14b">
+      <h3 data-i18n="fin.taxa_servico">🍽️ Taxa de Serviço (a repassar)</h3>
+      <div class="value" id="card-taxa-servico" style="color:#a67c00">Gs 0</div>
+      <div style="font-size:0.75rem;color:#888;margin-top:2px" id="card-taxa-servico-qtd">0 pedidos</div>
     </div>
     
     <!-- NOVOS CARDS -->
@@ -1662,6 +1678,28 @@
           </button>
         </div>
 
+        <!-- ── TAXA DE CARTÃO (repassada ao cliente: CartaoBR e Cartao) ── -->
+        <div class="card cfg-card" style="margin-top:16px">
+          <div class="cfg-section-title"><i class="fas fa-percent"></i> <span data-i18n="cfg.taxacartao_titulo">Tasa de Tarjeta (repasada al cliente)</span>
+            <small style="font-weight:400;color:#888;font-size:0.82rem;display:block;margin-top:4px" data-i18n="cfg.taxacartao_desc">
+              Aplicada tanto na Tarjeta local (Cartao) quanto na Tarjeta Brasileña (CartaoBR) — mostra ao operador/cliente o valor final com a taxa embutida.
+            </small>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div>
+              <label style="font-size:0.82rem;color:#555;font-weight:600" data-i18n="cfg.taxa_debito">Tasa Débito (%)</label>
+              <input type="number" id="cfg-taxa-debito" class="form-control" placeholder="1.99" min="0" step="0.01">
+            </div>
+            <div>
+              <label style="font-size:0.82rem;color:#555;font-weight:600" data-i18n="cfg.taxa_credito">Tasa Crédito (%)</label>
+              <input type="number" id="cfg-taxa-credito" class="form-control" placeholder="4.98" min="0" step="0.01">
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="salvarTaxasCartao()" style="width:100%;margin-top:12px">
+            <i class="fas fa-save"></i> <span data-i18n="cfg.taxacartao_salvar">Guardar Tasas</span>
+          </button>
+        </div>
+
         <!-- ── MAQUININHAS ────────────────────────────────────── -->
         <div class="card cfg-card" style="margin-top:16px">
           <div class="cfg-section-title"><i class="fas fa-credit-card"></i> <span data-i18n="cfg.maq_titulo">Posnets de Tarjeta</span>
@@ -1677,6 +1715,7 @@
             <i class="fas fa-save"></i> <span data-i18n="cfg.maq_salvar">Guardar Posnets</span>
           </button>
         </div>
+
 
         <!-- ── ADMIN MASTER (apenas adminMaster) ─────────────── -->
         <div id="card-adminmaster-cfg" class="card cfg-card" style="margin-top:16px;display:none;border:2px solid #e74c3c">
