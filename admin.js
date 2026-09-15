@@ -409,90 +409,138 @@ document.addEventListener("DOMContentLoaded", async () => {
   );
 });
 
-// ========================================
-// IMGBB UPLOAD
-// ========================================
-const IMGBB_API_KEY = "d6ade30e77d706a440f7c03f08af33c4"; // Substitua pela sua chave
+// ═══════════════════════════════════════════════════════════════════════
+// UPLOAD DE IMAGENS — SUPABASE STORAGE + CONVERSÃO WEBP + LIMITE DE ALTURA
+// ═══════════════════════════════════════════════════════════════════════
+// Configurações (ajuste se quiser)
+const SUPABASE_STORAGE_BUCKET = "imagens"; // nome do bucket criado no Supabase
+const IMAGEM_MAX_ALTURA_PX    = 500;       // altura máxima da imagem final
+const IMAGEM_MAX_LARGURA_PX   = 2000;      // segurança: evita imagens gigantes de largura
+const IMAGEM_QUALIDADE_WEBP   = 82;        // 0-100 (82 = ótimo equilíbrio)
 
 /**
- * Faz upload de uma imagem para o ImgBB e retorna a URL direta.
- * @param {File} file - Arquivo de imagem
- * @param {number} quality - Qualidade WebP (0-100), padrão 80
- * @returns {Promise<string>} - URL da imagem
+ * Converte um File/Blob para WebP, redimensionando a imagem
+ * respeitando altura máxima (padrão 500px). Mantém proporção original.
+ * Se a imagem já for menor que o limite, mantém o tamanho original.
+ *
+ * @param {File|Blob} file
+ * @param {number} quality   Qualidade WebP 0-100
+ * @param {number} maxAltura Altura máxima em pixels
+ * @returns {Promise<Blob>}  Blob WebP pronto para upload
  */
-async function uploadImageToImgbb(file, quality = 80) {
-  // 1. Validações
-  const tiposPermitidos = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-  if (!tiposPermitidos.includes(file.type)) {
-    throw new Error('Formato inválido. Use JPG, PNG, WEBP ou GIF.');
-  }
-  if (file.size > 10 * 1024 * 1024) {
-    throw new Error('Imagem muito grande. Máximo 10MB (limite do ImgBB).');
-  }
-
-  // 2. Converter para WebP (comprime e reduz tamanho)
-  const webpBlob = await convertToWebP(file, quality);
-
-  // 3. Enviar para ImgBB via API
-  const formData = new FormData();
-  formData.append('key', IMGBB_API_KEY);
-  formData.append('image', webpBlob, 'image.webp'); // Envia como Blob
-  formData.append('name', file.name.replace(/\.[^.]+$/, '.webp'));
-
-  const response = await fetch('https://api.imgbb.com/1/upload', {
-    method: 'POST',
-    body: formData,
-  });
-
-  const data = await response.json();
-  if (!data.success) {
-    throw new Error(`ImgBB: ${data.error?.message || 'Erro desconhecido'}`);
-  }
-
-  // Retorna a URL direta da imagem (display_url)
-  return data.data.url;
-}
-
-/**
- * Converte um File/Blob para WebP com qualidade ajustável, redimensionando
- * antes se a imagem for muito grande. Fotos de celular saem com 3000-4000px
- * de largura — sem esse limite, mesmo em WebP o arquivo final fica pesado
- * (às vezes vários MB) para uma imagem que no site aparece com ~130px.
- * Isso é a causa mais provável de imagens "lentas" no cardápio.
- */
-function convertToWebP(file, quality = 80, maxDimensao = 1280) {
+function convertToWebP(file, quality = IMAGEM_QUALIDADE_WEBP, maxAltura = IMAGEM_MAX_ALTURA_PX) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
+
     reader.onload = (e) => {
       const img = new Image();
+
       img.onload = () => {
         let { width, height } = img;
-        if (width > maxDimensao || height > maxDimensao) {
-          if (width >= height) {
-            height = Math.round((height * maxDimensao) / width);
-            width = maxDimensao;
-          } else {
-            width = Math.round((width * maxDimensao) / height);
-            height = maxDimensao;
-          }
+
+        // ── Aplica limite de ALTURA (prioritário) ─────────────────
+        if (height > maxAltura) {
+          const ratio = maxAltura / height;
+          width  = Math.round(width * ratio);
+          height = maxAltura;
         }
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
+
+        // ── Segurança: se mesmo assim a largura ficou absurda, limita ──
+        if (width > IMAGEM_MAX_LARGURA_PX) {
+          const ratio = IMAGEM_MAX_LARGURA_PX / width;
+          width  = IMAGEM_MAX_LARGURA_PX;
+          height = Math.round(height * ratio);
+        }
+
+        const canvas = document.createElement("canvas");
+        canvas.width  = width;
         canvas.height = height;
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext("2d");
+
+        // Qualidade alta pra reduzir artefatos
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
+
+        // Fundo branco (WebP com alpha funciona, mas alguns cards/OG não gostam)
+        // Remova as 2 linhas abaixo se quiser PRESERVAR transparência (PNG/GIF)
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, width, height);
+
         ctx.drawImage(img, 0, 0, width, height);
-        canvas.toBlob((blob) => {
-          if (blob) resolve(blob);
-          else reject(new Error('Falha na conversão para WebP'));
-        }, 'image/webp', quality / 100);
+
+        canvas.toBlob(
+          (blob) => {
+            if (blob) resolve(blob);
+            else reject(new Error("Falha na conversão para WebP"));
+          },
+          "image/webp",
+          quality / 100
+        );
       };
-      img.onerror = reject;
+
+      img.onerror = () => reject(new Error("Não foi possível ler a imagem"));
       img.src = e.target.result;
     };
-    reader.onerror = reject;
+
+    reader.onerror = () => reject(new Error("Falha ao ler o arquivo"));
     reader.readAsDataURL(file);
   });
 }
+
+/**
+ * Faz upload de uma imagem para o Supabase Storage,
+ * convertendo-a para WebP e limitando a altura a 500px.
+ *
+ * @param {File} file      Arquivo selecionado pelo usuário
+ * @param {number} quality Qualidade WebP (0-100). Padrão 82.
+ * @returns {Promise<string>} URL pública da imagem
+ */
+async function uploadImageToSupabase(file, quality = IMAGEM_QUALIDADE_WEBP) {
+  // ── 1. Validações ─────────────────────────────────────────────
+  const tiposPermitidos = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+  if (!tiposPermitidos.includes(file.type)) {
+    throw new Error("Formato inválido. Use JPG, PNG, WEBP ou GIF.");
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    throw new Error("Imagem muito grande. Máximo 10MB.");
+  }
+
+  // ── 2. Converte para WebP (com limite de altura) ─────────────
+  const webpBlob = await convertToWebP(file, quality, IMAGEM_MAX_ALTURA_PX);
+
+  // ── 3. Nome único do arquivo (evita sobrescrever) ────────────
+  const agora = new Date();
+  const pasta = `${agora.getFullYear()}/${String(agora.getMonth() + 1).padStart(2, "0")}`;
+  const rand  = Math.random().toString(36).slice(2, 8);
+  const nome  = `${pasta}/${Date.now()}_${rand}.webp`;
+
+  // ── 4. Upload para o Supabase Storage ────────────────────────
+  const { data, error } = await supa.storage
+    .from(SUPABASE_STORAGE_BUCKET)
+    .upload(nome, webpBlob, {
+      contentType:  "image/webp",
+      cacheControl: "31536000", // 1 ano de cache (navegador não vai rebaixar)
+      upsert:       false,
+    });
+
+  if (error) {
+    throw new Error(`Storage: ${error.message}`);
+  }
+
+  // ── 5. Retorna URL pública ───────────────────────────────────
+  const { data: urlData } = supa.storage
+    .from(SUPABASE_STORAGE_BUCKET)
+    .getPublicUrl(data.path);
+
+  return urlData.publicUrl;
+}
+
+// ── Compatibilidade retroativa ──────────────────────────────────
+// Mantém o nome antigo funcionando em TODAS as chamadas já existentes
+// no admin.js (salvarProduto, salvarBanner, uploadSaborImagem,
+// _uploadLogoIdentidade, salvarPersonalizacao) — sem precisar
+// alterar nenhuma delas.
+const uploadImageToImgbb = uploadImageToSupabase;
 
 // =========================================
 // 2. CONTROLE DE ABAS

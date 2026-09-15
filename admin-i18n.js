@@ -117,7 +117,6 @@ const ADMIN_LANGS = {
     'pdv.mesas_andamento':  'Pedidos em Andamento',
     'pdv.entregar':         'Entregar / Baixar',
     'pdv.na_cozinha':       '🔥 Na Cozinha',
-    'pdv.taxa_servico_label': 'Taxa de Serviço',
     // ── Financeiro ─────────────────────────────────────────
     'fin.title':            '💰 Controle Financeiro',
     'fin.faturamento':      'Faturamento',
@@ -197,6 +196,7 @@ const ADMIN_LANGS = {
     'equipe.promover':      'Promover',
     'equipe.rebaixar':      'Rebaixar',
     'equipe.excluir':       'Excluir',
+    'fin.taxa_servico':     'Taxa de Serviço',
 
     // ── Configurações ──────────────────────────────────────
     'cfg.title':            '⚙️ Configurações',
@@ -935,8 +935,10 @@ const ADMIN_LANGS = {
     'pdv.mesas_andamento':  'Pedidos en Curso',
     'pdv.entregar':         'Entregar / Cerrar',
     'pdv.na_cozinha':       '🔥 En Cocina',
+    'pdv.baixar':           'Baixar Item',
 
     // ── Financeiro ─────────────────────────────────────────
+    'fin.taxa_servico':     'Cargo de Servicio',
     'fin.title':            '💰 Control Financiero',
     'fin.faturamento':      'Facturación',
     'fin.custo_moto':       'Costo Entregas',
@@ -1145,6 +1147,7 @@ const ADMIN_LANGS = {
     'geral.hoje':           'Hoy',
 
     // ── PDV (chaves faltando) ──────────────────────────────────────
+    'pdv.baixar':           'Bajar Iten',
     'pdv.novo_pedido':      'Nuevo Pedido',
     'pdv.tipo_balcao':      'Mostrador',
     'pdv.tipo_delivery':    'Delivery',
