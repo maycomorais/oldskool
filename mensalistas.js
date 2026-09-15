@@ -45,6 +45,66 @@ function _mensFmtQtd(valorInt, tipo) {
   return valorInt + (valorInt === 1 ? ' unid.' : ' unids.');
 }
 
+// ══════════════════════════════════════════════════════════════
+//  BUSCA UNIFICADA DE ENTREGAS (mensalista_entregas + pedidos órfãos)
+//  Fallback defensivo: se algum pedido Mensalista não tiver o registro
+//  em mensalista_entregas (backfill incompleto, bug futuro, órfãos),
+//  ele ainda aparece no histórico — sem duplicar os já sincronizados.
+// ══════════════════════════════════════════════════════════════
+async function _mensBuscarEntregasUnificadas({ planoId = null, clienteId = null } = {}) {
+  if (!planoId && !clienteId) return [];
+
+  // ── 1. Registros "oficiais" ─────────────────────────────────────
+  let q = supa.from('mensalista_entregas').select('*');
+  if (planoId)   q = q.eq('plano_id', planoId);
+  if (clienteId) q = q.eq('cliente_id', clienteId);
+  const { data: entregas, error: errEnt } = await q.order('created_at', { ascending: false });
+  if (errEnt) console.warn('[_mensBuscarEntregasUnificadas] entregas:', errEnt.message);
+
+  // ── 2. IDs de pedidos já refletidos (dedup por "PDV #N") ────────
+  const idsRefletidos = new Set(
+    (entregas || [])
+      .map(e => (e.observacoes || '').match(/PDV #(\d+)/)?.[1])
+      .filter(Boolean)
+      .map(String)
+  );
+
+  // ── 3. Pedidos Mensalista órfãos ────────────────────────────────
+  let qp = supa
+    .from('pedidos')
+    .select('id, total_geral, created_at, obs_pagamento, itens, cliente_id')
+    .eq('forma_pagamento', 'Mensalista');
+
+  if (planoId) {
+    qp = qp.ilike('obs_pagamento', `%(plano #${planoId})%`);
+  } else if (clienteId) {
+    qp = qp.eq('cliente_id', clienteId);
+  }
+
+  const { data: pedidos, error: errPed } = await qp.order('created_at', { ascending: false });
+  if (errPed) console.warn('[_mensBuscarEntregasUnificadas] pedidos:', errPed.message);
+
+  const orfaos = (pedidos || [])
+    .filter(p => !idsRefletidos.has(String(p.id)))
+    .map(p => ({
+      id:                `pedido_${p.id}`,
+      _pedidoId:         p.id,
+      _isFallbackPedido: true,
+      plano_id:          planoId,
+      cliente_id:        p.cliente_id,
+      produto_nome:      null,
+      quantidade:        0,
+      observacoes:       `PDV #${p.id} (não sincronizado)`,
+      itens_extras:      p.itens || null,
+      valor_extras:      0,
+      valor_descontado:  p.total_geral || 0,
+      created_at:        p.created_at,
+    }));
+
+  return [...(entregas || []), ...orfaos]
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+}
+
 // ──────────────────────────────────────────────────────────────
 //  INIT — chamado por showTab('mensalistas')
 // ──────────────────────────────────────────────────────────────
@@ -85,6 +145,7 @@ async function mensCarregarPlanos() {
     const { data, error } = await supa
       .from('planos_mensalistas')
       .select('*, clientes(id, nome, telefone)')
+      .eq('excluido', false)
       .order('created_at', { ascending: false });
 
     if (error) { console.warn('mensCarregarPlanos:', error.message); return; }
@@ -141,8 +202,13 @@ function mensRenderPlanos() {
   cont.innerHTML = planos.map(p => {
     const valorPlano = Math.round(p.valor_plano || 0);
     const valorRestante = Math.round(p.valor_restante || 0);
-    const pct = valorPlano > 0 ? Math.round((valorRestante / valorPlano) * 100) : 0;
-    const barColor = pct > 50 ? '#1a7a2e' : pct > 20 ? '#f39c12' : '#e74c3c';
+    const saldoNegativo = valorRestante < 0;
+    const pct = valorPlano > 0
+      ? Math.max(0, Math.min(100, Math.round((valorRestante / valorPlano) * 100)))
+      : 0;
+    const barColor = saldoNegativo
+      ? '#e74c3c'
+      : pct > 50 ? '#1a7a2e' : pct > 20 ? '#f39c12' : '#e74c3c';
     const statusColor = p.ativo ? '#1a7a2e' : '#9ca3af';
     const dataFim = p.data_fim
       ? new Date(p.data_fim + 'T12:00:00').toLocaleDateString('es-PY')
@@ -173,7 +239,11 @@ function mensRenderPlanos() {
 
         <div style="margin-top:12px">
           <div style="display:flex;justify-content:space-between;font-size:0.82rem;margin-bottom:5px">
-            <span style="color:#555">Saldo financeiro: <b style="color:#111">Gs ${valorRestante.toLocaleString('es-PY')}</b></span>
+            <span style="color:#555">
+              Saldo financeiro:
+              <b style="color:${saldoNegativo ? '#e74c3c' : '#111'}">Gs ${valorRestante.toLocaleString('es-PY')}</b>
+              ${saldoNegativo ? '<span style="font-size:0.7rem;font-weight:800;color:#e74c3c;margin-left:6px;background:#fee2e2;padding:2px 6px;border-radius:6px;">🔴 EM DÉBITO</span>' : ''}
+            </span>
             <span style="color:${barColor};font-weight:700">${pct}%</span>
           </div>
           <div style="background:#f0f0f0;border-radius:6px;height:9px;overflow:hidden">
@@ -198,9 +268,16 @@ function mensRenderPlanos() {
             ✏️
           </button>
           <button onclick="mensVerHistorico(${p.id})"
-            style="flex:1;padding:9px;background:#9b59b6;color:#fff;border:none;border-radius:9px;cursor:pointer;font-size:0.83rem;font-weight:600;min-width:70px">
-            📋
+            style="flex:1;padding:9px;background:#0891b2;color:#fff;border:none;border-radius:9px;cursor:pointer;font-size:0.83rem;font-weight:600;min-width:70px"
+            title="Histórico deste plano (todos os ciclos/renovações)">
+            🕓
           </button>
+          ${_mens_planos.filter(pl => pl.cliente_id === p.cliente_id).length > 1 ? `
+          <button onclick="mensVerHistoricoCliente(${p.cliente_id})"
+            style="flex:1;padding:9px;background:#8e44ad;color:#fff;border:none;border-radius:9px;cursor:pointer;font-size:0.83rem;font-weight:600;min-width:70px"
+            title="Histórico geral do cliente (todos os planos que ele já teve)">
+            🧾
+          </button>` : ''}
           <button onclick="mensEnviarWhatsAppAviso(${p.id})"
             style="flex:0 0 40px;padding:9px;background:#dcfce7;color:#25d366;border:none;border-radius:9px;cursor:pointer;font-size:0.9rem;font-weight:700"
             title="Avisar cliente pelo WhatsApp">
@@ -331,7 +408,7 @@ function mensAbrirModalPlano(id = null, renovacao = false) {
       infoRenov.innerHTML = `
         <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;font-size:0.82rem;color:#1e40af;margin-bottom:14px">
           🔄 <b>Renovando o plano de ${p.clientes?.nome || ''}.</b><br>
-          Isso inicia um novo ciclo: o saldo atual (<b>Gs ${saldoValorFmt}</b>) será substituído pelo novo valor que você definir.
+          Isso inicia um novo ciclo: o saldo atual (<b>Gs ${saldoValorFmt}</b>) será somado ao novo valor que você definir — se estiver negativo, é descontado; se estiver positivo, é somado.
         </div>`;
     }
   } else if (p) {
@@ -379,6 +456,21 @@ async function mensSalvarPlano() {
   const renovacao = document.getElementById('mens-plano-renovacao')?.value === '1';
   const planoAtual = id ? _mens_planos.find(p => p.id == id) : null;
 
+  // Ao CRIAR um plano novo (não editar, não renovar), bloqueia duplicidade:
+  // já existe constraint no banco (ux_planos_mensalistas_ativo_unico), mas
+  // checar aqui evita o erro cru do Postgres e direciona o usuário pro
+  // fluxo certo (renovar o existente em vez de criar um segundo).
+  if (!id) {
+    const jaExiste = _mens_planos.find(p =>
+      p.ativo && p.cliente_id === cliente_id &&
+      (p.produto_nome || '').trim().toLowerCase() === produto_nome.toLowerCase()
+    );
+    if (jaExiste) {
+      alert(`Este cliente já tem um plano ativo de "${produto_nome}". Use "Renovar" nesse plano em vez de criar um novo.`);
+      return;
+    }
+  }
+
   // Valor a cobrar (diferença ou total na renovação)
   const valorACobrar = renovacao
     ? valor
@@ -409,9 +501,45 @@ async function mensSalvarPlano() {
 
   let error;
   if (id && renovacao) {
-    // Renovação: reinicia o saldo financeiro
-    payload.valor_restante = valor;
+    // Renovação: o novo saldo parte do valor cheio, mas se o cliente estava
+    // negativo (consumiu além do plano anterior via PDV), essa dívida é
+    // abatida do valor da renovação — não é resetado para o valor cheio às cegas.
+    //
+    // Buscamos o saldo AO VIVO no banco (não o cache de _mens_planos, que reflete
+    // o momento em que a página abriu — o PDV pode ter descontado mais desde então).
+    let saldoAnterior = planoAtual ? (planoAtual.valor_restante ?? 0) : 0;
+    const { data: planoLive, error: errPlanoLive } = await supa
+      .from('planos_mensalistas')
+      .select('valor_restante')
+      .eq('id', id)
+      .maybeSingle();
+    if (errPlanoLive) {
+      console.warn('[mensSalvarPlano] não foi possível confirmar saldo ao vivo, usando cache:', errPlanoLive);
+    } else if (planoLive) {
+      saldoAnterior = planoLive.valor_restante ?? saldoAnterior;
+    }
+    // Correção: o saldo anterior é sempre agregado ao novo valor contratado,
+    // seja ele positivo (sobra que o cliente ainda tinha) ou negativo (dívida
+    // consumida no PDV além do plano). Antes, só a dívida era carregada e
+    // qualquer sobra positiva era descartada na renovação.
+    payload.valor_restante = valor + saldoAnterior;
     ({ error } = await supa.from('planos_mensalistas').update(payload).eq('id', id));
+
+    // Log de auditoria do ciclo que está sendo encerrado — sem isso, depois
+    // de várias renovações fica impossível saber quanto foi pago e quando
+    // em cada ciclo, já que o plano_id (e as entregas ligadas a ele) é o
+    // mesmo em todas as renovações.
+    if (!error) {
+      await supa.from('mensalista_renovacoes').insert([{
+        plano_id: id,
+        saldo_anterior: saldoAnterior,
+        valor_renovado: valor,
+        valor_restante_novo: payload.valor_restante,
+        data_inicio_anterior: planoAtual?.data_inicio || null,
+        data_fim_anterior: planoAtual?.data_fim || null,
+        usuario_email: document.getElementById('user-email')?.innerText || 'admin',
+      }]);
+    }
   } else if (id) {
     // Edição: ajusta o valor_restante proporcionalmente
     if (planoAtual && valor !== planoAtual.valor_plano) {
@@ -904,98 +1032,180 @@ function mensImprimirComprovante(plano, qtd, obs, entregaId, dataEntrega, saldoA
 // ──────────────────────────────────────────────────────────────
 //  HISTÓRICO DE ENTREGAS
 // ──────────────────────────────────────────────────────────────
-async function mensVerHistorico(planoId) {
-  const p = _mens_planos.find(p => p.id === planoId);
-  if (!p) return;
+// ──────────────────────────────────────────────────────────────
+//  HISTÓRICO — helpers de UI compartilhados entre os modais
+// ──────────────────────────────────────────────────────────────
+function _mensHistChip(label, value, color = '#1a1a2e') {
+  return `
+    <div style="background:#f9fafb;border:1px solid #eef0f2;border-radius:10px;padding:10px 14px;flex:1;min-width:130px;">
+      <div style="font-size:0.72rem;color:#8a8f98;font-weight:600;text-transform:uppercase;letter-spacing:0.02em;">${label}</div>
+      <div style="font-size:1.05rem;font-weight:800;color:${color};margin-top:2px;">${value}</div>
+    </div>`;
+}
 
-  const tipo = _mensGetTipo(p);
+function _mensHistEntryCard(e, planoIdParaAcoes, opts = {}) {
+  const itensExtras = e.itens_extras || [];
+  const temExtras = itensExtras.length > 0;
 
-  const { data } = await supa
-    .from('mensalista_entregas')
-    .select('*')
-    .eq('plano_id', planoId)
-    .order('created_at', { ascending: false });
+  // ── Deduplicação de valor (bug antigo do PDV) ─────────────────────
+  // Regra:
+  //   vd === ve && vd > 0 → registro do bug antigo → mostrar UMA vez
+  //   vd != ve            → valores distintos (baixa manual c/ extras) → somar
+  //   só um > 0           → usar ele
+  const _vd = e.valor_descontado || 0;
+  const _ve = e.valor_extras || 0;
+  const _isDuplicadoAntigo = (_vd === _ve && _vd > 0);
 
-  const entregasTotal = (data || []).reduce((s, e) => s + (e.quantidade || 0), 0);
+  // Só mostra a badge de extras quando NÃO é o bug antigo
+  // (senão apareceria valor duas vezes: uma no título, outra na badge)
+  const valorExtra = (_ve > 0 && !_isDuplicadoAntigo)
+    ? Math.round(_ve).toLocaleString('es-PY')
+    : null;
 
-  // Monta cards
-  let html = `
-    <div style="margin-bottom:16px; background:#f9fafb; border-radius:12px; padding:12px 16px;">
-      <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:10px;">
-        <div><span style="color:#6b7280;">Cliente</span><br><b>${p.clientes?.nome || '—'}</b></div>
-        <div><span style="color:#6b7280;">Produto</span><br><b>${p.produto_nome}</b></div>
-        <div><span style="color:#6b7280;">Contratado</span><br><b>${_mensFmtQtd(p.quantidade_total, tipo)}</b></div>
-        <div><span style="color:#6b7280;">Entregue</span><br><b>${_mensFmtQtd(entregasTotal, tipo)}</b></div>
-        <div><span style="color:#6b7280;">Restante</span><br><b style="color:#1a7a2e;">${_mensFmtQtd(p.quantidade_restante, tipo)}</b></div>
+  const nomesExtras = temExtras
+    ? itensExtras.map(i => `${i.nome} x${i.qtd}`).join(', ')
+    : '';
+
+  const valorTotalEntrega = Math.round(
+    _isDuplicadoAntigo ? _vd : (_vd + _ve)
+  ).toLocaleString('es-PY');
+
+  const dataFmt = new Date(e.created_at).toLocaleString('es-PY', {
+    day: '2-digit', month: '2-digit', year: '2-digit',
+    hour: '2-digit', minute: '2-digit',
+  });
+
+  return `
+    <div style="background:#fff;border:1.5px solid #eef0f2;border-left:4px solid #1a7a2e;border-radius:10px;padding:12px 14px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;">
+        <div style="min-width:0;">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span style="font-weight:800;color:#1a7a2e;font-size:1.02rem;">Gs ${valorTotalEntrega}</span>
+            <span style="font-size:0.72rem;color:#9ca3af;">${e._isFallbackPedido ? `pedido #${e._pedidoId}` : `#${e.id}`}</span>
+            ${e._isFallbackPedido ? `<span style="font-size:0.66rem;background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:6px;font-weight:700;">🔗 recuperado</span>` : ''}
+          </div>
+          <div style="font-size:0.78rem;color:#6b7280;margin-top:2px;">${dataFmt}</div>
+          ${opts.mostrarPlano ? `<div style="font-size:0.78rem;color:#6b7280;margin-top:2px;">Plano: <b>${e.planos_mensalistas?.produto_nome || '—'}</b></div>` : ''}
+          ${e.observacoes ? `<div style="font-size:0.8rem;color:#6b7280;margin-top:4px;">${e.observacoes}</div>` : ''}
+          ${temExtras ? `
+            <div style="margin-top:6px;font-size:0.76rem;background:#eff6ff;color:#1d4ed8;padding:4px 9px;border-radius:6px;display:inline-block;">
+              🛒 ${nomesExtras}${valorExtra ? ` · Gs ${valorExtra}` : ''}
+            </div>` : ''}
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0;">
+          ${e._isFallbackPedido
+            ? `<span style="font-size:0.72rem;color:#9ca3af;padding:6px 8px;">somente leitura</span>`
+            : `<button onclick="mensAbrirEditarEntrega(${e.id}, ${planoIdParaAcoes})"
+                style="padding:6px 10px;background:#3498db;color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:0.76rem;font-weight:600;white-space:nowrap;">
+                ✏️ Editar
+              </button>
+              <button onclick="mensReimprimirEntrega(${e.id}, ${planoIdParaAcoes})"
+                style="padding:6px 9px;background:#f3f4f6;color:#374151;border:1px solid #e5e7eb;border-radius:7px;cursor:pointer;font-size:0.8rem;">
+                🖨️
+              </button>`}
+        </div>
+      </div>
+    </div>`;
+}
+
+function _mensHistOpenModal(icon, titulo, subtitulo, chipsHtml, avisoHtml, listaHtml) {
+  // Zera os campos legados do skeleton do modal (não usamos mais tabela)
+  ['mens-hist-nome','mens-hist-produto','mens-hist-plano-total','mens-hist-plano-rest','mens-hist-entregues'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = '';
+  });
+  const tbody = document.getElementById('mens-hist-tbody');
+  if (tbody) tbody.innerHTML = '';
+
+  // Tudo dentro de UM único container: evita que o modal-pai (se for display:flex em linha)
+  // espalhe cabeçalho e lista lado a lado — era essa a causa do layout espremido.
+  const html = `
+    <div style="display:flex;flex-direction:column;width:100%;max-height:74vh;">
+      <div style="flex:0 0 auto;padding-bottom:14px;margin-bottom:14px;border-bottom:1.5px solid #f0f0f0;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:12px;">
+          <div>
+            <div style="font-weight:800;font-size:1.05rem;color:#1a1a2e;">${icon} ${titulo}</div>
+            ${subtitulo ? `<div style="font-size:0.85rem;color:#6b7280;margin-top:2px;">${subtitulo}</div>` : ''}
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">${chipsHtml}</div>
+        ${avisoHtml || ''}
+      </div>
+      <div style="flex:1 1 auto;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:9px;padding-right:4px;">
+        ${listaHtml}
       </div>
     </div>
   `;
 
-  if (!data || data.length === 0) {
-    html += `<div style="text-align:center;color:#aaa;padding:20px;">${t('mens.nenhuma_entrega', 'Nenhuma entrega registrada ainda')}</div>`;
-  } else {
-    html += `<div style="display:flex;flex-direction:column;gap:10px;">`;
-    data.forEach(e => {
-      const itensExtras = e.itens_extras || [];
-      const temExtras = itensExtras.length > 0;
-      const valorExtra = e.valor_extras ? Math.round(e.valor_extras).toLocaleString('es-PY') : null;
-      const nomesExtras = temExtras
-        ? itensExtras.map(i => `${i.nome} x${i.qtd}`).join(', ')
-        : '';
-
-      html += `
-        <div style="background:#fff; border:1.5px solid #e5e7eb; border-radius:12px; padding:14px 16px;">
-          <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:8px;">
-            <div>
-              <div style="font-weight:700; font-size:0.9rem;">
-                ${new Date(e.created_at).toLocaleString('es-PY', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' })}
-                <span style="font-weight:400; color:#6b7280; font-size:0.8rem;">#${e.id}</span>
-              </div>
-              <div style="font-weight:700; color:#1a7a2e; font-size:1rem;">
-                ${_mensFmtQtd(e.quantidade, tipo)}
-              </div>
-              ${e.observacoes ? `<div style="font-size:0.8rem; color:#6b7280; margin-top:4px;">${e.observacoes}</div>` : ''}
-              ${temExtras ? `
-                <div style="margin-top:4px; font-size:0.8rem; background:#eff6ff; padding:4px 8px; border-radius:6px; display:inline-block;">
-                  🛒 Itens extras: ${nomesExtras} ${valorExtra ? `(+ Gs ${valorExtra})` : ''}
-                </div>
-              ` : ''}
-            </div>
-            <div style="display:flex; gap:6px; flex-wrap:wrap;">
-              <button onclick="mensAbrirEditarEntrega(${e.id}, ${planoId})"
-                style="padding:6px 12px; background:#3498db; color:#fff; border:none; border-radius:8px; cursor:pointer; font-size:0.8rem; font-weight:600;">
-                ✏️ Editar
-              </button>
-              <button onclick="mensReimprimirEntrega(${e.id}, ${planoId})"
-                style="padding:6px 12px; background:#f3f4f6; color:#374151; border:1px solid #e5e7eb; border-radius:8px; cursor:pointer; font-size:0.8rem; font-weight:600;">
-                🖨️
-              </button>
-            </div>
-          </div>
-        </div>
-      `;
-    });
-    html += `</div>`;
-  }
-
-  document.getElementById('mens-hist-nome').textContent = p.clientes?.nome || '—';
-  document.getElementById('mens-hist-produto').textContent = p.produto_nome;
-  document.getElementById('mens-hist-plano-total').textContent = _mensFmtQtd(p.quantidade_total, tipo);
-  document.getElementById('mens-hist-plano-rest').textContent = _mensFmtQtd(p.quantidade_restante, tipo);
-  document.getElementById('mens-hist-entregues').textContent = _mensFmtQtd(entregasTotal, tipo);
-  document.getElementById('mens-hist-tbody').innerHTML = ''; // não usamos mais tabela
-
-  // Injetamos o conteúdo no modal
   const modalBody = document.querySelector('#modal-mens-hist .modal-body') || document.querySelector('#modal-mens-hist > div > div');
-  if (modalBody) {
-    modalBody.innerHTML = html;
-  } else {
-    const tbody = document.getElementById('mens-hist-tbody');
-    if (tbody) tbody.innerHTML = html;
-  }
+  if (modalBody) modalBody.innerHTML = html;
+  else if (tbody) tbody.innerHTML = html;
 
   const _mmh = document.getElementById('modal-mens-hist');
   if (_mmh) { _mmh.style.cssText += ';position:fixed!important;top:0;left:0;width:100%;height:100%;z-index:9999;'; _mmh.style.display = 'flex'; }
+}
+
+async function mensVerHistorico(planoId) {
+  const p = _mens_planos.find(p => p.id === planoId);
+  if (!p) return;
+
+  // Busca unificada: entregas oficiais + pedidos órfãos
+  let data = await _mensBuscarEntregasUnificadas({ planoId });
+
+  // Fallback extra: nada pelo plano_id → tenta pelo cliente_id
+  let usouFallbackCliente = false;
+  if (data.length === 0 && p.cliente_id) {
+    data = await _mensBuscarEntregasUnificadas({ clienteId: p.cliente_id });
+    usouFallbackCliente = data.length > 0;
+  }
+
+  const valorConsumidoTotal = data.reduce((s, e) => {
+    const vd = e.valor_descontado || 0;
+    const ve = e.valor_extras || 0;
+    return s + ((vd === ve && vd > 0) ? vd : (vd + ve));
+  }, 0);
+  const valorPlanoAtual    = p.valor_plano || 0;
+  const valorRestanteAtual = (p.valor_restante ?? valorPlanoAtual);
+  const emDebito           = valorRestanteAtual < 0;
+  const temOrfaos          = data.some(e => e._isFallbackPedido);
+
+  const chipsHtml = [
+    _mensHistChip('Valor do plano', `Gs ${Math.round(valorPlanoAtual).toLocaleString('es-PY')}`),
+    _mensHistChip('Consumido (histórico)', `Gs ${Math.round(valorConsumidoTotal).toLocaleString('es-PY')}`),
+    _mensHistChip(
+      'Saldo restante',
+      `Gs ${Math.round(valorRestanteAtual).toLocaleString('es-PY')}`,
+      emDebito ? '#e74c3c' : '#1a7a2e'
+    ),
+  ].join('');
+
+  const avisoHtml = `
+    <div style="margin-top:10px;font-size:0.76rem;color:#8a8f98;">
+      🕓 Mostra todos os registros deste plano, inclusive de ciclos/renovações anteriores.
+    </div>
+    ${emDebito ? `
+    <div style="margin-top:6px;background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;border-radius:8px;padding:8px 10px;font-size:0.78rem;font-weight:700;">
+      🔴 Cliente em débito: Gs ${Math.abs(Math.round(valorRestanteAtual)).toLocaleString('es-PY')}
+    </div>` : ''}
+    ${temOrfaos ? `
+    <div style="margin-top:6px;background:#fffbeb;color:#92400e;border:1px solid #fde68a;border-radius:8px;padding:8px 10px;font-size:0.78rem;">
+      ⚠️ Alguns registros vieram direto da tabela <code>pedidos</code> — o vínculo em <code>mensalista_entregas</code> está ausente.
+    </div>` : ''}
+    ${usouFallbackCliente ? `
+    <div style="margin-top:6px;background:#fffbeb;color:#92400e;border:1px solid #fde68a;border-radius:8px;padding:8px 10px;font-size:0.78rem;">
+      ⚠️ Estes registros foram localizados pelo cliente, não pelo plano exato — o <code>plano_id</code> pode estar desalinhado.
+    </div>` : ''}
+  `;
+
+  const listaHtml = data.length === 0
+    ? `<div style="text-align:center;color:#aaa;padding:30px 10px;">${t('mens.nenhuma_entrega', 'Nenhuma entrega registrada ainda')}</div>`
+    : data.map(e => _mensHistEntryCard(e, planoId)).join('');
+
+  _mensHistOpenModal(
+    '🕓', 'Histórico do plano',
+    `${p.clientes?.nome || '—'} · ${p.produto_nome}`,
+    chipsHtml, avisoHtml, listaHtml
+  );
 }
 
 // ── EDITAR ENTREGA ──────────────────────────────────────────────
@@ -1150,28 +1360,76 @@ function mensFiltrar() {
 }
 
 // ──────────────────────────────────────────────────────────────
-//  WHATSAPP — AVISO DE PLANO ACABANDO
+//  WHATSAPP — AVISO DE CONSUMO E SALDO
 // ──────────────────────────────────────────────────────────────
-function mensEnviarWhatsAppAviso(planoId) {
+async function mensEnviarWhatsAppAviso(planoId) {
   const p = _mens_planos.find(p => p.id === planoId);
   if (!p) return;
 
   const nomeCliente = p.clientes?.nome || '';
   const telefone = (p.clientes?.telefone || '').replace(/\D/g, '');
-  const saldoFmt = Math.round(p.valor_restante || 0).toLocaleString('es-PY');
-  const dataFim = p.data_fim
-    ? new Date(p.data_fim + 'T12:00:00').toLocaleDateString('es-PY')
-    : null;
-  const vencimento = dataFim ? `\nVencimento do plano: ${dataFim}` : '';
+  const saldoRestante = Math.round(p.valor_restante || 0);
   const restaurante = _mens_nomeRestaurante || 'RESTAURANTE';
 
-  // Mensagem base em português (será a preenchida no textarea)
-  const msgBasePt = `Olá, *${nomeCliente}*! 👋\n\nPassando para avisar que o seu plano mensal de *${p.produto_nome}* está chegando ao fim.\n\n💰 Saldo restante: *Gs ${saldoFmt}*${vencimento}\n\nRenove para continuar aproveitando sem interrupção! 😊\n\n_${restaurante}_`;
+  // Janela do dia corrente em horário de Assunção (UTC-3), mesma convenção
+  // usada no resto do sistema (ver _obterPeriodoFinanceiro em admin.js).
+  const _tz = 3 * 60 * 60 * 1000;
+  const hojeLocal    = new Date(Date.now() - _tz).toISOString().split('T')[0];
+  const utcInicioDia = new Date(new Date(hojeLocal + 'T00:00:00').getTime() + _tz).toISOString();
+  const utcFimDia    = new Date(new Date(hojeLocal + 'T23:59:59').getTime() + _tz).toISOString();
 
-  // Mensagem base em espanhol
-  const msgBaseEs = `Hola, *${nomeCliente}*! 👋\n\nTe avisamos que tu plan mensual de *${p.produto_nome}* está llegando a su fin.\n\n💰 Saldo restante: *Gs ${saldoFmt}*${vencimento.replace('Vencimento', 'Vencimiento')}\n\n¡Renovalo para seguir disfrutando sin interrupciones! 😊\n\n_${restaurante}_`;
+  // Soma TODAS as compras do cliente feitas HOJE (não só a última) —
+  // a mensagem deve informar o total consumido no dia, não uma refeição isolada.
+  const { data: entregasHoje, error: errEntregasHoje } = await supa
+    .from('mensalista_entregas')
+    .select('valor_descontado, valor_extras, created_at')
+    .eq('cliente_id', p.cliente_id)
+    .gte('created_at', utcInicioDia)
+    .lte('created_at', utcFimDia);
 
-  // Modal com campo de edição de mensagem
+  if (errEntregasHoje) console.warn('[mensEnviarWhatsAppAviso] erro ao buscar consumo do dia:', errEntregasHoje);
+
+  let houveConsumo = !!(entregasHoje && entregasHoje.length);
+  let valorConsumido = (entregasHoje || []).reduce((soma, e) => {
+    const vd = e.valor_descontado || 0;
+    const ve = e.valor_extras || 0;
+    return soma + ((vd === ve && vd > 0) ? vd : (vd + ve));
+  }, 0);
+
+  // Fallback: se mensalista_entregas não tem nada para este cliente HOJE (vínculo de
+  // plano_id/cliente_id quebrado em registros antigos), soma os pedidos de HOJE pagos
+  // como "Mensalista" via texto em obs_pagamento — registro de origem que não depende
+  // do vínculo estar correto.
+  if (!houveConsumo && nomeCliente) {
+    const { data: pedidosHoje, error: errPedidosHoje } = await supa
+      .from('pedidos')
+      .select('total_geral, created_at')
+      .eq('forma_pagamento', 'Mensalista')
+      .ilike('obs_pagamento', `%Mensalista: ${nomeCliente} (plano%`)
+      .gte('created_at', utcInicioDia)
+      .lte('created_at', utcFimDia);
+
+    if (errPedidosHoje) {
+      console.warn('[mensEnviarWhatsAppAviso] erro ao buscar pedidos do dia (fallback):', errPedidosHoje);
+    } else if (pedidosHoje && pedidosHoje.length) {
+      houveConsumo = true;
+      valorConsumido = pedidosHoje.reduce((soma, ped) => soma + (ped.total_geral || 0), 0);
+    }
+  }
+
+  const valorConsumidoFmt = Math.round(valorConsumido).toLocaleString('es-PY');
+
+  // Mensagem em português
+  const msgPt = houveConsumo
+    ? `Olá *${nomeCliente}*, passando para informar que o total das suas compras hoje foi de *Gs ${valorConsumidoFmt}*, e seu saldo restante é de *Gs ${saldoRestante.toLocaleString('es-PY')}*. O *${restaurante}* agradece pela parceria e deseja um ótimo dia.`
+    : `Olá *${nomeCliente}*, passando para informar que seu saldo restante é de *Gs ${saldoRestante.toLocaleString('es-PY')}*. O *${restaurante}* agradece pela parceria e deseja um ótimo dia.`;
+
+  // Mensagem em espanhol (para quem preferir)
+  const msgEs = houveConsumo
+    ? `Hola *${nomeCliente}*, te informamos que el total de tus compras de hoy fue de *Gs ${valorConsumidoFmt}*, y tu saldo restante es de *Gs ${saldoRestante.toLocaleString('es-PY')}*. *${restaurante}* agradece tu preferencia y te desea un excelente día.`
+    : `Hola *${nomeCliente}*, te informamos que tu saldo restante es de *Gs ${saldoRestante.toLocaleString('es-PY')}*. *${restaurante}* agradece tu preferencia y te desea un excelente día.`;
+
+  // Modal de personalização (igual ao anterior, mas com os novos textos)
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;';
   overlay.innerHTML = `
@@ -1185,7 +1443,7 @@ function mensEnviarWhatsAppAviso(planoId) {
       </div>
       <div style="margin-bottom:10px">
         <label style="font-size:0.78rem;font-weight:600;color:#555;display:block;margin-bottom:4px">Mensagem (edite à vontade)</label>
-        <textarea id="_wa_msg" rows="8" style="width:100%;padding:10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:0.88rem;font-family:inherit;resize:vertical;box-sizing:border-box;">${msgBasePt}</textarea>
+        <textarea id="_wa_msg" rows="6" style="width:100%;padding:10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:0.88rem;font-family:inherit;resize:vertical;box-sizing:border-box;">${msgPt}</textarea>
       </div>
       <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
         <button id="_wa_pt" style="padding:6px 14px;background:#e8f4fd;color:#2980b9;border:1.5px solid #2980b9;border-radius:6px;cursor:pointer;font-weight:600;font-size:0.82rem">🇧🇷 Português</button>
@@ -1200,22 +1458,17 @@ function mensEnviarWhatsAppAviso(planoId) {
 
   document.body.appendChild(overlay);
 
-  // Fechar
   overlay.querySelector('#_wa_close').onclick = () => overlay.remove();
   overlay.querySelector('#_wa_cancel').onclick = () => overlay.remove();
   overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
 
-  // Preencher com modelo em português
   overlay.querySelector('#_wa_pt').onclick = () => {
-    document.getElementById('_wa_msg').value = msgBasePt;
+    document.getElementById('_wa_msg').value = msgPt;
   };
-
-  // Preencher com modelo em espanhol
   overlay.querySelector('#_wa_es').onclick = () => {
-    document.getElementById('_wa_msg').value = msgBaseEs;
+    document.getElementById('_wa_msg').value = msgEs;
   };
 
-  // Enviar
   overlay.querySelector('#_wa_send').onclick = () => {
     const msg = document.getElementById('_wa_msg').value.trim();
     if (!msg) {
@@ -1227,7 +1480,6 @@ function mensEnviarWhatsAppAviso(planoId) {
       overlay.remove();
       return;
     }
-    // Formata número: se começar com 0, substitui pelo DDI 595 (Paraguai)
     let num = telefone;
     if (num.startsWith('0')) num = '595' + num.substring(1);
     else if (!num.startsWith('595') && num.length <= 10) num = '595' + num;
@@ -1238,12 +1490,87 @@ function mensEnviarWhatsAppAviso(planoId) {
 }
 
 // ──────────────────────────────────────────────────────────────
+//  HISTÓRICO COMPLETO DO CLIENTE (todos os planos)
+// ──────────────────────────────────────────────────────────────
+async function mensVerHistoricoCliente(clienteId) {
+  if (!clienteId) return;
+
+  const { data: planos } = await supa
+    .from('planos_mensalistas')
+    .select('id, produto_nome, valor_plano, data_inicio, data_fim, ativo')
+    .eq('cliente_id', clienteId)
+    .order('created_at', { ascending: false });
+
+  if (!planos || planos.length === 0) {
+    alert('Este cliente não possui planos.');
+    return;
+  }
+
+  // ✅ Busca unificada (oficiais + órfãos do cliente)
+  const entregas = await _mensBuscarEntregasUnificadas({ clienteId });
+
+  const nomeCliente =
+    _mens_planos.find(pl => pl.cliente_id === clienteId)?.clientes?.nome || '';
+
+  const temOrfaos = entregas.some(e => e._isFallbackPedido);
+
+  const chipsHtml = [
+    _mensHistChip('Total de planos', planos.length),
+    _mensHistChip('Planos ativos', planos.filter(p => p.ativo).length, '#1a7a2e'),
+    _mensHistChip('Total de entregas', entregas.length),
+  ].join('');
+
+  const avisoHtml = temOrfaos ? `
+    <div style="margin-top:10px;background:#fffbeb;color:#92400e;border:1px solid #fde68a;border-radius:8px;padding:8px 10px;font-size:0.78rem;">
+      ⚠️ Alguns registros vieram direto da tabela <code>pedidos</code> — o vínculo em <code>mensalista_entregas</code> está ausente.
+    </div>` : '';
+
+  const listaHtml = entregas.length === 0
+    ? `<div style="text-align:center;color:#aaa;padding:30px 10px;">Nenhuma entrega registrada para este cliente.</div>`
+    : entregas.map(e => _mensHistEntryCard(e, e.plano_id, { mostrarPlano: true })).join('');
+
+  _mensHistOpenModal('🧾', 'Histórico geral do cliente', nomeCliente, chipsHtml, avisoHtml, listaHtml);
+}
+
+// ──────────────────────────────────────────────────────────────
 //  EXCLUIR PLANO
 // ──────────────────────────────────────────────────────────────
 async function mensExcluirPlano(id) {
-  if (!confirm(t('mens.confirm_excluir', 'Excluir este plano? As entregas registradas também serão excluídas.'))) return;
+  // Antes de decidir como excluir, checamos quantas entregas existem —
+  // um plano "zerado" pode estar segurando meses de histórico de consumo,
+  // e histórico NUNCA deve ser apagado.
+  let qtdEntregas = 0;
   try {
-    await supa.from('mensalista_entregas').delete().eq('plano_id', id);
+    const { count } = await supa
+      .from('mensalista_entregas')
+      .select('id', { count: 'exact', head: true })
+      .eq('plano_id', id);
+    qtdEntregas = count || 0;
+  } catch (e) {
+    console.warn('[mensExcluirPlano] não foi possível contar entregas antes de excluir:', e);
+  }
+
+  // Caso 1: tem histórico → arquiva (soft delete). O plano some das listagens
+  // e do PDV, mas o registro e todas as entregas continuam intactos e
+  // acessíveis via "Histórico do cliente".
+  if (qtdEntregas > 0) {
+    const aviso = `Este plano tem ${qtdEntregas} registro(s) de consumo. Ele será ARQUIVADO (não excluído) para preservar o histórico permanentemente — vai deixar de aparecer nas listas e no PDV. Continuar?`;
+    if (!confirm(aviso)) return;
+    try {
+      const { error } = await supa
+        .from('planos_mensalistas')
+        .update({ ativo: false, excluido: true })
+        .eq('id', id);
+      if (error) { alert(t('mens.erro_excluir', 'Erro ao arquivar: ') + error.message); return; }
+      await initMensalistas();
+    } catch (e) { alert(t('ft.erro', 'Erro: ') + e.message); }
+    return;
+  }
+
+  // Caso 2: sem nenhum histórico → exclusão física real é segura.
+  const aviso = t('mens.confirm_excluir', 'Excluir este plano? Não há histórico de consumo vinculado.');
+  if (!confirm(aviso)) return;
+  try {
     const { error } = await supa.from('planos_mensalistas').delete().eq('id', id);
     if (error) { alert(t('mens.erro_excluir', 'Erro ao excluir: ') + error.message); return; }
     await initMensalistas();

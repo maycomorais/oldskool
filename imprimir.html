@@ -83,6 +83,7 @@
 <body>
   <div class="ticket">
     <div class="topo">
+      <img id="logo-ticket" src="" alt="Logo" style="display:none;max-width:70px;max-height:50px;object-fit:contain;margin-bottom:4px">
       <h3 id="nome-loja-ticket">RESTAURANTE</h3>
       <div class="num">PEDIDO #<span id="id-pedido">---</span></div>
       <small id="data-hora">---</small>
@@ -259,53 +260,82 @@
         }
 
         // ── SEÇÃO CORRIGIDA: Pagamento Seguro e Validação de Tipos ─────────
-        var pg  = p.pagamento || {};
-        var met = pg.metodo || pg.forma_pagamento || 'No informado';
-        var obsp = pg.obs   || pg.obs_pagamento   || '';
+        // ── PAGAMENTO — sempre visível em qualquer tipo de entrega ─────────
+        var pg   = p.pagamento || {};
+        var met  = pg.metodo || pg.forma_pagamento || 'No informado';
+        var obsp = pg.obs    || pg.obs_pagamento    || '';
 
-        var metodosValidos = ['efectivo', 'tarjeta', 'dinero', 'cartão', 'débito', 'crédito', 'efetivo'];
+        // Lista expandida (sem acento) — cobre CartaoBR/Cartao com sub-tipo
+        var metodosValidos = [
+          'efectivo','efetivo','dinero','dinheiro',
+          'tarjeta','cartao','cartão','cartão br',
+          'debito','débito','credito','crédito'
+        ];
         var deveAbrirGaveta = false;
 
+        // Helper: escreve em #forma-pag / #obs-pag sem estourar se não existir
+        function _setTxt(id, html) {
+          var el = document.getElementById(id);
+          if (!el) return;
+          if (html == null) { el.textContent = '—'; return; }
+          if (String(html).indexOf('<') >= 0) el.innerHTML = html;
+          else el.textContent = html;
+        }
+
+        // ── Força visibilidade: destrava qualquer pai com display:none ──
+        function _forcarVisivel(id) {
+          var el = document.getElementById(id);
+          if (!el) return;
+          var node = el;
+          while (node && node !== document.body) {
+            if (node.style && node.style.display === 'none') node.style.display = '';
+            node = node.parentElement;
+          }
+        }
+
         if (met === 'Multipagamento') {
-          document.getElementById('forma-pag').textContent = '🔀 Pago dividido:';
+          _setTxt('forma-pag', '🔀 Pago dividido:');
           try {
             var partes = JSON.parse(obsp);
-            
-            if (Array.isArray(partes)) {
+            if (Array.isArray(partes) && partes.length) {
               deveAbrirGaveta = partes.some(function(x) {
                 return x && x.metodo && metodosValidos.some(function(m) {
                   return String(x.metodo).toLowerCase().includes(m);
                 });
               });
-
-              document.getElementById('obs-pag').innerHTML = partes.map(function(x, i) {
-                var l = (i + 1) + '. ' + x.metodo + ': Gs ' + parseFloat(x.valor).toLocaleString('es-PY');
+              _setTxt('obs-pag', partes.map(function(x, i) {
+                var l = (i + 1) + '. ' + x.metodo + ': Gs ' + parseFloat(x.valor || 0).toLocaleString('es-PY');
                 if (x.troco) l += ' (Vuelto p/ ' + x.troco + ')';
                 return l;
-              }).join('<br>');
+              }).join('<br>'));
             } else {
-              document.getElementById('obs-pag').textContent = obsp;
+              _setTxt('obs-pag', obsp);
               deveAbrirGaveta = metodosValidos.some(function(m) {
                 return String(obsp).toLowerCase().includes(m);
               });
             }
-          } catch(e) { 
-            document.getElementById('obs-pag').textContent = obsp;
+          } catch (e) {
+            _setTxt('obs-pag', obsp);
             deveAbrirGaveta = metodosValidos.some(function(m) {
               return String(obsp).toLowerCase().includes(m);
             });
           }
         } else {
-          document.getElementById('forma-pag').textContent = met;
-          document.getElementById('obs-pag').textContent   = obsp;
-
+          _setTxt('forma-pag', met);
+          _setTxt('obs-pag', obsp);
           deveAbrirGaveta = metodosValidos.some(function(m) {
             return String(met).toLowerCase().includes(m);
           });
         }
+
+        // Garante que a linha de pagamento apareça mesmo se algum
+        // wrapper estiver com display:none por engano
+        _forcarVisivel('forma-pag');
+        _forcarVisivel('obs-pag');
+
         if (deveAbrirGaveta) {
           fetch('http://127.0.0.1:9091/abrir', { method: 'POST', mode: 'cors' })
-          .catch(function(err) { console.error('Erro ao chamar gaveta:', err); });
+            .catch(function(err) { console.error('Erro ao chamar gaveta:', err); });
         }
 
         // Factura

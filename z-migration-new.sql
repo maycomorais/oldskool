@@ -800,6 +800,19 @@ DROP POLICY IF EXISTS "Permitir Select Autenticado" ON public.contratos_aceites;
 CREATE POLICY "Permitir Select Autenticado" ON public.contratos_aceites
 FOR SELECT TO authenticated USING (auth.uid() = usuario_id);
 
+-- ═══════════════════════════════════════════════════════════════════
+-- Migração: taxa de cartão (repassada) + taxa de serviço (10%)
+-- Rode isso uma única vez no SQL Editor do Supabase.
+-- ═══════════════════════════════════════════════════════════════════
+
+ALTER TABLE public.pedidos
+  ADD COLUMN IF NOT EXISTS taxa_cartao_percentual numeric,
+  ADD COLUMN IF NOT EXISTS taxa_cartao_valor integer DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS taxa_servico_percentual numeric,
+  ADD COLUMN IF NOT EXISTS taxa_servico_valor integer DEFAULT 0;
+
+ALTER TABLE public.configuracoes
+  ADD COLUMN IF NOT EXISTS taxa_servico_percentual_padrao numeric DEFAULT 10;
 -- ─────────────────────────────────────────────────────────────
 -- 22. RECARREGA O SCHEMA CACHE DA API DO SUPABASE (obrigatório após
 --     alterar colunas/tabelas, para o PostgREST enxergar as mudanças)

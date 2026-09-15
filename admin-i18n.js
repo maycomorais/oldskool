@@ -13,6 +13,9 @@ const ADMIN_LANGS = {
   // ══════════════════════════════════════════════════════════
   pt: {
     'pdv.lancar_pedido': 'Lançar Pedido',
+    'pdv.fechar_conta': 'Fechar Conta e Receber',   // pt
+    'pdv.abrir_mesa':   'Abrir Mesa',               // pt
+
 
     // ── Sidebar ────────────────────────────────────────────
     'sidebar.visao':        'Visão',
@@ -114,7 +117,7 @@ const ADMIN_LANGS = {
     'pdv.mesas_andamento':  'Pedidos em Andamento',
     'pdv.entregar':         'Entregar / Baixar',
     'pdv.na_cozinha':       '🔥 Na Cozinha',
-
+    'pdv.taxa_servico_label': 'Taxa de Serviço',
     // ── Financeiro ─────────────────────────────────────────
     'fin.title':            '💰 Controle Financeiro',
     'fin.faturamento':      'Faturamento',
@@ -830,6 +833,10 @@ const ADMIN_LANGS = {
   // ESPAÑOL (Paraguay)
   // ══════════════════════════════════════════════════════════
   es: {
+
+    'pdv.fechar_conta': 'Cerrar Cuenta y Cobrar',   // es
+    'pdv.abrir_mesa':   'Abrir Mesa',               // es
+    
     // ── Sidebar ────────────────────────────────────────────
     'sidebar.visao':        'Visión',
     'sidebar.pdv':          'PDV Mostrador',
@@ -865,7 +872,7 @@ const ADMIN_LANGS = {
     'mesas.pendente_plural': 'pendientes',
     'mesas.total': 'Total',
     'mesas.status_pendente': 'PENDIENTE',
-
+    'pdv.taxa_servico_label': 'Taja de Servicio',
     'mesas.abrir_comanda': 'Abrir Comanda',
     'mesas.finalizar': 'Finalizar',
     'mesas.pendente_singular': 'pendiente',
