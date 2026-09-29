@@ -13,9 +13,6 @@ const ADMIN_LANGS = {
   // ══════════════════════════════════════════════════════════
   pt: {
     'pdv.lancar_pedido': 'Lançar Pedido',
-    'pdv.fechar_conta': 'Fechar Conta e Receber',   // pt
-    'pdv.abrir_mesa':   'Abrir Mesa',               // pt
-
 
     // ── Sidebar ────────────────────────────────────────────
     'sidebar.visao':        'Visão',
@@ -117,6 +114,7 @@ const ADMIN_LANGS = {
     'pdv.mesas_andamento':  'Pedidos em Andamento',
     'pdv.entregar':         'Entregar / Baixar',
     'pdv.na_cozinha':       '🔥 Na Cozinha',
+
     // ── Financeiro ─────────────────────────────────────────
     'fin.title':            '💰 Controle Financeiro',
     'fin.faturamento':      'Faturamento',
@@ -196,7 +194,6 @@ const ADMIN_LANGS = {
     'equipe.promover':      'Promover',
     'equipe.rebaixar':      'Rebaixar',
     'equipe.excluir':       'Excluir',
-    'fin.taxa_servico':     'Taxa de Serviço',
 
     // ── Configurações ──────────────────────────────────────
     'cfg.title':            '⚙️ Configurações',
@@ -833,10 +830,6 @@ const ADMIN_LANGS = {
   // ESPAÑOL (Paraguay)
   // ══════════════════════════════════════════════════════════
   es: {
-
-    'pdv.fechar_conta': 'Cerrar Cuenta y Cobrar',   // es
-    'pdv.abrir_mesa':   'Abrir Mesa',               // es
-    
     // ── Sidebar ────────────────────────────────────────────
     'sidebar.visao':        'Visión',
     'sidebar.pdv':          'PDV Mostrador',
@@ -872,7 +865,7 @@ const ADMIN_LANGS = {
     'mesas.pendente_plural': 'pendientes',
     'mesas.total': 'Total',
     'mesas.status_pendente': 'PENDIENTE',
-    'pdv.taxa_servico_label': 'Taja de Servicio',
+
     'mesas.abrir_comanda': 'Abrir Comanda',
     'mesas.finalizar': 'Finalizar',
     'mesas.pendente_singular': 'pendiente',
@@ -935,10 +928,8 @@ const ADMIN_LANGS = {
     'pdv.mesas_andamento':  'Pedidos en Curso',
     'pdv.entregar':         'Entregar / Cerrar',
     'pdv.na_cozinha':       '🔥 En Cocina',
-    'pdv.baixar':           'Baixar Item',
 
     // ── Financeiro ─────────────────────────────────────────
-    'fin.taxa_servico':     'Cargo de Servicio',
     'fin.title':            '💰 Control Financiero',
     'fin.faturamento':      'Facturación',
     'fin.custo_moto':       'Costo Entregas',
@@ -1147,7 +1138,6 @@ const ADMIN_LANGS = {
     'geral.hoje':           'Hoy',
 
     // ── PDV (chaves faltando) ──────────────────────────────────────
-    'pdv.baixar':           'Bajar Iten',
     'pdv.novo_pedido':      'Nuevo Pedido',
     'pdv.tipo_balcao':      'Mostrador',
     'pdv.tipo_delivery':    'Delivery',
