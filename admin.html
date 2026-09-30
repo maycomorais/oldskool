@@ -736,7 +736,7 @@
                 </div>
               </div>
 
-              <!-- Box Mensalista -->
+                            <!-- Box Mensalista -->
               <div id="box-mensalista-pdv" style="display:none;padding:4px 8px 0">
                 <div style="font-size:0.72rem;font-weight:700;color:#1a7a2e;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">🎫 Selecionar Mensalista</div>
                 <input type="text" id="pdv-mens-busca" placeholder="Buscar cliente mensualista..."
@@ -750,6 +750,25 @@
                       <div id="pdv-mens-sel-saldo" style="font-size:0.75rem;color:#15803d;margin-top:1px"></div>
                     </div>
                     <button onclick="pdvDeselecionarMensalista()" style="background:#fee2e2;border:none;border-radius:5px;padding:3px 7px;cursor:pointer;font-size:0.75rem;color:#dc2626">✕</button>
+                  </div>
+
+                  <!-- NOVO: status do saldo -->
+                  <div id="pdv-mens-status" style="margin-top:8px;padding:8px 10px;border-radius:7px;font-size:0.78rem;font-weight:600;line-height:1.4"></div>
+
+                  <!-- NOVO: seletor de pagamento complementar -->
+                  <div id="pdv-mens-complemento" style="display:none;margin-top:8px">
+                    <label style="font-size:0.72rem;font-weight:700;color:#7d5a00;text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:3px">
+                      💳 Cobrar o restante em:
+                    </label>
+                    <select id="pdv-mens-metodo-resto" class="pdv-dir-input" style="font-weight:700">
+                      <option value="Efetivo">💵 Efectivo</option>
+                      <option value="Cartao">💳 Tarjeta</option>
+                      <option value="CartaoBR">💳🇧🇷 Tarjeta BR</option>
+                      <option value="Pix">✅ Pix</option>
+                      <option value="Transferencia">🏦 Alias</option>
+                      <option value="QrMaquina">📱 QR Maquina</option>
+                      <option value="QrCelular">📱 QR Celular</option>
+                    </select>
                   </div>
                 </div>
               </div>
@@ -1865,16 +1884,27 @@
           <h2 class="section-title" style="margin:0" data-i18n="estoque.title">📦 Control de Stock</h2>
           <button class="btn btn-success" onclick="abrirModalInventario()"><i class="fas fa-plus"></i> <span data-i18n="estoque.novo">Nuevo Ítem</span></button>
         </div>
+                  <div style="display:flex;gap:6px">
+            <button class="btn btn-success" onclick="abrirModalInventario()"><i class="fas fa-plus"></i> <span data-i18n="estoque.novo">Nuevo Ítem</span></button>
+            <button class="btn" id="btn-limpar-orfaos" onclick="limparOrfaosInventario()" style="background:#fef3c7;color:#92400e;border:1.5px solid #fcd34d;display:none">
+              🧹 Limpiar huérfanos
+            </button>
+          </div>
         <div id="alerta-estoque-baixo" style="display:none;background:#fff3cd;border:1px solid #ffc107;border-radius:10px;padding:12px 14px;margin-bottom:12px;font-size:0.85rem;color:#856404">
           <strong data-i18n="estoque.alerta_atencao">⚠️ Atención:</strong> <span id="alerta-estoque-lista"></span>
         </div>
         <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
           <input type="text" id="inv-busca" class="form-control" data-i18n-ph="estoque.buscar" placeholder="🔍 Buscar..." oninput="filtrarInventario()" style="flex:1;min-width:140px">
-          <select id="inv-filtro-status" class="form-control" onchange="filtrarInventario()" style="max-width:150px">
+                    <select id="inv-filtro-status" class="form-control" onchange="filtrarInventario()" style="max-width:150px">
             <option value="" data-i18n="estoque.todos">Todos</option>
             <option value="ok" data-i18n="estoque.ok">✅ OK</option>
             <option value="baixo" data-i18n="estoque.baixo">⚠️ Baixo</option>
             <option value="zerado" data-i18n="estoque.zerado">🔴 Zerado</option>
+          </select>
+          <select id="inv-filtro-local" class="form-control" onchange="filtrarInventario()" style="max-width:170px">
+            <option value="">🌐 Todos los locales</option>
+            <option value="balcao">🏪 Balcón</option>
+            <option value="deposito">📦 Depósito</option>
           </select>
         </div>
         <div id="inventario-lista" style="display:flex;flex-direction:column;gap:10px">
@@ -3049,25 +3079,10 @@
           <option value="" data-i18n="mens.selecione_cliente">— Seleccione el cliente —</option>
         </select>
       </div>
-      <div>
-        <label style="font-size:0.78rem;font-weight:600;color:#4b5563;display:block;margin-bottom:5px;text-transform:uppercase" data-i18n="mens.produto_plano">Producto / Ítem del Plan *</label>
-        <select id="mens-plano-prod-sel" style="width:100%;padding:10px 13px;border:1.5px solid #e5e7eb;border-radius:9px;font-size:0.9rem;outline:none;background:#fff;margin-bottom:6px">
-          <option value="" data-i18n="geral.selecione_cardapio">— Seleccione del menú —</option>
-        </select>
-        <input type="text" id="mens-plano-produto" data-i18n-ph="mens.ou_digite" placeholder="O ingrese manualmente..."
-          style="width:100%;padding:9px 13px;border:1.5px solid #e5e7eb;border-radius:9px;font-size:0.9rem;outline:none">
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        <div>
-          <label id="mens-plano-qtd-label" style="font-size:0.78rem;font-weight:600;color:#4b5563;display:block;margin-bottom:5px;text-transform:uppercase">Cant. Total de Ítems *</label>
-          <input type="number" id="mens-plano-qtd" placeholder="Ex: 22" min="1" step="1"
-            style="width:100%;padding:10px 13px;border:1.5px solid #e5e7eb;border-radius:9px;font-size:0.9rem;outline:none">
-        </div>
-        <div>
-          <label style="font-size:0.78rem;font-weight:600;color:#4b5563;display:block;margin-bottom:5px;text-transform:uppercase" data-i18n="mens.valor_plano">Valor del Plan (Gs) *</label>
-          <input type="number" id="mens-plano-valor" placeholder="Ex: 330000" min="0"
-            style="width:100%;padding:10px 13px;border:1.5px solid #e5e7eb;border-radius:9px;font-size:0.9rem;outline:none">
-        </div>
+            <div>
+        <label style="font-size:0.78rem;font-weight:600;color:#4b5563;display:block;margin-bottom:5px;text-transform:uppercase" data-i18n="mens.valor_plano">Valor del Plan (Gs) *</label>
+        <input type="number" id="mens-plano-valor" placeholder="Ex: 330000" min="0"
+          style="width:100%;padding:10px 13px;border:1.5px solid #e5e7eb;border-radius:9px;font-size:0.9rem;outline:none">
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div>
@@ -3079,14 +3094,7 @@
           <input type="date" id="mens-plano-fim" style="width:100%;padding:10px 13px;border:1.5px solid #e5e7eb;border-radius:9px;font-size:0.9rem;outline:none">
         </div>
       </div>
-      <div>
-        <label style="font-size:0.78rem;font-weight:600;color:#4b5563;display:block;margin-bottom:5px;text-transform:uppercase">Tipo de Controle</label>
-        <select id="mens-plano-tipo" onchange="mensToggleTipoPlano()"
-          style="width:100%;padding:10px 13px;border:1.5px solid #e5e7eb;border-radius:9px;font-size:0.9rem;outline:none;background:#fff">
-          <option value="un">📦 Unidades (ej: comidas, viandas)</option>
-          <option value="kg">⚖️ Peso em Kg (ex: carne, peixe)</option>
-        </select>
-      </div>
+      <!-- Removido -->
       <div>
         <label style="font-size:0.78rem;font-weight:600;color:#4b5563;display:block;margin-bottom:5px;text-transform:uppercase">Observación / Nota</label>
         <input type="text" id="mens-plano-nota" placeholder="Ej: Sin sal, entrega los martes..."
@@ -3305,6 +3313,48 @@
         <div class="modal-actions" style="padding-bottom:env(safe-area-inset-bottom,16px)">
           <button class="btn btn-primary" onclick="confirmarAjuste()"><i class="fas fa-check"></i> <span data-i18n="estoque.ajuste_confirmar_btn">Confirmar</span></button>
           <button class="btn btn-secondary" onclick="fecharModal('modal-ajuste-estoque')"><span data-i18n="estoque.cancelar">Cancelar</span></button>
+        </div>
+      </div>
+    </div>
+
+        <!-- ===== MODAL TRANSFERÊNCIA DE ESTOQUE ===== -->
+    <div id="modal-transferir-estoque" class="modal-overlay" style="display:none">
+      <div class="modal-content" style="max-width:440px">
+        <h3>🔄 Transferir Depósito → Balcón</h3>
+        <input type="hidden" id="transf-inv-balcao-id">
+        <input type="hidden" id="transf-inv-deposito-id">
+
+        <p id="transf-produto-nome" style="font-weight:700;font-size:1.05rem;color:#2c3e50;margin-bottom:14px"></p>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+          <div style="background:#fef3c7;border:1.5px solid #fcd34d;border-radius:10px;padding:12px;text-align:center">
+            <div style="font-size:0.72rem;color:#92400e;font-weight:700;text-transform:uppercase;letter-spacing:.5px">📦 Depósito</div>
+            <div id="transf-deposito-qtd" style="font-size:1.6rem;font-weight:800;color:#92400e;margin-top:4px">0</div>
+            <div id="transf-deposito-unid" style="font-size:0.75rem;color:#a16207">un</div>
+          </div>
+          <div style="background:#dcfce7;border:1.5px solid #86efac;border-radius:10px;padding:12px;text-align:center">
+            <div style="font-size:0.72rem;color:#166534;font-weight:700;text-transform:uppercase;letter-spacing:.5px">🏪 Balcón</div>
+            <div id="transf-balcao-qtd" style="font-size:1.6rem;font-weight:800;color:#166534;margin-top:4px">0</div>
+            <div id="transf-balcao-unid" style="font-size:0.75rem;color:#15803d">un</div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label style="font-weight:700">Quanto transferir?</label>
+          <input type="number" id="transf-qtd" class="form-control" min="1" step="1"
+            style="font-size:1.4rem;text-align:center;font-weight:700"
+            oninput="transfPreview()">
+          <div style="margin-top:10px;text-align:center;font-size:0.82rem;color:#666">
+            Depois: Depósito <b id="transf-depois-deposito">0</b> · Balcón <b id="transf-depois-balcao">0</b>
+          </div>
+          <div id="transf-erro" style="display:none;background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;border-radius:6px;padding:6px 10px;font-size:0.78rem;margin-top:8px;font-weight:600"></div>
+        </div>
+
+        <div class="modal-actions" style="padding-bottom:env(safe-area-inset-bottom,16px)">
+          <button class="btn btn-secondary" onclick="fecharModal('modal-transferir-estoque')">Cancelar</button>
+          <button class="btn btn-primary" id="transf-btn-confirmar" onclick="confirmarTransferencia()" disabled style="opacity:0.5">
+            <i class="fas fa-exchange-alt"></i> Transferir
+          </button>
         </div>
       </div>
     </div>

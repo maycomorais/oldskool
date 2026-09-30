@@ -11036,9 +11036,11 @@ function atualizarInfoPagPDV(total) {
       }
       atualizarRestanteMultiPDV();
     }
-  } else if (pag === "Mensalista") {
+    } else if (pag === "Mensalista") {
     const box = document.getElementById("box-mensalista-pdv");
     if (box) { box.style.display = "block"; pdvCarregarMensalistas(); }
+    // ⚡ NOVO: recalcula o painel (status + complemento) sempre que o pagamento é reavaliado
+    if (typeof pdvMensAtualizarPainel === 'function') pdvMensAtualizarPainel();
   } else if (pag === "NaNota") {
     const box = document.getElementById("box-nanota-pdv");
     if (box) { box.style.display = "block"; pdvCarregarClientesNota(); }
@@ -11069,37 +11071,63 @@ let _pdvMensalistaSel   = null; // plano selecionado
 
 async function pdvCarregarMensalistas() {
   if (_pdvMensalistas.length > 0) { pdvRenderMensalistas(_pdvMensalistas); return; }
-  const { data } = await supa
+  const { data, error } = await supa
     .from('planos_mensalistas')
-    .select('id, produto_nome, quantidade_restante, valor_restante, clientes(id, nome, telefone)')
+    .select('id, produto_nome, valor_plano, valor_restante, excluido, clientes(id, nome, telefone)')
     .eq('ativo', true)
     .order('id');
-  _pdvMensalistas = data || [];
+
+  // Fallback: se a coluna excluido não existir no banco
+  let lista = data || [];
+  if (error) {
+    console.warn('[PDV Mensalistas] Fallback sem filtro excluido:', error.message);
+    const r2 = await supa
+      .from('planos_mensalistas')
+      .select('id, produto_nome, valor_plano, valor_restante, clientes(id, nome, telefone)')
+      .eq('ativo', true)
+      .order('id');
+    lista = r2.data || [];
+  }
+  _pdvMensalistas = lista.filter(p => p.excluido !== true);
   pdvRenderMensalistas(_pdvMensalistas);
 }
 
 function pdvFiltrarMensalistas() {
-  const q = document.getElementById('pdv-mens-busca')?.value.toLowerCase().trim() || '';
-  const filtrado = q ? _pdvMensalistas.filter(p =>
-    (p.clientes?.nome || '').toLowerCase().includes(q) ||
-    (p.produto_nome || '').toLowerCase().includes(q)
-  ) : _pdvMensalistas;
+  const q = (document.getElementById('pdv-mens-busca')?.value || '').toLowerCase().trim();
+  const filtrado = q
+    ? _pdvMensalistas.filter(p =>
+        (p.clientes?.nome || '').toLowerCase().includes(q) ||
+        (p.produto_nome || '').toLowerCase().includes(q) ||
+        (p.clientes?.telefone || '').includes(q)
+      )
+    : _pdvMensalistas;
   pdvRenderMensalistas(filtrado);
 }
 
 function pdvRenderMensalistas(lista) {
   const cont = document.getElementById('pdv-mens-lista');
   if (!cont) return;
-  if (!lista.length) { cont.innerHTML = '<div style="font-size:0.78rem;color:#aaa;text-align:center;padding:6px">Ningún plan activo encontrado</div>'; return; }
-  const isKg = (p) => (p.produto_nome || '').toLowerCase().includes('kg');
+
+  if (!lista.length) {
+    cont.innerHTML = '<div style="font-size:0.78rem;color:#aaa;text-align:center;padding:8px">Nenhum plano ativo encontrado</div>';
+    return;
+  }
+
   cont.innerHTML = lista.map(p => {
-    const saldo = isKg(p)
-      ? `${(p.quantidade_restante / 1000).toFixed(3).replace(/\.?0+$/, '')} kg · Gs ${Math.round(p.valor_restante || 0).toLocaleString('es-PY')}`
-      : `${p.quantidade_restante} un · Gs ${Math.round(p.valor_restante || 0).toLocaleString('es-PY')}`;
+    const saldo = Number(p.valor_restante || 0);
+    const corSaldo = saldo <= 0 ? '#dc2626' : saldo < 50000 ? '#d97706' : '#15803d';
+    const semSaldo = saldo <= 0;
     return `<button onclick="pdvSelecionarMensalista(${p.id})"
-      style="text-align:left;background:#f0fdf4;border:1.5px solid #86efac;border-radius:7px;padding:6px 9px;cursor:pointer;font-size:0.78rem;width:100%">
-      <div style="font-weight:700;color:#111">${p.clientes?.nome || '—'}</div>
-      <div style="color:#15803d;font-size:0.72rem">${p.produto_nome} · ${saldo}</div>
+      ${semSaldo ? 'disabled' : ''}
+      style="text-align:left;background:${semSaldo ? '#fef2f2' : '#f0fdf4'};
+             border:1.5px solid ${semSaldo ? '#fecaca' : '#86efac'};
+             border-radius:7px;padding:6px 9px;cursor:${semSaldo ? 'not-allowed' : 'pointer'};
+             font-size:0.78rem;width:100%;opacity:${semSaldo ? '0.7' : '1'}">
+      <div style="font-weight:700;color:#111;display:flex;justify-content:space-between;gap:6px">
+        <span>${p.clientes?.nome || '—'}</span>
+        ${semSaldo ? '<span style="font-size:0.65rem;background:#fee2e2;color:#dc2626;padding:1px 6px;border-radius:8px;font-weight:800">SEM SALDO</span>' : ''}
+      </div>
+      <div style="color:#15803d;font-size:0.72rem">${p.produto_nome || 'Plano'} · Saldo: <b style="color:${corSaldo}">Gs ${Math.round(saldo).toLocaleString('es-PY')}</b></div>
     </button>`;
   }).join('');
 }
@@ -11107,22 +11135,64 @@ function pdvRenderMensalistas(lista) {
 function pdvSelecionarMensalista(planoId) {
   _pdvMensalistaSel = _pdvMensalistas.find(p => p.id === planoId);
   if (!_pdvMensalistaSel) return;
+
   const p = _pdvMensalistaSel;
-  const isKg = (p.produto_nome || '').toLowerCase().includes('kg');
-  const saldo = isKg
-    ? `${(p.quantidade_restante / 1000).toFixed(3).replace(/\.?0+$/, '')} kg · Gs ${Math.round(p.valor_restante || 0).toLocaleString('es-PY')}`
-    : `${p.quantidade_restante} un · Gs ${Math.round(p.valor_restante || 0).toLocaleString('es-PY')}`;
-  document.getElementById('pdv-mens-sel-nome').textContent = p.clientes?.nome || '—';
-  document.getElementById('pdv-mens-sel-saldo').textContent = `${p.produto_nome} · Saldo: ${saldo}`;
+  document.getElementById('pdv-mens-sel-nome').textContent  = p.clientes?.nome || '—';
+  document.getElementById('pdv-mens-sel-saldo').textContent = p.produto_nome || 'Plano mensal';
   document.getElementById('pdv-mens-selecionado').style.display = 'block';
   document.getElementById('pdv-mens-lista').innerHTML = '';
   document.getElementById('pdv-mens-busca').value = '';
+
+  pdvMensAtualizarPainel();
 }
 
 function pdvDeselecionarMensalista() {
   _pdvMensalistaSel = null;
   document.getElementById('pdv-mens-selecionado').style.display = 'none';
+  document.getElementById('pdv-mens-complemento').style.display = 'none';
+  document.getElementById('pdv-mens-status').innerHTML = '';
   pdvRenderMensalistas(_pdvMensalistas);
+}
+
+// ── NOVO: atualiza painel do mensalista (status + complemento) ──
+function pdvMensAtualizarPainel() {
+  const box     = document.getElementById('pdv-mens-status');
+  const compBox = document.getElementById('pdv-mens-complemento');
+  if (!box || !_pdvMensalistaSel) return;
+
+  const saldo = Math.round(Number(_pdvMensalistaSel.valor_restante || 0));
+  const total = parseInt(
+    document.getElementById('balcao-total')?.innerText.replace(/\D/g, '') || '0'
+  );
+  const falta = Math.max(0, total - saldo);
+
+  if (compBox) compBox.style.display = 'none';
+
+  if (saldo <= 0) {
+    box.style.background = '#fef2f2';
+    box.style.color      = '#991b1b';
+    box.style.border     = '1.5px solid #fecaca';
+    box.innerHTML = `⛔ <b>Sem saldo disponível.</b><br>Esta venda será bloqueada. Renove o plano ou escolha outra forma de pagamento.`;
+    return;
+  }
+
+  if (falta <= 0) {
+    const sobra = saldo - total;
+    box.style.background = '#f0fdf4';
+    box.style.color      = '#166534';
+    box.style.border     = '1.5px solid #86efac';
+    box.innerHTML = `✅ <b>Saldo suficiente.</b><br>Será debitado <b>Gs ${total.toLocaleString('es-PY')}</b> — saldo restante após venda: <b>Gs ${sobra.toLocaleString('es-PY')}</b>.`;
+  } else {
+    box.style.background = '#fffbeb';
+    box.style.color      = '#7d5a00';
+    box.style.border     = '1.5px solid #fde68a';
+    box.innerHTML = `
+      ⚠️ <b>Saldo insuficiente.</b><br>
+      Será usado <b>Gs ${saldo.toLocaleString('es-PY')}</b> do plano e cobrado
+      <b style="color:#dc2626">Gs ${falta.toLocaleString('es-PY')}</b> na forma complementar abaixo.
+    `;
+    if (compBox) compBox.style.display = 'block';
+  }
 }
 
 // ── COLOCAR NA NOTA (FIADO) ────────────────────────────────────────
@@ -11395,16 +11465,58 @@ async function salvarPedidoBalcao() {
     obsPagPDV = JSON.stringify(partesPDV);
   }
 
-  // ── Validação Mensalista ──────────────────────────────────────
+    // ── Validação Mensalista (0 = bloqueia, parcial = split automático) ──
+  let _mensSplitInfo = null; // { saldoDebitar, complemento, valorComplemento }
   if (pag === "Mensalista") {
-    if (!_pdvMensalistaSel) { alert("Seleccione un mensualista antes de finalizar."); return; }
-    const total = parseInt(document.getElementById("balcao-total")?.innerText.replace(/\D/g, "") || "0");
-    const saldoVal = Math.round(_pdvMensalistaSel.valor_restante || 0);
-    if (total > saldoVal) {
-      const ok = confirm(`⚠️ Saldo financeiro do mensalista insuficiente.\n\nSaldo: Gs ${saldoVal.toLocaleString("es-PY")}\nTotal: Gs ${total.toLocaleString("es-PY")}\n\nContinuar mesmo assim?`);
+    if (!_pdvMensalistaSel) {
+      alert("Seleccione un mensualista antes de finalizar.");
+      return;
+    }
+
+    const totalPedido = parseInt(
+      document.getElementById("balcao-total")?.innerText.replace(/\D/g, "") || "0"
+    );
+    const saldoVal = Math.round(Number(_pdvMensalistaSel.valor_restante || 0));
+
+    if (saldoVal <= 0) {
+      alert(
+        `⛔ Este mensalista no tiene saldo disponible.\n\n` +
+        `Saldo: Gs ${saldoVal.toLocaleString("es-PY")}\n` +
+        `Total: Gs ${totalPedido.toLocaleString("es-PY")}\n\n` +
+        `Renueve el plan o elija otra forma de pago.`
+      );
+      return;
+    }
+
+    if (totalPedido > saldoVal) {
+      const complemento = document.getElementById('pdv-mens-metodo-resto')?.value;
+      if (!complemento) {
+        alert("⚠️ Saldo insuficiente. Seleccione la forma de pago complementaria.");
+        return;
+      }
+      const valorComplemento = totalPedido - saldoVal;
+      _mensSplitInfo = { saldoDebitar: saldoVal, complemento, valorComplemento };
+
+      const ok = confirm(
+        `⚠️ Saldo insuficiente — cobrança dividida:\n\n` +
+        `  • Mensalista (saldo): Gs ${saldoVal.toLocaleString("es-PY")}\n` +
+        `  • ${complemento}: Gs ${valorComplemento.toLocaleString("es-PY")}\n\n` +
+        `Confirmar?`
+      );
       if (!ok) return;
     }
-    obsPagPDV = `Mensalista: ${_pdvMensalistaSel.clientes?.nome || ""} (plano #${_pdvMensalistaSel.id})`;
+
+    const nomeMens = _pdvMensalistaSel.clientes?.nome || "";
+    if (_mensSplitInfo) {
+      // Forma de pagamento vira Multipagamento para o Financeiro contar só a parte real
+      pagFinalPDV = "Multipagamento";
+      obsPagPDV = JSON.stringify([
+        { metodo: "Mensalista",           valor: _mensSplitInfo.saldoDebitar },
+        { metodo: _mensSplitInfo.complemento, valor: _mensSplitInfo.valorComplemento },
+      ]);
+    } else {
+      obsPagPDV = `Mensalista: ${nomeMens} (plano #${_pdvMensalistaSel.id})`;
+    }
   }
 
   // ── Validação Na Nota ─────────────────────────────────────────
@@ -11590,44 +11702,36 @@ async function salvarPedidoBalcao() {
   // Descontar estoque imediatamente (PDV não passa por mudarStatus)
   if (novoPedido?.id) await _descontarEstoqueVenda(novoPedido.id, novosItens);
 
-  // ── Mensalista: desconta saldo financeiro (e kg se tiver) ─────
+    // ── Mensalista: desconta saldo (ou saldo + complemento) ─────
   if (pag === "Mensalista" && _pdvMensalistaSel) {
-  const pm = _pdvMensalistaSel;
-  const totalVenda = subtotalLiquido; // sem frete para mensalista
-  const isKg = (pm.produto_nome || "").toLowerCase().includes("kg");
-  // Desconta valor (permite negativo)
-  const novoValorRestante = Math.round((pm.valor_restante || 0) - totalVenda);
-  // Desconta kg se o carrinho tiver item kg do plano dele
-  let novaQtdRestante = pm.quantidade_restante;
-  if (isKg) {
-    const totalGramas = novosItens.filter(i => i._isKg).reduce((s, i) => s + (i.peso_gramas || 0), 0);
-    novaQtdRestante = pm.quantidade_restante - totalGramas; // pode ficar negativo
-  } else {
-    const totalUn = novosItens.filter(i => !i._isKg).reduce((s, i) => s + (i.qtd || 1), 0);
-    novaQtdRestante = pm.quantidade_restante - totalUn; // pode ficar negativo
+    const pm      = _pdvMensalistaSel;
+    const debito  = _mensSplitInfo ? _mensSplitInfo.saldoDebitar : subtotalLiquido;
+    const novoSaldo = Math.round(Number(pm.valor_restante || 0) - debito);
+
+    // 1) Atualiza saldo do plano
+    await supa.from('planos_mensalistas')
+      .update({ valor_restante: novoSaldo })
+      .eq('id', pm.id);
+
+    // 2) Registra histórico em mensalista_entregas
+    const obsHist = _mensSplitInfo
+      ? `PDV #${novoPedido?.id || '?'} — debitado Gs ${debito.toLocaleString('es-PY')} (resto Gs ${_mensSplitInfo.valorComplemento.toLocaleString('es-PY')} em ${_mensSplitInfo.complemento})`
+      : `PDV #${novoPedido?.id || '?'} — débito total`;
+
+    await supa.from('mensalista_entregas').insert([{
+      plano_id:         pm.id,
+      cliente_id:       pm.clientes?.id || null,
+      produto_nome:     pm.produto_nome,
+      quantidade:       0,
+      observacoes:      obsHist,
+      valor_descontado: debito,
+    }]);
+
+    // 3) Atualiza cache local e limpa estado
+    _pdvMensalistaSel.valor_restante = novoSaldo;
+    _mensSplitInfo = null;
+    _pdvPularMovimentacao = false;
   }
-  await supa.from("planos_mensalistas")
-    .update({ valor_restante: novoValorRestante, quantidade_restante: novaQtdRestante })
-    .eq("id", pm.id);
-  // Registrar entrega no histórico com itens_extras
-  const totalExtras = subtotalLiquido; // ou 0, tanto faz
-  await supa.from("mensalista_entregas").insert([{
-    plano_id: pm.id,
-    cliente_id: pm.clientes?.id || null,
-    produto_nome: pm.produto_nome,
-    quantidade: isKg
-      ? novosItens.filter(i => i._isKg).reduce((s, i) => s + (i.peso_gramas || 0), 0)
-      : novosItens.filter(i => !i._isKg).reduce((s, i) => s + (i.qtd || 1), 0),
-    observacoes: `PDV #${novoPedido.uid_temporal || novoPedido.id}`,
-    itens_extras: novosItens.length > 0 ? novosItens : null,
-    valor_extras: Math.round(subtotalLiquido), // ou null
-  }]);
-  // Atualiza cache local
-  _pdvMensalistaSel.valor_restante   = novoValorRestante;
-  _pdvMensalistaSel.quantidade_restante = novaQtdRestante;
-  // Venda mensalista NÃO entra no financeiro — pula movimentacao_caixa
-  _pdvPularMovimentacao = true;
-}
 
   // ── Na Nota: marca o pedido com cliente vinculado ─────────────
   if (pag === "NaNota" && _pdvClienteNotaSel) {
@@ -11922,20 +12026,53 @@ async function finalizarPedidoMesaPDV() {
     obsPagPDV = JSON.stringify(partesPDV);
   }
 
-  // ── Validação Mensalista ────────────────────────────────────────
+    // ── Validação Mensalista (0 = bloqueia, parcial = split) ────────
+  let _mensSplitInfoMesa = null;
   if (pag === "Mensalista") {
     if (!_pdvMensalistaSel) {
       alert("Seleccione un mensualista antes de finalizar.");
       return;
     }
-    const saldoVal = Math.round(_pdvMensalistaSel.valor_restante || 0);
+    const saldoVal = Math.round(Number(_pdvMensalistaSel.valor_restante || 0));
+
+    if (saldoVal <= 0) {
+      alert(
+        `⛔ Este mensalista no tiene saldo disponible.\n\n` +
+        `Saldo: Gs ${saldoVal.toLocaleString("es-PY")}\n` +
+        `Total: Gs ${totalFinal.toLocaleString("es-PY")}\n\n` +
+        `Renueve el plan o elija otra forma de pago.`
+      );
+      return;
+    }
+
     if (totalFinal > saldoVal) {
+      const complemento = document.getElementById('pdv-mens-metodo-resto')?.value;
+      if (!complemento) {
+        alert("⚠️ Saldo insuficiente. Seleccione la forma de pago complementaria.");
+        return;
+      }
+      const valorComplemento = totalFinal - saldoVal;
+      _mensSplitInfoMesa = { saldoDebitar: saldoVal, complemento, valorComplemento };
+
       const ok = confirm(
-        `⚠️ Saldo financeiro do mensalista insuficiente.\n\nSaldo: Gs ${saldoVal.toLocaleString("es-PY")}\nTotal: Gs ${totalFinal.toLocaleString("es-PY")}\n\nContinuar mesmo assim?`,
+        `⚠️ Saldo insuficiente — cobrança dividida:\n\n` +
+        `  • Mensalista (saldo): Gs ${saldoVal.toLocaleString("es-PY")}\n` +
+        `  • ${complemento}: Gs ${valorComplemento.toLocaleString("es-PY")}\n\n` +
+        `Confirmar?`
       );
       if (!ok) return;
     }
-    obsPagPDV = `Mensalista: ${_pdvMensalistaSel.clientes?.nome || ""} (plano #${_pdvMensalistaSel.id})`;
+
+    const nomeMens = _pdvMensalistaSel.clientes?.nome || "";
+    if (_mensSplitInfoMesa) {
+      pagFinalPDV = "Multipagamento";
+      obsPagPDV = JSON.stringify([
+        { metodo: "Mensalista",                    valor: _mensSplitInfoMesa.saldoDebitar },
+        { metodo: _mensSplitInfoMesa.complemento, valor: _mensSplitInfoMesa.valorComplemento },
+      ]);
+    } else {
+      obsPagPDV = `Mensalista: ${nomeMens} (plano #${_pdvMensalistaSel.id})`;
+    }
   }
 
   // ── Validação Na Nota ────────────────────────────────────────────
@@ -11984,23 +12121,32 @@ async function finalizarPedidoMesaPDV() {
     _imprimirItensCozinhaMesaPDV(novosItens, `Mesa ${mesa}`, nomeFinal, mesaIdFechada);
   }
 
-  // ── Mensalista: desconta saldo financeiro ───────────────────────
+    // ── Mensalista: desconta saldo (ou saldo + complemento) ─────────
   if (pag === "Mensalista" && _pdvMensalistaSel) {
-    const pm = _pdvMensalistaSel;
-    const novoValorRestante = Math.round((pm.valor_restante || 0) - totalFinal);
+    const pm     = _pdvMensalistaSel;
+    const debito = _mensSplitInfoMesa ? _mensSplitInfoMesa.saldoDebitar : totalFinal;
+    const novoSaldo = Math.round(Number(pm.valor_restante || 0) - debito);
+
     await supa
-      .from("planos_mensalistas")
-      .update({ valor_restante: novoValorRestante })
-      .eq("id", pm.id);
-    await supa.from("mensalista_entregas").insert([{
-      plano_id: pm.id,
-      cliente_id: pm.clientes?.id || null,
-      produto_nome: pm.produto_nome,
-      observacoes: `Mesa ${mesa} — Pedido #${mesaIdFechada}`,
-      itens_extras: itensMerged.length > 0 ? itensMerged : null,
-      valor_extras: Math.round(totalFinal),
+      .from('planos_mensalistas')
+      .update({ valor_restante: novoSaldo })
+      .eq('id', pm.id);
+
+    const obsHist = _mensSplitInfoMesa
+      ? `Mesa ${mesa} — Pedido #${mesaIdFechada} — debitado Gs ${debito.toLocaleString('es-PY')} (resto Gs ${_mensSplitInfoMesa.valorComplemento.toLocaleString('es-PY')} em ${_mensSplitInfoMesa.complemento})`
+      : `Mesa ${mesa} — Pedido #${mesaIdFechada} — débito total`;
+
+    await supa.from('mensalista_entregas').insert([{
+      plano_id:         pm.id,
+      cliente_id:       pm.clientes?.id || null,
+      produto_nome:     pm.produto_nome,
+      quantidade:       0,
+      observacoes:      obsHist,
+      valor_descontado: debito,
     }]);
-    _pdvMensalistaSel.valor_restante = novoValorRestante;
+
+    _pdvMensalistaSel.valor_restante = novoSaldo;
+    _mensSplitInfoMesa = null;
   }
 
   // ── Na Nota: vincula telefone do cliente ────────────────────────
@@ -13604,21 +13750,58 @@ async function carregarInventario() {
   if (!container) return;
   container.innerHTML =
     '<div style="text-align:center;padding:30px;color:#aaa"><i class="fas fa-spinner fa-spin"></i></div>';
+
+  // Fetch incluindo localizacao
   const { data, error } = await supa
     .from("inventario")
     .select(
-      "id, nome, quantidade, unidade, quantidade_minima, observacoes, produto_id, perecivel, data_validade, produtos!inventario_produto_id_fkey(nome)",
+      "id, nome, quantidade, unidade, quantidade_minima, observacoes, produto_id, perecivel, data_validade, localizacao, produtos!inventario_produto_id_fkey(nome)",
     )
     .order("nome");
+
   if (error) {
-    const { data: d2 } = await supa
-      .from("inventario")
-      .select("*")
-      .order("nome");
-    _inventarioItems = (d2 || []).map((i) => ({ ...i, produtos: null }));
+    const { data: d2 } = await supa.from("inventario").select("*").order("nome");
+    _inventarioItems = (d2 || []).map((i) => ({
+      ...i,
+      produtos: null,
+      localizacao: i.localizacao || "balcao",
+    }));
   } else {
-    _inventarioItems = data || [];
+    _inventarioItems = (data || []).map((i) => ({
+      ...i,
+      localizacao: i.localizacao || "balcao",
+    }));
   }
+
+  // ── Auto-cria depósitos faltantes para itens de balcão com produto_id ──
+  const balcaoComProduto = _inventarioItems.filter(
+    (i) => i.produto_id && i.localizacao === "balcao",
+  );
+  const depositoIds = new Set(
+    _inventarioItems
+      .filter((i) => i.produto_id && i.localizacao === "deposito")
+      .map((i) => i.produto_id),
+  );
+  const faltantes = balcaoComProduto.filter((i) => !depositoIds.has(i.produto_id));
+  if (faltantes.length > 0) {
+    const novos = faltantes.map((i) => ({
+      nome: i.nome,
+      unidade: i.unidade || "un",
+      quantidade: 0,
+      quantidade_minima: null,
+      produto_id: i.produto_id,
+      observacoes: "[Criado automaticamente como depósito]",
+      localizacao: "deposito",
+    }));
+    await supa.from("inventario").insert(novos);
+    // Refetch para trazer os novos
+    const { data: d3 } = await supa.from("inventario").select("*").order("nome");
+    _inventarioItems = (d3 || []).map((i) => ({
+      ...i,
+      localizacao: i.localizacao || "balcao",
+    }));
+  }
+
   _renderInventarioCards();
   _verificarAlertasEstoque();
 }
@@ -13631,81 +13814,218 @@ function _renderInventarioCards() {
       '<div style="text-align:center;padding:40px;color:#aaa">Ningún ítem. Haga clic en "+ Nuevo Ítem".</div>';
     return;
   }
+
+  // ── Detecta órfãos (sem produto_id) ──
+  const orfaos = _inventarioItems.filter((i) => !i.produto_id);
+  const avisoOrfaos = orfaos.length
+    ? `<div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:12px;padding:12px 16px;margin-bottom:14px;font-size:0.83rem;color:#78350f">
+         ⚠️ Hay <b>${orfaos.length} ítem(s) sin vínculo con producto</b>. Estos fueron creados antes del sistema de locales y no pueden recibir transferencias. Recomendación: bórralos usando el ícono 🗑️ y vuelva a crear el stock vinculando al producto correspondiente.
+       </div>`
+    : "";
+
+    // Mostra/esconde botão "Limpiar huérfanos"
+    const btnLimpar = document.getElementById("btn-limpar-orfaos");
+    if (btnLimpar) {
+      btnLimpar.style.display = orfaos.length > 0 ? "inline-flex" : "none";
+      btnLimpar.textContent = orfaos.length
+        ? `🧹 Limpiar ${orfaos.length} huérfano(s)`
+        : "🧹 Limpiar huérfanos";
+    }
+
+  if (orfaos.length) {
+    // Nota: o aviso é inserido como primeiro filho do container junto com os cards.
+    // Para isso, redirecionamos a montagem para um array de HTML que começa com o aviso.
+  }
+
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
-  container.innerHTML = _inventarioItems
-    .map((item) => {
-      const qtd = item.quantidade ?? 0;
-      const min = item.quantidade_minima ?? 0;
-      let bg = "",
-        badgeStyle = "",
-        badgeText = "";
-      if (qtd <= 0) {
-        bg = "#fff5f5";
-        badgeStyle = "background:#fee2e2;color:#dc2626";
-        badgeText = "🔴 Zerado";
-      } else if (min > 0 && qtd <= min) {
-        bg = "#fffbeb";
-        badgeStyle = "background:#fef3c7;color:#d97706";
-        badgeText = "⚠️ Baixo";
-      } else {
-        badgeStyle = "background:#dcfce7;color:#16a34a";
-        badgeText = "✅ OK";
-      }
+  const podeTransferir = ["dono", "gerente", "adminMaster"].includes(perfilUsuario);
+
+  // ── Agrupa por produto_id (ou por id quando não vinculado) ──
+  const grupos = {};
+  _inventarioItems.forEach((item) => {
+    const key = item.produto_id ? `prod_${item.produto_id}` : `solo_${item.id}`;
+    if (!grupos[key]) {
+      grupos[key] = {
+        key,
+        nome: item.nome,
+        produto_id: item.produto_id,
+        unidade: item.unidade || "un",
+        produtos: item.produtos,
+        balcao: null,
+        deposito: null,
+        perecivel: false,
+        data_validade: null,
+        observacoes: "",
+      };
+    }
+    if (item.localizacao === "deposito") grupos[key].deposito = item;
+    else grupos[key].balcao = item;
+
+    // Prefere metadados do balcão
+    if (item.localizacao === "balcao") {
+      grupos[key].perecivel = item.perecivel || false;
+      grupos[key].data_validade = item.data_validade;
+      grupos[key].observacoes = item.observacoes || "";
+      grupos[key].unidade = item.unidade || grupos[key].unidade;
+      grupos[key].nome = item.nome; // nome do balcão como canônico
+    }
+  });
+
+  // ── Helper: calcula status de uma linha ──
+  const _calcStatus = (item) => {
+    if (!item) return null;
+    const qtd = item.quantidade ?? 0;
+    const min = item.quantidade_minima ?? 0;
+    if (qtd <= 0) return { nivel: "zerado", bg: "#fee2e2", cor: "#dc2626", txt: "🔴 Zerado" };
+    if (min > 0 && qtd <= min) return { nivel: "baixo", bg: "#fef3c7", cor: "#d97706", txt: "⚠️ Baixo" };
+    return { nivel: "ok", bg: "#dcfce7", cor: "#16a34a", txt: "✅ OK" };
+  };
+
+  // ── Ordena por nome ──
+  const ordenados = Object.values(grupos).sort((a, b) =>
+    (a.nome || "").localeCompare(b.nome || ""),
+  );
+
+  container.innerHTML = avisoOrfaos + ordenados
+    .map((g) => {
+      const stBal = _calcStatus(g.balcao);
+      const stDep = _calcStatus(g.deposito);
+      const orfao = !g.produto_id;
+
+      // Validade perecível
       let validadeHtml = "";
-      if (item.perecivel && item.data_validade) {
-        const val = new Date(item.data_validade);
+      let bgCard = "#fff";
+      if (g.perecivel && g.data_validade) {
+        const val = new Date(g.data_validade);
         val.setHours(0, 0, 0, 0);
         const dias = Math.ceil((val - hoje) / 86400000);
         if (dias < 0) {
-          validadeHtml = `<span style="font-size:0.72rem;color:#dc2626;font-weight:600">🚫 VENCIDO</span>`;
-          bg = "#fff0f0";
+          validadeHtml = `<div style="font-size:0.72rem;color:#dc2626;font-weight:600">🚫 VENCIDO (${new Date(g.data_validade).toLocaleDateString("pt-BR")})</div>`;
+          bgCard = "#fff0f0";
         } else if (dias <= 7) {
-          validadeHtml = `<span style="font-size:0.72rem;color:#d97706;font-weight:600">⏰ Vence em ${dias}d</span>`;
-          if (!bg) bg = "#fffbeb";
-        } else
-          validadeHtml = `<span style="font-size:0.72rem;color:#888">📅 Val: ${new Date(item.data_validade).toLocaleDateString("pt-BR")}</span>`;
+          validadeHtml = `<div style="font-size:0.72rem;color:#d97706;font-weight:600">⏰ Vence en ${dias}d</div>`;
+          if (bgCard === "#fff") bgCard = "#fffbeb";
+        } else {
+          validadeHtml = `<div style="font-size:0.72rem;color:#888">📅 Val: ${new Date(g.data_validade).toLocaleDateString("pt-BR")}</div>`;
+        }
       }
-      const prodNome = item.produtos
-        ? `<span style="font-size:0.72rem;background:#e8f4fd;color:#1a6eb5;padding:2px 8px;border-radius:10px">${item.produtos.nome}</span>`
+
+      // Linha do balcão
+      const linhaBalcao = g.balcao
+        ? `
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-top:1px solid #f0f0f0">
+            <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
+              <span style="font-size:1rem">🏪</span>
+              <span style="font-size:0.83rem;font-weight:700;color:#444">Balcón</span>
+              ${stBal ? `<span style="font-size:0.68rem;font-weight:700;padding:2px 7px;border-radius:10px;background:${stBal.bg};color:${stBal.cor}">${stBal.txt}</span>` : ""}
+              ${g.balcao.quantidade_minima ? `<span style="font-size:0.68rem;color:#999">mín: ${g.balcao.quantidade_minima}</span>` : ""}
+            </div>
+            <div class="inv-qtd-controls">
+              <button class="inv-qtd-btn minus" onclick="ajusteRapido(${g.balcao.id},'sub','${(g.nome || "").replace(/'/g, "\\'")}',${g.balcao.quantidade ?? 0})">−</button>
+              <span class="inv-qtd-val" style="color:${stBal ? stBal.cor : "#333"}">${g.balcao.quantidade ?? 0}</span>
+              <button class="inv-qtd-btn plus" onclick="ajusteRapido(${g.balcao.id},'add','${(g.nome || "").replace(/'/g, "\\'")}',${g.balcao.quantidade ?? 0})">+</button>
+              <button onclick="abrirModalInventario(${g.balcao.id})" title="Editar balcón"
+                style="background:#f59e0b;color:#fff;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:0.75rem;margin-left:4px">✏️</button>
+            </div>
+          </div>`
         : "";
-      const nEsc = (item.nome || "").replace(/'/g, "\\'");
-      const qtdColor =
-        qtd <= 0 ? "#dc2626" : min > 0 && qtd <= min ? "#d97706" : "#16a34a";
-      return `<div class="inv-card" style="background:${bg}" data-id="${item.id}" data-nome="${(item.nome || "").replace(/"/g, "&quot;")}" data-status="${qtd <= 0 ? "zerado" : min > 0 && qtd <= min ? "baixo" : "ok"}">
-      <div class="inv-card-top">
-        <div class="inv-card-nome">${item.nome || ""}${item.perecivel ? " 🥛" : ""}${validadeHtml ? "<br>" + validadeHtml : ""}${item.observacoes ? `<br><small style="color:#888;font-weight:400">${item.observacoes}</small>` : ""}</div>
-        <span class="inv-card-status-badge" style="${badgeStyle}">${badgeText}</span>
-      </div>
-      <div class="inv-card-row">
-        <div><div class="inv-card-info">Unid: <strong>${item.unidade || "un"}</strong>${min > 0 ? ` · Mín: ${min}` : ""}</div>${prodNome}</div>
-        <div class="inv-qtd-controls">
-          <button class="inv-qtd-btn minus" onclick="ajusteRapido(${item.id},'sub','${nEsc}',${qtd})">−</button>
-          <span class="inv-qtd-val" style="color:${qtdColor}">${qtd}</span>
-          <button class="inv-qtd-btn plus" onclick="ajusteRapido(${item.id},'add','${nEsc}',${qtd})">+</button>
+
+      // Linha do depósito
+      const linhaDeposito = g.deposito
+        ? `
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-top:1px solid #f0f0f0">
+            <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
+              <span style="font-size:1rem">📦</span>
+              <span style="font-size:0.83rem;font-weight:700;color:#444">Depósito</span>
+              ${stDep ? `<span style="font-size:0.68rem;font-weight:700;padding:2px 7px;border-radius:10px;background:${stDep.bg};color:${stDep.cor}">${stDep.txt}</span>` : ""}
+              ${g.deposito.quantidade_minima ? `<span style="font-size:0.68rem;color:#999">mín: ${g.deposito.quantidade_minima}</span>` : ""}
+            </div>
+            <div class="inv-qtd-controls">
+              <button class="inv-qtd-btn minus" onclick="ajusteRapido(${g.deposito.id},'sub','${(g.nome || "").replace(/'/g, "\\'")}',${g.deposito.quantidade ?? 0})">−</button>
+              <span class="inv-qtd-val" style="color:${stDep ? stDep.cor : "#333"}">${g.deposito.quantidade ?? 0}</span>
+              <button class="inv-qtd-btn plus" onclick="ajusteRapido(${g.deposito.id},'add','${(g.nome || "").replace(/'/g, "\\'")}',${g.deposito.quantidade ?? 0})">+</button>
+              <button onclick="abrirModalInventario(${g.deposito.id})" title="Editar depósito"
+                style="background:#f59e0b;color:#fff;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:0.75rem;margin-left:4px">✏️</button>
+            </div>
+          </div>`
+        : `<div style="padding:8px 0;border-top:1px solid #f0f0f0;font-size:0.78rem;color:#aaa;text-align:center">📦 Sin depósito configurado</div>`;
+
+      // Botão Transferir (só para dono/gerente, e só se tem ambos os locais)
+      const btnTransferir = (podeTransferir && g.produto_id && g.balcao && g.deposito)
+        ? `<button onclick="abrirModalTransferencia(${g.balcao.id})"
+             style="flex:2;background:linear-gradient(135deg,#8e44ad,#6c3483);color:#fff;border:none;border-radius:8px;padding:7px;cursor:pointer;font-size:0.82rem;font-weight:700;display:flex;align-items:center;justify-content:center;gap:5px">
+             <i class="fas fa-exchange-alt"></i> Transferir Depósito → Balcón
+           </button>`
+        : "";
+
+      // Botão Excluir (usa id do balcão se existir, senão do depósito)
+      const idParaExcluir = g.balcao?.id || g.deposito?.id;
+      const btnExcluir = idParaExcluir
+        ? `<button onclick="excluirInventario(${idParaExcluir})"
+             style="background:#fee2e2;color:#dc2626;border:none;border-radius:8px;padding:7px 12px;cursor:pointer;font-size:0.82rem">🗑️</button>`
+        : "";
+
+            // Produto vinculado (badge) — ou aviso de órfão
+            const prodVinculado = g.produtos?.nome
+              ? `<span style="font-size:0.68rem;background:#e8f4fd;color:#1a6eb5;padding:2px 8px;border-radius:10px">🔗 ${g.produtos.nome}</span>`
+              : `<span style="font-size:0.68rem;background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:10px;font-weight:700">⚠️ Sin vínculo con producto</span>`;
+
+      return `
+        <div class="inv-card" data-key="${g.key}" data-nome="${(g.nome || "").replace(/"/g, "&quot;")}"
+             data-status-balcao="${stBal?.nivel || ""}"
+             data-status-deposito="${stDep?.nivel || ""}"
+             data-tem-balcao="${g.balcao ? 1 : 0}"
+             data-tem-deposito="${g.deposito ? 1 : 0}"
+             style="background:${bgCard}">
+
+          <div class="inv-card-top">
+            <div class="inv-card-nome">
+              ${g.nome}${g.perecivel ? " 🥛" : ""}
+              ${validadeHtml}
+              ${g.observacoes ? `<div style="font-size:0.74rem;color:#888;font-weight:400;margin-top:2px">${g.observacoes}</div>` : ""}
+            </div>
+            ${prodVinculado}
+          </div>
+
+          ${linhaBalcao}
+          ${linhaDeposito}
+
+          <div style="display:flex;gap:6px;padding-top:10px;border-top:1px solid #f0f0f0;margin-top:4px">
+            ${btnTransferir}
+            ${btnExcluir}
+          </div>
         </div>
-      </div>
-      <div class="inv-card-actions">
-        <button style="background:#f59e0b;color:#fff" onclick="abrirModalInventario(${item.id})">✏️ Editar</button>
-        <button style="background:#fee2e2;color:#dc2626" onclick="excluirInventario(${item.id})">🗑️</button>
-      </div>
-    </div>`;
+      `;
     })
     .join("");
 }
 
 function filtrarInventario() {
-  const busca = (
-    document.getElementById("inv-busca")?.value || ""
-  ).toLowerCase();
+  const busca = (document.getElementById("inv-busca")?.value || "").toLowerCase();
   const status = document.getElementById("inv-filtro-status")?.value || "";
+  const local = document.getElementById("inv-filtro-local")?.value || "";
+
   document
-    .querySelectorAll("#inventario-lista .inv-card[data-id]")
+    .querySelectorAll("#inventario-lista .inv-card[data-key]")
     .forEach((card) => {
-      const m1 =
-        !busca || (card.dataset.nome || "").toLowerCase().includes(busca);
-      const m2 = !status || card.dataset.status === status;
-      card.style.display = m1 && m2 ? "" : "none";
+      const nome = (card.dataset.nome || "").toLowerCase();
+      const m1 = !busca || nome.includes(busca);
+
+      // Filtro de status: mostra o card se QUALQUER local bater
+      let m2 = !status;
+      if (status) {
+        const stBal = card.dataset.statusBalcao || "";
+        const stDep = card.dataset.statusDeposito || "";
+        m2 = stBal === status || stDep === status;
+      }
+
+      // Filtro de local
+      let m3 = !local;
+      if (local === "balcao") m3 = card.dataset.temBalcao === "1";
+      if (local === "deposito") m3 = card.dataset.temDeposito === "1";
+
+      card.style.display = m1 && m2 && m3 ? "" : "none";
     });
 }
 
@@ -13714,18 +14034,19 @@ function _verificarAlertasEstoque() {
   hoje.setHours(0, 0, 0, 0);
   const alertas = [];
   _inventarioItems.forEach((i) => {
-    const q = i.quantidade ?? 0,
-      m = i.quantidade_minima ?? 0;
-    if (q <= 0) alertas.push(`${i.nome} (zerado)`);
-    else if (m > 0 && q <= m)
-      alertas.push(`${i.nome} (${q} ${i.unidade || "un"})`);
+    const q = i.quantidade ?? 0;
+    const m = i.quantidade_minima ?? 0;
+    const localTxt = i.localizacao === "deposito" ? "📦 " : "🏪 ";
+    if (q <= 0) alertas.push(`${localTxt}${i.nome} (zerado)`);
+    else if (m > 0 && q <= m) alertas.push(`${localTxt}${i.nome} (${q} ${i.unidade || "un"})`);
+
     if (i.perecivel && i.data_validade) {
       const val = new Date(i.data_validade);
       val.setHours(0, 0, 0, 0);
       const dias = Math.ceil((val - hoje) / 86400000);
       if (dias <= 7)
         alertas.push(
-          `${i.nome} vence ${dias <= 0 ? "VENCIDO" : "em " + dias + "d"}`,
+          `${localTxt}${i.nome} vence ${dias <= 0 ? "VENCIDO" : "en " + dias + "d"}`,
         );
     }
   });
@@ -13807,41 +14128,281 @@ function togglePerecivel() {
 async function salvarInventario() {
   const id = document.getElementById("inv-id").value;
   const nome = document.getElementById("inv-nome").value.trim();
-  if (!nome) {
-    alert("Ingrese el nombre del ítem.");
-    return;
-  }
+  if (!nome) { alert("Ingrese el nombre del ítem."); return; }
+
   const perecivel = document.getElementById("inv-perecivel")?.checked || false;
+  const produto_id = parseInt(document.getElementById("inv-produto-id").value) || null;
+
   const dados = {
     nome,
     quantidade: parseFloat(document.getElementById("inv-qtd").value) || 0,
     unidade: document.getElementById("inv-unidade").value,
-    quantidade_minima:
-      parseFloat(document.getElementById("inv-minimo").value) || null,
+    quantidade_minima: parseFloat(document.getElementById("inv-minimo").value) || null,
     observacoes: document.getElementById("inv-obs").value.trim() || null,
-    produto_id:
-      parseInt(document.getElementById("inv-produto-id").value) || null,
+    produto_id,
     perecivel,
     data_validade:
       perecivel && document.getElementById("inv-validade").value
         ? document.getElementById("inv-validade").value
         : null,
   };
-  const { error } = id
-    ? await supa.from("inventario").update(dados).eq("id", id)
-    : await supa.from("inventario").insert([dados]);
-  if (error) {
-    alert("Error: " + error.message);
-    return;
+
+  if (id) {
+    // ── Edição: atualiza só a linha atual ──
+    const { error } = await supa.from("inventario").update(dados).eq("id", id);
+    if (error) { alert("Error: " + error.message); return; }
+  } else {
+    // ── Novo item ──
+    // Se vinculado a produto, cria balcão + depósito
+    if (produto_id) {
+      const jaExiste = _inventarioItems.find(
+        (i) => i.produto_id === produto_id && i.localizacao === "balcao",
+      );
+      if (jaExiste) {
+        alert("Este producto ya tiene stock controlado en el balcón. Edite el ítem existente en vez de crear uno nuevo.");
+        return;
+      }
+
+      const payloadBalcao = { ...dados, localizacao: "balcao" };
+      const payloadDeposito = {
+        nome: dados.nome,
+        unidade: dados.unidade,
+        quantidade: 0,
+        quantidade_minima: null,
+        produto_id: dados.produto_id,
+        observacoes: "[Criado automaticamente como depósito]",
+        localizacao: "deposito",
+        perecivel: false,
+        data_validade: null,
+      };
+
+      const { error } = await supa
+        .from("inventario")
+        .insert([payloadBalcao, payloadDeposito]);
+      if (error) { alert("Error: " + error.message); return; }
+    } else {
+      // Sem produto vinculado: cria apenas balcão
+      const { error } = await supa
+        .from("inventario")
+        .insert([{ ...dados, localizacao: "balcao" }]);
+      if (error) { alert("Error: " + error.message); return; }
+    }
   }
+
   fecharModal("modal-inventario");
   carregarInventario();
 }
 
 async function excluirInventario(id) {
-  if (!confirm("¿Eliminar este ítem?")) return;
-  await supa.from("inventario").delete().eq("id", id);
-  carregarInventario();
+  // ── Localiza o item clicado ──
+  const item = _inventarioItems.find((i) => i.id === id);
+  if (!item) { alert("Ítem no encontrado."); return; }
+
+  // ── Se tem produto_id, apaga TODAS as linhas daquele produto (balcão + depósito) ──
+  let paraApagar = [];
+  let descricao  = "";
+
+  if (item.produto_id) {
+    paraApagar = _inventarioItems
+      .filter((i) => i.produto_id === item.produto_id)
+      .map((i) => i.id);
+
+    const nome = item.produtos?.nome || item.nome || "produto";
+    descricao = `"${nome}" — inclui el stock del Balcón y del Depósito`;
+  } else {
+    // Sem vínculo (órfão): apaga só ele mesmo
+    paraApagar = [id];
+    descricao  = `"${item.nome}" (sin vínculo con producto)`;
+  }
+
+  if (!confirm(`¿Eliminar el stock de ${descricao}?\n\nSerán eliminados ${paraApagar.length} registro(s). Esta acción no se puede deshacer.`)) {
+    return;
+  }
+
+  const { error } = await supa.from("inventario").delete().in("id", paraApagar);
+
+  if (error) {
+    console.error("[excluirInventario] Erro:", error);
+    alert(`❌ Error al eliminar:\n\n${error.message}\n\ncode: ${error.code || "n/a"}`);
+    return;
+  }
+
+  // ── Remove do cache local e re-renderiza ──
+  _inventarioItems = _inventarioItems.filter((i) => !paraApagar.includes(i.id));
+  _renderInventarioCards();
+  _verificarAlertasEstoque();
+}
+
+async function limparOrfaosInventario() {
+  const orfaos = _inventarioItems.filter((i) => !i.produto_id);
+  if (!orfaos.length) { alert("No hay ítems huérfanos para limpiar."); return; }
+
+  const nomes = orfaos.map((i) => `• ${i.nome} (${i.localizacao === "deposito" ? "📦" : "🏪"} ${i.quantidade ?? 0} ${i.unidade || "un"})`).join("\n");
+
+  if (!confirm(
+    `Vas a eliminar ${orfaos.length} ítem(s) SIN VÍNCULO con producto:\n\n${nomes}\n\nEstos no pueden recibir transferencias. ¿Continuar?`
+  )) return;
+
+  const ids = orfaos.map((i) => i.id);
+  const { error } = await supa.from("inventario").delete().in("id", ids);
+
+  if (error) {
+    alert(`❌ Error al limpiar:\n\n${error.message}`);
+    return;
+  }
+
+  _inventarioItems = _inventarioItems.filter((i) => i.produto_id);
+  _renderInventarioCards();
+  _verificarAlertasEstoque();
+  alert(`✅ ${ids.length} ítem(s) huérfano(s) eliminado(s).`);
+}
+
+// ══════════════════════════════════════════════════════════════
+//  TRANSFERÊNCIA DE ESTOQUE — Depósito → Balcão
+//  Restrito a: dono, gerente, adminMaster
+// ══════════════════════════════════════════════════════════════
+
+function abrirModalTransferencia(inventarioId) {
+  if (!["dono", "gerente", "adminMaster"].includes(perfilUsuario)) {
+    alert("Solo Dueño o Gerente pueden transferir stock.");
+    return;
+  }
+
+  const item = _inventarioItems.find((i) => i.id === inventarioId);
+  if (!item || !item.produto_id) {
+    alert("Este ítem no está vinculado a un producto.");
+    return;
+  }
+
+  const balcao = _inventarioItems.find(
+    (i) => i.produto_id === item.produto_id && i.localizacao === "balcao",
+  );
+  const deposito = _inventarioItems.find(
+    (i) => i.produto_id === item.produto_id && i.localizacao === "deposito",
+  );
+
+  if (!balcao)    { alert("Este producto no tiene balcón configurado."); return; }
+  if (!deposito)  { alert("Este producto no tiene depósito configurado."); return; }
+
+  document.getElementById("transf-inv-balcao-id").value   = balcao.id;
+  document.getElementById("transf-inv-deposito-id").value = deposito.id;
+  document.getElementById("transf-produto-nome").textContent = item.nome;
+  document.getElementById("transf-deposito-qtd").textContent = deposito.quantidade ?? 0;
+  document.getElementById("transf-balcao-qtd").textContent   = balcao.quantidade ?? 0;
+  document.getElementById("transf-deposito-unid").textContent = deposito.unidade || "un";
+  document.getElementById("transf-balcao-unid").textContent   = balcao.unidade || "un";
+  document.getElementById("transf-qtd").value = "";
+  document.getElementById("transf-erro").style.display = "none";
+  document.getElementById("transf-depois-deposito").textContent = deposito.quantidade ?? 0;
+  document.getElementById("transf-depois-balcao").textContent   = balcao.quantidade ?? 0;
+
+  const btn = document.getElementById("transf-btn-confirmar");
+  btn.disabled = true;
+  btn.style.opacity = "0.5";
+
+  document.getElementById("modal-transferir-estoque").style.display = "flex";
+  setTimeout(() => document.getElementById("transf-qtd")?.focus(), 100);
+}
+
+function transfPreview() {
+  const qtd       = parseInt(document.getElementById("transf-qtd").value) || 0;
+  const depAtual  = parseInt(document.getElementById("transf-deposito-qtd").textContent) || 0;
+  const balAtual  = parseInt(document.getElementById("transf-balcao-qtd").textContent) || 0;
+  const erroEl    = document.getElementById("transf-erro");
+  const btn       = document.getElementById("transf-btn-confirmar");
+
+  if (qtd > depAtual) {
+    erroEl.textContent = `❌ El depósito solo tiene ${depAtual} un. Máximo: ${depAtual}.`;
+    erroEl.style.display = "block";
+    btn.disabled = true;
+    btn.style.opacity = "0.5";
+  } else if (qtd <= 0) {
+    erroEl.style.display = "none";
+    btn.disabled = true;
+    btn.style.opacity = "0.5";
+  } else {
+    erroEl.style.display = "none";
+    btn.disabled = false;
+    btn.style.opacity = "1";
+  }
+
+  document.getElementById("transf-depois-deposito").textContent = Math.max(0, depAtual - qtd);
+  document.getElementById("transf-depois-balcao").textContent   = balAtual + qtd;
+}
+
+async function confirmarTransferencia() {
+  const qtd         = parseInt(document.getElementById("transf-qtd").value) || 0;
+  const balcaoId    = parseInt(document.getElementById("transf-inv-balcao-id").value);
+  const depositoId  = parseInt(document.getElementById("transf-inv-deposito-id").value);
+
+  if (qtd <= 0) return;
+
+  const balcao    = _inventarioItems.find((i) => i.id === balcaoId);
+  const deposito  = _inventarioItems.find((i) => i.id === depositoId);
+
+  if (!balcao || !deposito) { alert("Error: ítem no encontrado."); return; }
+
+  const depQtd = Number(deposito.quantidade) || 0;
+  const balQtd = Number(balcao.quantidade) || 0;
+
+  if (qtd > depQtd) {
+    alert(`❌ El depósito solo tiene ${depQtd} un.`);
+    return;
+  }
+
+  const btn = document.getElementById("transf-btn-confirmar");
+  btn.disabled = true;
+  btn.textContent = "Transferindo...";
+
+  try {
+    // 1. Subtrai do depósito
+    const { error: errDep } = await supa
+      .from("inventario")
+      .update({ quantidade: depQtd - qtd })
+      .eq("id", depositoId);
+    if (errDep) throw errDep;
+
+    // 2. Adiciona ao balcão
+    const { error: errBal } = await supa
+      .from("inventario")
+      .update({ quantidade: balQtd + qtd })
+      .eq("id", balcaoId);
+    if (errBal) throw errBal;
+
+    // 3. Registra 2 movimentos (saída do depósito + entrada no balcão)
+    const email = document.getElementById("user-email")?.innerText || "sistema";
+    const nomeProd = document.getElementById("transf-produto-nome").textContent;
+
+    await supa.from("inventario_movimentos").insert([
+      {
+        inventario_id: depositoId,
+        tipo: "transferencia_saida",
+        quantidade: qtd,
+        motivo: `Transferencia al balcón — ${nomeProd}`,
+        usuario_email: email,
+      },
+      {
+        inventario_id: balcaoId,
+        tipo: "transferencia_entrada",
+        quantidade: qtd,
+        motivo: `Recibido del depósito — ${nomeProd}`,
+        usuario_email: email,
+      },
+    ]);
+
+    // 4. Atualiza cache local
+    deposito.quantidade = depQtd - qtd;
+    balcao.quantidade   = balQtd + qtd;
+
+    fecharModal("modal-transferir-estoque");
+    carregarInventario();
+    alert(`✅ Transferidas ${qtd} un de "${nomeProd}" del depósito al balcón.`);
+  } catch (e) {
+    alert("Error al transferir: " + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-exchange-alt"></i> Transferir';
+  }
 }
 
 function setTipoAjuste(tipo) {
