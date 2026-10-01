@@ -3386,11 +3386,19 @@ async function fecharCaixaResumo() {
       </div>
 
       <div style="display:flex; gap:10px; margin-top:20px;">
-        <button onclick="window.print()" style="flex:1; padding:12px; background:#1a7a2e; color:#fff; border:none; border-radius:8px; font-weight:700; cursor:pointer;">🖨️ Imprimir</button>
+        <button onclick="imprimirBoletimFechamento(window._fechamentoResumoAtual, window._fechamentoSessaoAtual)"
+          style="flex:1; padding:12px; background:#1a7a2e; color:#fff; border:none; border-radius:8px; font-weight:700; cursor:pointer;">
+          🖨️ Imprimir
+        </button>
         <button onclick="fecharCaixaConfirmar()" style="flex:1; padding:12px; background:#e74c3c; color:#fff; border:none; border-radius:8px; font-weight:700; cursor:pointer;">✅ Cerrar Caja</button>
       </div>
     </div>
   `;
+
+  // Expor dados para a função de impressão
+  window._fechamentoResumoAtual = s;
+  window._fechamentoSessaoAtual = _sessaoCaixaAtiva;
+
   document.body.appendChild(modal);
 
   // Mostra/esconde a forma de pagamento + valor do delivery
@@ -3459,6 +3467,147 @@ async function fecharCaixaResumo() {
     await calcularFinanceiro();
     alert('✅ ¡Caja cerrada con éxito!');
   };
+}
+
+// ══════════════════════════════════════════════════════════════
+//  IMPRESSÃO DO BOLETIM DE FECHAMENTO (térmica 58mm — P&B)
+// ══════════════════════════════════════════════════════════════
+function imprimirBoletimFechamento(s, sessao) {
+  if (!s) { alert("Sem dados para imprimir."); return; }
+
+  const fmt  = (n) => Math.round(Number(n) || 0).toLocaleString("es-PY");
+  const data = new Date().toLocaleString("pt-BR", { timeZone: "America/Asuncion" });
+  const nomeRest = NOME_RESTAURANTE || "RESTAURANTE";
+
+  const p = s.por_forma_pagamento || {};
+
+  const linha = (rotulo, valor, bold) =>
+    `<div class="row${bold ? " bold" : ""}"><span>${rotulo}</span><span>${valor}</span></div>`;
+
+  const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Boletim de Caixa</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      font-family: "Courier New", "Consolas", monospace;
+      font-size: 12px;
+      color: #000;
+      background: #fff;
+      line-height: 1.35;
+    }
+    body { padding: 2mm; max-width: 58mm; }
+
+    .center  { text-align: center; }
+    .bold    { font-weight: 900; }
+    .grande  { font-size: 15px; font-weight: 900; }
+
+    h1 { font-size: 14px; font-weight: 900; margin-bottom: 2px; letter-spacing: 0.5px; }
+    h2 { font-size: 12px; font-weight: 900; margin: 6px 0 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    hr { border: none; border-top: 1px dashed #000; margin: 5px 0; }
+
+    .row {
+      display: flex;
+      justify-content: space-between;
+      gap: 6px;
+      padding: 1px 0;
+    }
+    .row span:first-child { flex-shrink: 0; }
+    .row span:last-child  { text-align: right; white-space: nowrap; }
+
+    .total {
+      border-top: 1px dashed #000;
+      margin-top: 4px;
+      padding-top: 4px;
+      font-size: 13px;
+      font-weight: 900;
+    }
+    .total .grande { font-size: 15px; }
+
+    .assinatura {
+      margin-top: 20px;
+      text-align: center;
+      font-size: 10px;
+    }
+    .assinatura .linha {
+      border-top: 1px solid #000;
+      margin: 20px 5mm 3px;
+    }
+
+    @media print {
+      @page { size: 58mm auto; margin: 2mm; }
+      body { padding: 0; max-width: 100%; font-size: 12px; }
+      .nao-imprime { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="center">
+    <h1>${nomeRest.toUpperCase()}</h1>
+    <div class="bold">BOLETIM DE CIERRE DE CAJA</div>
+    <div>${data}</div>
+  </div>
+
+  <hr>
+
+  <div class="row"><span>Sesión:</span><span>#${sessao?.id || "-"}</span></div>
+  <div class="row"><span>Operador:</span><span>${sessao?.usuario_nome || "-"}</span></div>
+
+  <hr>
+
+  <h2>Facturación</h2>
+  ${linha("Facturación total:", "Gs " + fmt(s.faturamento))}
+  ${linha("Pedidos:", s.qtd_pedidos || 0)}
+
+  <h2>Por método</h2>
+  ${linha("Efectivo:",     "Gs " + fmt(p.efetivo))}
+  ${linha("Tarjeta:",      "Gs " + fmt(p.cartao))}
+  ${linha("Pix:",          "Gs " + fmt(p.pix))}
+  ${linha("Transferencia:","Gs " + fmt(p.transferencia))}
+  ${linha("QR Celular:",   "Gs " + fmt(p.qr_celular))}
+  ${linha("QR Máquina:",   "Gs " + fmt(p.qr_maquina))}
+  ${linha("Na Nota quit.:","Gs " + fmt(p.na_nota_quitado))}
+
+  <h2>Costos y movimientos</h2>
+  ${linha("Costo entregas:", "Gs " + fmt(s.custo_entregas))}
+  ${linha("Salidas:",        "Gs " + fmt(s.total_saidas))}
+  ${linha("Entradas:",       "Gs " + fmt(s.total_entradas))}
+  ${linha("Fondo apertura:", "Gs " + fmt(s.valor_abertura))}
+
+  <hr>
+
+  <div class="row total">
+    <span class="grande">RESULTADO</span>
+    <span class="grande">Gs ${fmt(s.resultado_operacional)}</span>
+  </div>
+  <div class="row total">
+    <span class="grande">DINHEIRO GAVETA</span>
+    <span class="grande">Gs ${fmt(s.dinheiro_na_gaveta)}</span>
+  </div>
+
+  <hr>
+
+  <div class="center" style="margin-top:6px">*** FIN DEL CIERRE ***</div>
+
+  <div class="assinatura">
+    <div class="linha"></div>
+    <div>Firma del operador</div>
+  </div>
+
+  <script>
+    window.onload = function() { setTimeout(function() { window.print(); }, 400); };
+  <\/script>
+</body>
+</html>`;
+
+  const win = window.open("", "_blank", "width=400,height=700");
+  if (!win) { alert("Permita pop-ups para imprimir o boletim."); return; }
+  win.document.write(html);
+  win.document.close();
 }
 
 // =========================================
@@ -4175,6 +4324,11 @@ function renderizarCardsProdutos(lista) {
         <button class="btn btn-sm btn-primary" onclick="editarProdutoById(${p.id})">
           <i class="fas fa-edit"></i> Editar
         </button>
+        ${p.codigo_barras ? `
+        <button class="btn btn-sm" onclick="imprimirEtiquetaProduto(${p.id})"
+          style="background:#6366f1;color:#fff" title="Imprimir etiqueta (${p.codigo_barras})">
+          <i class="fas fa-barcode"></i>
+        </button>` : ""}
         <button class="btn btn-sm btn-info" onclick="duplicarProduto(${p.id})" title="Duplicar producto">
           <i class="fas fa-copy"></i>
         </button>
@@ -4195,6 +4349,206 @@ function renderizarCardsProdutos(lista) {
 function editarProdutoById(id) {
   const p = _produtosMap[id];
   if (p) editarProduto(p);
+}
+
+// ══════════════════════════════════════════════════════════════
+//  IMPRESSÃO DE ETIQUETA DE CÓDIGO DE BARRAS (térmica)
+// ══════════════════════════════════════════════════════════════
+function imprimirEtiquetaProduto(produtoId) {
+  const p = _produtosMap[produtoId];
+  if (!p) { alert("Produto não encontrado."); return; }
+  if (!p.codigo_barras) {
+    alert("Este produto não tem código de barras cadastrado.\nEdite-o e adicione primeiro.");
+    return;
+  }
+  if (typeof JsBarcode === "undefined") {
+    alert("Biblioteca JsBarcode não carregou. Verifique a conexão e recarregue.");
+    return;
+  }
+
+  // Gera SVG do código de barras
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  const opts = {
+    width: 2,
+    height: 55,
+    displayValue: true,
+    fontSize: 14,
+    font: "monospace",
+    textMargin: 2,
+    margin: 4,
+    background: "#ffffff",
+    lineColor: "#000000",
+  };
+
+  // Tenta auto-detectar o formato; senão usa CODE128
+  try {
+    JsBarcode(svg, p.codigo_barras, { ...opts, format: "auto" });
+  } catch (e) {
+    try {
+      JsBarcode(svg, p.codigo_barras, { ...opts, format: "CODE128" });
+    } catch (e2) {
+      alert("❌ Código de barras inválido:\n" + e2.message);
+      return;
+    }
+  }
+
+  const barcodeHTML = svg.outerHTML;
+  const preco = `Gs ${(Number(p.preco) || 0).toLocaleString("es-PY")}`;
+  const nomeSeguro = (p.nome || "").replace(/</g, "&lt;");
+
+  const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Etiqueta — ${nomeSeguro}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      font-family: Arial, sans-serif;
+      background: #fff;
+      color: #000;
+    }
+    .label {
+      width: 50mm;
+      min-height: 30mm;
+      padding: 2mm 1.5mm;
+      margin: 0 auto;
+      text-align: center;
+      page-break-after: always;
+      page-break-inside: avoid;
+    }
+    .nome {
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1.15;
+      margin-bottom: 1.5mm;
+      overflow: hidden;
+      max-height: 26px;
+    }
+    .preco {
+      font-size: 16px;
+      font-weight: 900;
+      margin: 1.5mm 0;
+      letter-spacing: 0.3px;
+    }
+    .barcode { display: block; margin: 0 auto; max-width: 100%; }
+    .barcode svg { display: block; margin: 0 auto; height: auto; max-width: 100%; }
+
+    @media print {
+      @page { size: 50mm 30mm; margin: 0; }
+      body { padding: 0; }
+      .label { width: 100%; padding: 1mm; }
+    }
+  </style>
+</head>
+<body>
+  <div class="label">
+    <div class="nome">${nomeSeguro}</div>
+    <div class="preco">${preco}</div>
+    <div class="barcode">${barcodeHTML}</div>
+  </div>
+  <script>
+    window.onload = function() { setTimeout(function() { window.print(); }, 400); };
+    window.onafterprint = function() { setTimeout(function() { window.close(); }, 200); };
+  <\/script>
+</body>
+</html>`;
+
+  const win = window.open("", "_blank", "width=400,height=300");
+  if (!win) { alert("Permita pop-ups para imprimir a etiqueta."); return; }
+  win.document.write(html);
+  win.document.close();
+}
+
+// ══════════════════════════════════════════════════════════════
+//  LEITOR DE CÓDIGO DE BARRAS USB (no PDV)
+//  Scanners USB enviam caracteres muito rápido (<60ms cada)
+//  seguidos de Enter. Detectamos pela velocidade.
+// ══════════════════════════════════════════════════════════════
+let _bcBuf = "";
+let _bcLastTime = 0;
+const _BC_MAX_GAP = 60; // ms entre caracteres — acima disso é digitação humana
+
+document.addEventListener("keydown", function (e) {
+  // Só funciona quando a aba PDV está ativa
+  const pdvTab = document.getElementById("pdv");
+  if (!pdvTab || !pdvTab.classList.contains("active")) return;
+
+  // Só caracteres imprimíveis ou Enter
+  if (e.key.length !== 1 && e.key !== "Enter") return;
+
+  const agora = Date.now();
+  const gap = agora - _bcLastTime;
+  _bcLastTime = agora;
+
+  // Gap grande → novo burst. Reseta buffer.
+  if (gap > _BC_MAX_GAP) _bcBuf = "";
+
+  if (e.key === "Enter") {
+    // Se acumulou >= 6 chars em ritmo de scanner, é barcode
+    if (_bcBuf.length >= 6) {
+      e.preventDefault();
+      e.stopPropagation();
+      const codigo = _bcBuf;
+      _bcBuf = "";
+      processarBarcodePDV(codigo);
+    } else {
+      _bcBuf = "";
+    }
+    return;
+  }
+
+  _bcBuf += e.key;
+});
+
+async function processarBarcodePDV(codigo) {
+  if (!codigo) return;
+  console.log("[Barcode PDV] Código detectado:", codigo);
+
+  // Garante que a lista está carregada
+  if (!produtosCachePDV || produtosCachePDV.length === 0) {
+    await carregarPDV();
+  }
+
+  // Procura produto com esse código
+  const produto = produtosCachePDV.find(
+    (p) => String(p.codigo_barras || "").trim() === String(codigo).trim(),
+  );
+
+  if (!produto) {
+    _pdvToast(`❌ Código não encontrado: ${codigo}`, 2500);
+    return;
+  }
+
+  if (!produto.ativo) {
+    _pdvToast(`⏸️ Produto pausado: ${produto.nome}`, 2500);
+    return;
+  }
+
+  // Limpa busca se tiver texto (evita filtro antigo interferir)
+  const _buscaEl = document.getElementById("pdv-busca");
+  if (_buscaEl && _buscaEl.value) {
+    _buscaEl.value = "";
+    renderizarGridPDV();
+  }
+
+  // Adiciona direto ao carrinho (respeita variações/modal do produto)
+  adicionarItemPDV(produto);
+
+  _pdvToast(`✅ ${produto.nome}`, 1800);
+
+  // Feedback sonoro opcional (beep curto via Web Audio)
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.value = 1200;
+    gain.gain.value = 0.06;
+    osc.start();
+    osc.stop(ctx.currentTime + 0.06);
+    osc.onended = () => ctx.close();
+  } catch (_) {}
 }
 
 function editarProduto(p) {
@@ -4649,10 +5003,31 @@ async function salvarProduto() {
         }
       }
     }
+    const _codigoBarrasVal = (document.getElementById("prod-codigo-barras")?.value || "").trim() || null;
+
+    // Validação: se preenchido, exige mínimo 6 dígitos e único
+    if (_codigoBarrasVal) {
+      if (_codigoBarrasVal.length < 6) {
+        alert("⚠️ O código de barras deve ter pelo menos 6 caracteres.");
+        return;
+      }
+      const { data: dup } = await supa
+        .from("produtos")
+        .select("id, nome")
+        .eq("codigo_barras", _codigoBarrasVal)
+        .neq("id", id || 0)
+        .maybeSingle();
+      if (dup) {
+        alert(`⚠️ Este código de barras já está cadastrado no produto "${dup.nome}".`);
+        return;
+      }
+    }
+
     const dados = {
       nome: document.getElementById("prod-nome").value,
       descricao: document.getElementById("prod-desc").value,
       preco: precoBase,
+      codigo_barras: _codigoBarrasVal,
       categoria_slug: document.getElementById("prod-cat").value || null,
       subcategoria_slug: document.getElementById("prod-subcat")?.value || null,
       imagem_url: urlFinal,
@@ -4761,6 +5136,8 @@ async function abrirModalProduto(produto = null, tipoInicial = null) {
   document.getElementById("prod-id").value = "";
   document.getElementById("prod-nome").value = "";
   document.getElementById("prod-desc").value = "";
+  const _codBarEl = document.getElementById("prod-codigo-barras");
+  if (_codBarEl) _codBarEl.value = "";
   document.getElementById("prod-preco").value = "";
   document.getElementById("prod-img").value = "";
   document.getElementById("box-preview").style.display = "none";
@@ -4840,6 +5217,8 @@ async function abrirModalProduto(produto = null, tipoInicial = null) {
     document.getElementById("prod-id").value = produto.id;
     document.getElementById("prod-nome").value = produto.nome;
     document.getElementById("prod-desc").value = produto.descricao || "";
+    const _codBarLoad = document.getElementById("prod-codigo-barras");
+    if (_codBarLoad) _codBarLoad.value = produto.codigo_barras || "";
     document.getElementById("prod-preco").value = produto.preco;
     document.getElementById("prod-img").value = produto.imagem_url || "";
     document.getElementById("prod-somente-balcao").checked =

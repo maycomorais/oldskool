@@ -54,6 +54,7 @@
       .pdv-lista-vazio{text-align:center;color:#9ca3af;font-size:.83rem;padding:24px 0}
     </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
   <base target="_blank">
   <style>
   /* ── Builder item rows (açaí, suco, sorvete, combo) ── */
@@ -1884,7 +1885,7 @@
           <h2 class="section-title" style="margin:0" data-i18n="estoque.title">📦 Control de Stock</h2>
           <button class="btn btn-success" onclick="abrirModalInventario()"><i class="fas fa-plus"></i> <span data-i18n="estoque.novo">Nuevo Ítem</span></button>
         </div>
-                  <div style="display:flex;gap:6px">
+          <div style="display:flex;gap:6px">
             <button class="btn btn-success" onclick="abrirModalInventario()"><i class="fas fa-plus"></i> <span data-i18n="estoque.novo">Nuevo Ítem</span></button>
             <button class="btn" id="btn-limpar-orfaos" onclick="limparOrfaosInventario()" style="background:#fef3c7;color:#92400e;border:1.5px solid #fcd34d;display:none">
               🧹 Limpiar huérfanos
@@ -2343,6 +2344,17 @@
         <div class="form-group">
           <label data-i18n="prod.nome">Nome</label>
           <input type="text" id="prod-nome" class="form-control" />
+        </div>
+        <div class="form-group">
+          <label>
+            <i class="fas fa-barcode" style="color:#6366f1"></i>
+            Código de Barras
+            <small style="color:#888;font-weight:400">(opcional — EAN-13, CODE128, etc.)</small>
+          </label>
+          <input type="text" id="prod-codigo-barras" class="form-control"
+            placeholder="Ex: 7891000100103"
+            style="font-family: 'Courier New', monospace; letter-spacing: 1px;"
+            oninput="this.value = this.value.replace(/\s/g, '')" />
         </div>
         <div class="form-group">
           <label data-i18n="prod.descricao">Descripción</label>
