@@ -4461,41 +4461,93 @@ function imprimirEtiquetaProduto(produtoId) {
 }
 
 // ══════════════════════════════════════════════════════════════
-//  LEITOR DE CÓDIGO DE BARRAS USB (no PDV)
-//  Scanners USB enviam caracteres muito rápido (<60ms cada)
-//  seguidos de Enter. Detectamos pela velocidade.
+//  LEITOR DE CÓDIGO DE BARRAS USB (no PDV) — v2 robusto
+//  - Captura caracteres em sequência rápida (<60ms) como barcode
+//  - Bloqueia caracteres para não poluir inputs focados
+//  - Ignora leitura se houver modal aberto
 // ══════════════════════════════════════════════════════════════
 let _bcBuf = "";
 let _bcLastTime = 0;
-const _BC_MAX_GAP = 60; // ms entre caracteres — acima disso é digitação humana
+let _bcBurstAtivo = false;      // true quando estamos no meio de um burst
+let _bcInputPoluido = null;     // input que recebeu o burst (para limpar depois)
+const _BC_MAX_GAP = 60;         // ms entre caracteres
+const _BC_MIN_LEN = 6;          // mínimo de chars para considerar barcode
 
 document.addEventListener("keydown", function (e) {
-  // Só funciona quando a aba PDV está ativa
+  // 1) Só funciona quando a aba PDV está ativa
   const pdvTab = document.getElementById("pdv");
   if (!pdvTab || !pdvTab.classList.contains("active")) return;
 
-  // Só caracteres imprimíveis ou Enter
+  // 2) Ignora se algum modal do PDV está aberto (evita duplo modal)
+  const modaisAbertos = document.querySelectorAll(
+    "#pdv-opcoes-modal, #pdv-kg-modal, #pdv-var-modal, #modal-alterar-senha"
+  );
+  if (modaisAbertos.length > 0) return;
+
+  // 3) Só caracteres imprimíveis ou Enter
   if (e.key.length !== 1 && e.key !== "Enter") return;
 
   const agora = Date.now();
   const gap = agora - _bcLastTime;
   _bcLastTime = agora;
 
-  // Gap grande → novo burst. Reseta buffer.
-  if (gap > _BC_MAX_GAP) _bcBuf = "";
+  // Gap grande → encerra burst anterior e começa um novo
+  if (gap > _BC_MAX_GAP) {
+    _bcBuf = "";
+    _bcBurstAtivo = false;
+    _bcInputPoluido = null;
+  }
 
+  // ─── ENTER ───
   if (e.key === "Enter") {
-    // Se acumulou >= 6 chars em ritmo de scanner, é barcode
-    if (_bcBuf.length >= 6) {
+    if (_bcBuf.length >= _BC_MIN_LEN) {
       e.preventDefault();
       e.stopPropagation();
       const codigo = _bcBuf;
+      const inputSujo = _bcInputPoluido;
+
+      // Reseta estado
       _bcBuf = "";
+      _bcBurstAtivo = false;
+      _bcInputPoluido = null;
+
+      // Limpa o input que recebeu os caracteres do scanner
+      if (inputSujo) {
+        try {
+          inputSujo.value = "";
+          // Se for o campo de busca, re-renderiza o grid limpo
+          if (inputSujo.id === "pdv-busca") {
+            renderizarGridPDV();
+          }
+          inputSujo.blur();
+        } catch (_) {}
+      }
+
       processarBarcodePDV(codigo);
     } else {
       _bcBuf = "";
+      _bcBurstAtivo = false;
+      _bcInputPoluido = null;
     }
     return;
+  }
+
+  // ─── CARACTERE ───
+  // Detecta o início do burst: primeiro char em <60ms desde o último keydown
+  if (!_bcBurstAtivo && _bcBuf.length > 0) {
+    _bcBurstAtivo = true;
+
+    // Registra qual input está focado para limpar depois
+    const el = document.activeElement;
+    if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT")) {
+      _bcInputPoluido = el;
+    }
+  }
+
+  // Se estamos em burst de barcode, previne que o caractere entre no input
+  if (_bcBurstAtivo) {
+    e.preventDefault();
+    e.stopPropagation();
   }
 
   _bcBuf += e.key;
@@ -4505,18 +4557,19 @@ async function processarBarcodePDV(codigo) {
   if (!codigo) return;
   console.log("[Barcode PDV] Código detectado:", codigo);
 
-  // Garante que a lista está carregada
+  // Garante lista carregada
   if (!produtosCachePDV || produtosCachePDV.length === 0) {
     await carregarPDV();
   }
 
-  // Procura produto com esse código
+  // Procura por codigo_barras exato (trim para tolerar espaços)
+  const codigoLimpo = String(codigo).trim();
   const produto = produtosCachePDV.find(
-    (p) => String(p.codigo_barras || "").trim() === String(codigo).trim(),
+    (p) => String(p.codigo_barras || "").trim() === codigoLimpo,
   );
 
   if (!produto) {
-    _pdvToast(`❌ Código não encontrado: ${codigo}`, 2500);
+    _pdvToast(`❌ Código não encontrado: ${codigoLimpo}`, 2500);
     return;
   }
 
@@ -4525,19 +4578,19 @@ async function processarBarcodePDV(codigo) {
     return;
   }
 
-  // Limpa busca se tiver texto (evita filtro antigo interferir)
+  // Limpa busca (defensivo — se por algum motivo sobrou texto)
   const _buscaEl = document.getElementById("pdv-busca");
   if (_buscaEl && _buscaEl.value) {
     _buscaEl.value = "";
     renderizarGridPDV();
   }
 
-  // Adiciona direto ao carrinho (respeita variações/modal do produto)
+  // Adiciona ao carrinho (respeita builders: pizza/shake/kg abrem modal)
   adicionarItemPDV(produto);
 
   _pdvToast(`✅ ${produto.nome}`, 1800);
 
-  // Feedback sonoro opcional (beep curto via Web Audio)
+  // Beep curto de confirmação
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     const osc = ctx.createOscillator();
