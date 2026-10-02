@@ -1985,15 +1985,15 @@ async function calcularFinanceiro() {
   const abaFin = document.getElementById("financeiro");
   if (!abaFin || !abaFin.classList.contains("active")) return;
 
-  const elTipo    = document.getElementById("fin-tipo");
-  const elFactura = document.getElementById("fin-factura");
+  const elTipo        = document.getElementById("fin-tipo");
+  const elFactura     = document.getElementById("fin-factura");
+  const elClienteTipo = document.getElementById("fin-cliente-tipo");
   if (!elTipo) return;
 
   const ehGestor   = ["dono", "gerente", "adminMaster"].includes(perfilUsuario);
   const emailAtual = document.getElementById("user-email")?.innerText || "";
 
   await _carregarSessaoCaixa();
-  // Fallback: se nunca foi carregado (ex: usuário nunca abriu Config), busca agora
   if (typeof TAXA_MOTOBOY !== "number" || TAXA_MOTOBOY === 0 || AJUDA_COMBUSTIVEL === 0) {
     const { data: _cfgMot } = await supa
       .from("configuracoes")
@@ -2017,12 +2017,13 @@ async function calcularFinanceiro() {
     elFim.value = new Date(new Date(utcFim).getTime() - _tz).toISOString().split("T")[0];
   }
 
-  const tipoFiltro    = elTipo.value;
-  const facturaFiltro = elFactura ? elFactura.value : "todos";
+  const tipoFiltro        = elTipo.value;
+  const facturaFiltro     = elFactura ? elFactura.value : "todos";
+  const clienteTipoFiltro = elClienteTipo ? elClienteTipo.value : "todos";
 
   let query = supa
     .from("pedidos")
-    .select("*")   // sem join — buscamos nomes de motoboy separadamente
+    .select("*")
     .in("status", ["entregue", "em_preparo", "pronto_entrega", "saiu_entrega"])
     .gte("created_at", utcInicio)
     .lte("created_at", utcFim);
@@ -2034,17 +2035,34 @@ async function calcularFinanceiro() {
       query = query.eq("forma_pagamento", tipoFiltro);
     }
   }
+  // Filtro por tipo de cliente: mensalista usa LIKE no obs_pagamento
+  // (o campo forma_pagamento pode ser "Multipagamento" quando há split)
+  if (clienteTipoFiltro === "mensalista") {
+    query = query.or(
+      "forma_pagamento.eq.Mensalista,obs_pagamento.ilike.%Mensalista%"
+    );
+  } else if (clienteTipoFiltro === "nao_mensalista") {
+    query = query.not("forma_pagamento", "eq", "Mensalista");
+  }
   if (!ehGestor && _perfilId) query = query.eq("garcom_id", _perfilId);
 
   const { data: pedidos } = await query;
   let peds = pedidos || [];
 
-  const _mbIds = [...new Set(peds.filter(p => p.motoboy_id).map(p => p.motoboy_id))];
+  // Aplica filtro "não mensalista" também em memória (para cobrir split)
+  if (clienteTipoFiltro === "nao_mensalista") {
+    peds = peds.filter((p) => {
+      const fp = (p.forma_pagamento || "").toLowerCase();
+      const obs = (p.obs_pagamento || "").toLowerCase();
+      return fp !== "mensalista" && !obs.includes("mensalista");
+    });
+  }
+
+  const _mbIds = [...new Set(peds.filter((p) => p.motoboy_id).map((p) => p.motoboy_id))];
   const _motoboyNomeMap = {};
   if (_mbIds.length) {
-    const { data: _mbs } = await supa
-      .from("motoboys").select("id, nome").in("id", _mbIds);
-    (_mbs || []).forEach(m => { _motoboyNomeMap[m.id] = m.nome; });
+    const { data: _mbs } = await supa.from("motoboys").select("id, nome").in("id", _mbIds);
+    (_mbs || []).forEach((m) => { _motoboyNomeMap[m.id] = m.nome; });
   }
 
   if (facturaFiltro === "com_factura")
@@ -2052,7 +2070,6 @@ async function calcularFinanceiro() {
   else if (facturaFiltro === "sem_factura")
     peds = peds.filter((p) => !p.dados_factura?.ruc && !p.dados_factura?.ci);
 
-  // Movimentações de caixa
   let caixa = [];
   if (_sessaoCaixaAtiva?.id) {
     let caixaQuery = supa
@@ -2076,7 +2093,7 @@ async function calcularFinanceiro() {
   const safeNum = (v) => {
     if (!v) return 0;
     if (typeof v === "number") return v;
-    return parseFloat(v.toString().replace(/[^\d.,-]/g,"").replace(",",".")) || 0;
+    return parseFloat(v.toString().replace(/[^\d.,-]/g, "").replace(",", ".")) || 0;
   };
   const fmt = (n) => "Gs " + n.toLocaleString("es-PY");
   const fmtBRL = (n) => "R$ " + n.toFixed(2).replace(".", ",");
@@ -2085,6 +2102,8 @@ async function calcularFinanceiro() {
       totalEfetivo = 0, totalNaNota = 0, totalQrCelular = 0, totalQrMaquina = 0;
   let custoEntregas = 0, qtdPedidos = 0;
   let totalTaxaServico = 0, qtdPedidosComTaxaServico = 0;
+  // KPI dedicado para vendas mensalista
+  let faturamentoMensalista = 0, qtdPedidosMensalista = 0;
   const motoMap = {};
 
   function _acumularMetodo(metodoRaw, valor) {
@@ -2099,30 +2118,33 @@ async function calcularFinanceiro() {
 
   peds.forEach((p) => {
     const pag = (p.forma_pagamento || "").toLowerCase();
+    const obsPag = (p.obs_pagamento || "").toLowerCase();
+    const isMensalista = pag === "mensalista" || obsPag.includes("mensalista");
     const isNaNota = pag === "nanota";
     const isQuitado = !!p.quitado_em || (p.obs_pagamento || "").toLowerCase().includes("[quitado");
 
-    // NaNota NÃO quitado: não entra no faturamento, exibido em "Na Nota"
+    // Contabiliza KPI de mensalista (antes de qualquer skip)
+    if (isMensalista) {
+      faturamentoMensalista += safeNum(p.total_geral);
+      qtdPedidosMensalista++;
+    }
+
     if (isNaNota && !isQuitado) {
       totalNaNota += safeNum(p.total_geral);
       return;
     }
-
-    // Mensalista: pula
-    if (pag === "mensalista") return;
+    if (isMensalista) return;
 
     const val = safeNum(p.total_geral);
     faturamento += val;
     qtdPedidos++;
 
-    // Taxa de Serviço: valor a repassar aos funcionários (KPI separado)
     const taxaServ = safeNum(p.taxa_servico_valor);
     if (taxaServ > 0) {
       totalTaxaServico += taxaServ;
       qtdPedidosComTaxaServico++;
     }
 
-    // NaNota QUITADO: soma na forma de pagamento real, NÃO entra em totalNaNota
     if (isNaNota && isQuitado) {
       let formaQuitacao = p.forma_pagamento_quitacao || null;
       if (!formaQuitacao) {
@@ -2140,75 +2162,89 @@ async function calcularFinanceiro() {
       _acumularMetodo(pag, val);
     }
 
-    // Custo entregas (delivery)
     if (p.tipo_entrega === "delivery") {
       const taxa = safeNum(p.frete_motoboy) || TAXA_MOTOBOY || 0;
       custoEntregas += taxa;
       const nm = p.motoboy_id
-      ? (_motoboyNomeMap[p.motoboy_id] || `Motoboy #${p.motoboy_id}`)
-      : "Sem Motoboy";
+        ? (_motoboyNomeMap[p.motoboy_id] || `Motoboy #${p.motoboy_id}`)
+        : "Sem Motoboy";
       if (!motoMap[nm]) motoMap[nm] = { entregas: 0, frete_total: 0 };
       motoMap[nm].entregas++;
       motoMap[nm].frete_total += taxa;
     }
   });
 
-  const qtdMotoboyUnicos = Object.keys(motoMap).filter(n => n !== "Sem Motoboy").length;
+  const qtdMotoboyUnicos = Object.keys(motoMap).filter((n) => n !== "Sem Motoboy").length;
   custoEntregas += (AJUDA_COMBUSTIVEL || 0) * qtdMotoboyUnicos;
 
-  // Despesas (saídas) - apenas despesas e sangrias
   let totalSaidas = 0;
   (caixa || []).forEach((c) => {
     const v = safeNum(c.valor);
-    if (c.tipo === "despesa" || c.tipo === "sangria") {
-      totalSaidas += v;
-    }
+    if (c.tipo === "despesa" || c.tipo === "sangria") totalSaidas += v;
   });
 
   const fundoAbertura = safeNum(_sessaoCaixaAtiva?.valor_abertura);
-
-  // ════════════════════════════════════════════════════════════════
-  //  LUCRO = faturamento - custoEntregas - totalSaidas
-  //  NÃO soma entradas (abertura, quitação de NaNota, etc.)
-  // ════════════════════════════════════════════════════════════════
   const lucro = faturamento - custoEntregas - totalSaidas;
 
-  const setV  = (id, v) => { const el = document.getElementById(id); if (el) el.innerText = v; };
+  const setV = (id, v) => { const el = document.getElementById(id); if (el) el.innerText = v; };
 
-  setV("card-faturamento",  fmt(faturamento));
-  setV("card-custo-moto",   fmt(custoEntregas));
-  setV("card-lucro",        fmt(lucro));
-  // Taxa de Serviço: valor total a repassar aos funcionários (se o card existir na tela)
+  setV("card-faturamento", fmt(faturamento));
+  setV("card-custo-moto", fmt(custoEntregas));
+  setV("card-lucro", fmt(lucro));
   setV("card-taxa-servico", fmt(totalTaxaServico));
-  setV("card-taxa-servico-qtd", qtdPedidosComTaxaServico + (qtdPedidosComTaxaServico === 1 ? " pedido" : " pedidos"));
+  setV(
+    "card-taxa-servico-qtd",
+    qtdPedidosComTaxaServico + (qtdPedidosComTaxaServico === 1 ? " pedido" : " pedidos")
+  );
 
   const totalPixBRL = COTACAO_REAL > 0 ? totalPix / COTACAO_REAL : 0;
   const pixDisplay = totalPix > 0 ? `${fmt(totalPix)} (≈ ${fmtBRL(totalPixBRL)})` : fmt(totalPix);
   setV("total-pix", pixDisplay);
-
-  setV("total-transf",      fmt(totalTransf));
-  setV("total-cartao",      fmt(totalCartao));
-  setV("total-efetivo",     fmt(totalEfetivo));
-  setV("total-nanota",      fmt(totalNaNota));
-  setV("total-qr",          fmt(totalQrCelular));
-  setV("total-qrmaquina",   fmt(totalQrMaquina));
+  setV("total-transf", fmt(totalTransf));
+  setV("total-cartao", fmt(totalCartao));
+  setV("total-efetivo", fmt(totalEfetivo));
+  setV("total-nanota", fmt(totalNaNota));
+  setV("total-qr", fmt(totalQrCelular));
+  setV("total-qrmaquina", fmt(totalQrMaquina));
   setV("total-fundo-abertura", fmt(fundoAbertura));
-  setV("card-qtd-pedidos",  qtdPedidos);
+  setV("card-qtd-pedidos", qtdPedidos);
   setV("card-ticket-medio", fmt(qtdPedidos > 0 ? faturamento / qtdPedidos : 0));
 
-  if (typeof renderizarHistoricoCaixa === "function") {
-    renderizarHistoricoCaixa(caixa, _sessaoCaixaAtiva);
+  // Exibe KPI mensalista (novo card criado dinamicamente abaixo do card-faturamento)
+  let _elMsgMens = document.getElementById("fin-kpi-mensalista");
+  if (!_elMsgMens) {
+    const _anchor = document.querySelector(".kpi-grid");
+    if (_anchor) {
+      const div = document.createElement("div");
+      div.id = "fin-kpi-mensalista";
+      div.className = "kpi-card";
+      div.style.cssText = "background:linear-gradient(135deg,#fef3c7,#fde68a);color:#7c2d12";
+      div.innerHTML = `
+        <h3 style="color:#7c2d12">🎫 Vendas Mensalista</h3>
+        <div class="value" id="fin-kpi-mensalista-valor" style="color:#7c2d12">Gs 0</div>
+        <div style="font-size:0.75rem;color:#92400e;margin-top:2px" id="fin-kpi-mensalista-qtd">0 pedidos</div>`;
+      _anchor.appendChild(div);
+    }
   }
-  if (typeof carregarHistoricoFechamentos === "function") {
-    carregarHistoricoFechamentos();
-  }
+  setV("fin-kpi-mensalista-valor", fmt(faturamentoMensalista));
+  setV(
+    "fin-kpi-mensalista-qtd",
+    qtdPedidosMensalista + (qtdPedidosMensalista === 1 ? " pedido" : " pedidos")
+  );
+
+  if (typeof renderizarHistoricoCaixa === "function") renderizarHistoricoCaixa(caixa, _sessaoCaixaAtiva);
+  if (typeof carregarHistoricoFechamentos === "function") carregarHistoricoFechamentos();
 
   const badgeCaixa = document.getElementById("badge-caixa-operador");
   if (badgeCaixa) {
     if (_sessaoCaixaAtiva) {
-      const dAbr = new Date(_sessaoCaixaAtiva.aberto_em).toLocaleString("pt-BR", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" });
+      const dAbr = new Date(_sessaoCaixaAtiva.aberto_em).toLocaleString("pt-BR", {
+        day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+      });
       const dFch = _sessaoCaixaAtiva.fechado_em
-        ? new Date(_sessaoCaixaAtiva.fechado_em).toLocaleString("pt-BR", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" })
+        ? new Date(_sessaoCaixaAtiva.fechado_em).toLocaleString("pt-BR", {
+            day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+          })
         : "em aberto";
       badgeCaixa.textContent = ehGestor
         ? `📊 Visão geral — sessão ${_sessaoCaixaAtiva.id} (${_sessaoCaixaAtiva.usuario_email}) · ${dAbr} → ${dFch}`
@@ -2218,25 +2254,29 @@ async function calcularFinanceiro() {
     }
   }
 
-  // Tabela de despesas
   const tbD = document.getElementById("lista-despesas-caixa");
   if (tbD) {
     const despesas = (caixa || []).filter((c) => c.tipo === "despesa");
     const _DLABELS = {
-      despesas_gerais:"📦 Despesas Gerais", contas_fixas:"🏠 Contas Fixas",
-      pagamento_fornecedor:"🤝 Fornecedor",  pagamento_funcionario:"👷 Empleado",
-      pagamento_terceiros:"👥 Terceiros",    manutencao:"🔧 Manutenção",
-      retirada:"💵 Retirada", motoboy:"🛵 Motoboy", outro:"✏️ Outro",
+      despesas_gerais: "📦 Despesas Gerais", contas_fixas: "🏠 Contas Fixas",
+      pagamento_fornecedor: "🤝 Fornecedor", pagamento_funcionario: "👷 Empleado",
+      pagamento_terceiros: "👥 Terceiros", manutencao: "🔧 Manutenção",
+      retirada: "💵 Retirada", motoboy: "🛵 Motoboy", outro: "✏️ Outro",
     };
     if (!despesas.length) {
       tbD.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#999;padding:16px">Ningún gasto en esta sesión</td></tr>';
     } else {
       tbD.innerHTML = despesas.map((d) => {
-        const dt = new Date(d.created_at).toLocaleString("pt-BR", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" });
+        const dt = new Date(d.created_at).toLocaleString("pt-BR", {
+          day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+        });
         const tipoLabel = _DLABELS[d.tipo_despesa] || d.tipo_despesa || "—";
         const descExtra = d.tipo_despesa === "outro" && d.descricao_outro ? ` (${d.descricao_outro})` : "";
         const obs = d.descricao || "";
-        const enc = encodeURIComponent(JSON.stringify({ id:d.id, valor:d.valor, tipo_despesa:d.tipo_despesa||"despesas_gerais", descricao:d.descricao||"", descricao_outro:d.descricao_outro||"" }));
+        const enc = encodeURIComponent(JSON.stringify({
+          id: d.id, valor: d.valor, tipo_despesa: d.tipo_despesa || "despesas_gerais",
+          descricao: d.descricao || "", descricao_outro: d.descricao_outro || "",
+        }));
         return `<tr>
           <td style="white-space:nowrap;color:#666;font-size:0.82rem">${dt}</td>
           <td><span style="background:#fdecea;color:#a93226;padding:2px 7px;border-radius:10px;font-size:0.78rem">${tipoLabel}${descExtra}</span></td>
@@ -2250,7 +2290,6 @@ async function calcularFinanceiro() {
     }
   }
 
-  // Tabela de motoboys
   const tbM = document.getElementById("lista-financeiro-motoboys");
   if (tbM) {
     tbM.innerHTML = "";
@@ -2260,7 +2299,7 @@ async function calcularFinanceiro() {
       for (const [nome, d] of Object.entries(motoMap)) {
         const semNome = nome === "Sem Motoboy";
         const comb = semNome ? 0 : AJUDA_COMBUSTIVEL || 0;
-        const tot  = d.frete_total + comb;
+        const tot = d.frete_total + comb;
         const combLabel = semNome
           ? '<span style="color:#aaa;font-size:0.78rem">sem combustível</span>'
           : `+ comb. ${fmt(comb)}`;
@@ -2370,7 +2409,7 @@ function renderizarHistoricoCaixa(movimentacoes, sessao) {
 }
 
 // ============================================================
-//  IMPRIMIR HISTÓRICO DE CAIXA
+//  IMPRIMIR HISTÓRICO DE CAIXA — TÉRMICA (preto e branco)
 // ============================================================
 function imprimirHistoricoCaixa() {
   const container = document.getElementById("historico-caixa-container");
@@ -2378,62 +2417,119 @@ function imprimirHistoricoCaixa() {
     alert("Ningún historial disponible para impresión.");
     return;
   }
-  // Abre uma janela com o conteúdo formatado para impressão
-  const win = window.open('', '_blank', 'width=700,height=500');
-  if (!win) {
-    alert("Permita pop-ups para imprimir.");
-    return;
-  }
-  const conteudo = container.innerHTML;
-  const titulo = NOME_RESTAURANTE || "Historial de Caja";
-  win.document.write(`<!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"><title>Historial de Caja</title>
-<style>
-  body { font-family:Arial,sans-serif; font-size:12px; padding:20px; }
-  h2 { text-align:center; }
-  table { width:100%; border-collapse:collapse; margin-top:12px; }
-  th, td { border:1px solid #ccc; padding:6px; text-align:left; }
-  th { background:#f0f0f0; }
-  .total { font-weight:700; text-align:right; padding:8px; }
-  @media print { body { padding:10px; } }
-</style>
+
+  const _nomeRestaurante = (typeof NOME_RESTAURANTE !== "undefined" && NOME_RESTAURANTE) || "HISTORIAL DE CAJA";
+  const _dataEmissao = new Date().toLocaleString("es-PY");
+
+  // Clona o conteúdo do container para extrair apenas os dados textuais,
+  // descartando qualquer estilo colorido da tela.
+  const _rows = Array.from(container.querySelectorAll("tr")).map(tr => {
+    const tds = Array.from(tr.querySelectorAll("td, th")).map(td => (td.textContent || "").trim());
+    return tds;
+  });
+
+  const _tabelaHtml = _rows.map((cols, idx) => {
+    const celulas = cols.map(c => `<td>${c}</td>`).join("");
+    const isHeader = idx === 0;
+    return isHeader
+      ? `<thead><tr>${cols.map(c => `<th>${c}</th>`).join("")}</tr></thead>`
+      : `<tr>${celulas}</tr>`;
+  }).join("");
+
+  const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Historial de Caja</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html, body {
+      font-family: "Courier New", "Consolas", monospace;
+      font-size: 11px;
+      color: #000;
+      background: #fff;
+      line-height: 1.35;
+    }
+    body { padding: 2mm; max-width: 58mm; }
+    .center  { text-align: center; }
+    .bold    { font-weight: 900; }
+    .grande  { font-size: 14px; font-weight: 900; }
+    h1 { font-size: 13px; font-weight: 900; margin-bottom: 2px; letter-spacing: 0.5px; }
+    h2 { font-size: 11px; font-weight: 900; margin: 6px 0 2px; text-transform: uppercase; }
+    hr { border: none; border-top: 1px dashed #000; margin: 5px 0; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 10px; margin-top: 4px; }
+    th, td {
+      border: 1px solid #000;
+      padding: 3px 4px;
+      text-align: left;
+      vertical-align: top;
+      color: #000;
+    }
+    th { background: #fff; font-weight: 900; }
+    td:last-child, th:last-child { text-align: right; white-space: nowrap; }
+
+    .footer {
+      text-align: center;
+      font-size: 9px;
+      margin-top: 8px;
+      color: #000;
+    }
+    @media print {
+      @page { size: 58mm auto; margin: 2mm; }
+      body { padding: 0; max-width: 100%; }
+      button { display: none !important; }
+    }
+  </style>
 </head>
 <body>
-  <h2>${titulo} - Historial de Caja</h2>
-  ${conteudo}
-  <p style="text-align:center; margin-top:20px; font-size:10px; color:#888;">Impresso em ${new Date().toLocaleString("pt-BR")}</p>
+  <div class="center">
+    <h1>${_nomeRestaurante.toUpperCase()}</h1>
+    <div class="bold">HISTORIAL DE CAJA</div>
+    <div>${_dataEmissao}</div>
+  </div>
+
+  <hr>
+  <table>
+    ${_tabelaHtml}
+  </table>
+
+  <hr>
+  <div class="footer">*** FIN DEL HISTORIAL ***</div>
+
   <script>
-    window.onload = function() { window.print(); }
+    window.onload = function() { setTimeout(function(){ window.print(); }, 400); };
   <\/script>
 </body>
-</html>`);
+</html>`;
+
+  const win = window.open("", "_blank", "width=400,height=700");
+  if (!win) { alert("Permita pop-ups para imprimir."); return; }
+  win.document.write(html);
   win.document.close();
 }
 
 // ============================================================
 //  HISTÓRICO DE FECHAMENTOS (dias/sessões passadas)
-//  Diferente de renderizarHistoricoCaixa() acima, que só mostra as
-//  movimentações da sessão ATUAL — esta lista sessões já FECHADAS,
-//  com um botão para reabrir o boletim completo de cada uma
-//  (lido de sessoes_caixa.resumo_fechamento, gravado no fechamento).
+//  Lista sessões JÁ FECHADAS com botão para reabrir o boletim
+//  (lido de sessoes_caixa.resumo_fechamento) e botão para imprimir.
 // ============================================================
 async function carregarHistoricoFechamentos() {
-  // Cria a seção colapsável, reaproveitando o mesmo placeholder da
-  // sección "Historial de Caja" ya existente.
   let section = document.getElementById("historico-fechamentos-section");
   if (!section) {
     const placeholder = document.getElementById("historico-caixa-placeholder");
     if (!placeholder) {
-      console.warn("Elemento #historico-caixa-placeholder no encontrado. El historial de cierres no será insertado.");
+      console.warn("Elemento #historico-caixa-placeholder no encontrado.");
       return;
     }
     section = document.createElement("details");
     section.id = "historico-fechamentos-section";
-    section.style.cssText = "margin-top:12px; border:1px solid #e0e0e0; border-radius:8px; padding:12px; background:#fafafa;";
+    section.style.cssText =
+      "margin-top:12px; border:1px solid #e0e0e0; border-radius:8px; padding:12px; background:#fafafa;";
 
     const summary = document.createElement("summary");
-    summary.style.cssText = "font-weight:700; font-size:1rem; cursor:pointer; color:var(--primary);";
+    summary.style.cssText =
+      "font-weight:700; font-size:1rem; cursor:pointer; color:var(--primary);";
     summary.textContent = "🗓️ Histórico de Fechamentos";
     section.appendChild(summary);
 
@@ -2457,31 +2553,48 @@ async function carregarHistoricoFechamentos() {
     .limit(30);
 
   if (error || !sessoes?.length) {
-    container.innerHTML = '<div style="text-align:center;padding:16px;color:#aaa;">Ningún cierre registrado todavía.</div>';
+    container.innerHTML =
+      '<div style="text-align:center;padding:16px;color:#aaa;">Ningún cierre registrado todavía.</div>';
     return;
   }
 
   const fmt = (n) => "Gs " + Math.round(n || 0).toLocaleString("es-PY");
 
-  container.innerHTML = sessoes.map((s) => {
-    const abertoFmt = new Date(s.aberto_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
-    const fechadoFmt = new Date(s.fechado_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
-    const temResumo = !!s.resumo_fechamento;
-    return `
+  container.innerHTML = sessoes
+    .map((s) => {
+      const abertoFmt = new Date(s.aberto_em).toLocaleString("pt-BR", {
+        day: "2-digit",
+        month: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+      const fechadoFmt = new Date(s.fechado_em).toLocaleString("pt-BR", {
+        day: "2-digit",
+        month: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+      const temResumo = !!s.resumo_fechamento;
+      return `
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;padding:10px;border-bottom:1px solid #eee;">
         <div>
           <div style="font-weight:700;font-size:0.88rem;">${abertoFmt} → ${fechadoFmt}</div>
-          <div style="color:#888;font-size:0.76rem;">${s.usuario_nome || s.usuario_email || "—"} · Sessão #${s.id}</div>
+          <div style="color:#888;font-size:0.76rem;">${s.usuario_nome || s.usuario_email || "—"} · Sesión #${s.id}</div>
         </div>
-        <div style="display:flex;align-items:center;gap:10px;">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
           <strong style="color:#2d6a4f;font-size:0.9rem;">${fmt(s.valor_fechamento)}</strong>
           <button onclick="abrirRelatorioFechamento(${s.id})"
             style="background:#2c3e50;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:0.78rem;cursor:pointer;white-space:nowrap;">
             📋 Ver Boletim${temResumo ? "" : " (resumido)"}
           </button>
+          <button onclick="imprimirFechamentoPorId(${s.id})"
+            style="background:#fff;color:#000;border:1.5px solid #000;border-radius:6px;padding:6px 12px;font-size:0.78rem;cursor:pointer;white-space:nowrap;font-weight:700;">
+            🖨️ Imprimir
+          </button>
         </div>
       </div>`;
-  }).join("");
+    })
+    .join("");
 }
 
 /**
@@ -2699,9 +2812,174 @@ async function abrirRelatorioFechamento(sessaoId) {
       </div>
     </div>
   `;
-  overlay.appendChild(modal);
+    overlay.appendChild(modal);
   document.body.appendChild(overlay);
 }
+
+// ══════════════════════════════════════════════════════════════
+//  IMPRESSÃO DO BOLETIM DE FECHAMENTO — TÉRMICA (preto e branco)
+//  Reutilizável a partir do histórico de fechamentos.
+// ══════════════════════════════════════════════════════════════
+async function imprimirFechamentoPorId(sessaoId) {
+  const { data: sessao, error } = await supa
+    .from("sessoes_caixa")
+    .select("*")
+    .eq("id", sessaoId)
+    .single();
+
+  if (error || !sessao) {
+    alert("No fue posible cargar el boletín: " + (error?.message || "sesión no encontrada"));
+    return;
+  }
+
+  // Usa resumo salvo; se antigo (sem resumo), recalcula na hora
+  let resumo = sessao.resumo_fechamento;
+  if (!resumo) {
+    resumo = await _calcularResumoSessaoLegado(sessao);
+  }
+
+  const { data: movs } = await supa
+    .from("movimentacoes_caixa")
+    .select("*")
+    .eq("sessao_id", sessaoId)
+    .order("created_at", { ascending: true });
+
+  const fmt = (n) => "Gs " + Math.round(Number(n) || 0).toLocaleString("es-PY");
+  const dataHora = (iso) =>
+    iso
+      ? new Date(iso).toLocaleString("pt-BR", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+          timeZone: "America/Asuncion",
+        })
+      : "—";
+  const nomeRest = (typeof NOME_RESTAURANTE !== "undefined" && NOME_RESTAURANTE) || "RESTAURANTE";
+
+  const linha = (rotulo, valor, bold) =>
+    `<div class="row${bold ? " bold" : ""}"><span>${rotulo}</span><span>${valor}</span></div>`;
+
+  const p = resumo.por_forma_pagamento || {};
+
+  const movsHtml = (movs && movs.length)
+    ? movs
+        .map((m) => {
+          const sinal = m.tipo === "despesa" || m.tipo === "sangria" ? "−" : "+";
+          const desc = (m.descricao || m.tipo || "").toString().slice(0, 40);
+          return `<div class="row"><span>${desc}</span><span>${sinal}${fmt(m.valor)}</span></div>`;
+        })
+        .join("")
+    : `<div style="text-align:center;color:#666;font-size:10px">Ningún movimiento</div>`;
+
+  const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Boletim — Sessão #${sessaoId}</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html, body {
+      font-family: "Courier New","Consolas",monospace;
+      font-size: 11px; color: #000; background: #fff; line-height: 1.35;
+    }
+    body { padding: 2mm; max-width: 58mm; }
+    .center { text-align: center; }
+    .bold   { font-weight: 900; }
+    .grande { font-size: 14px; font-weight: 900; }
+    h1 { font-size: 13px; font-weight: 900; margin-bottom: 2px; letter-spacing: 0.5px; }
+    h2 { font-size: 11px; font-weight: 900; margin: 6px 0 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+    hr { border: none; border-top: 1px dashed #000; margin: 5px 0; }
+
+    .row {
+      display: flex; justify-content: space-between; gap: 6px; padding: 1px 0;
+    }
+    .row span:first-child { flex-shrink: 0; }
+    .row span:last-child  { text-align: right; white-space: nowrap; }
+
+    .total { border-top: 1px dashed #000; margin-top: 4px; padding-top: 4px; font-size: 12px; font-weight: 900; }
+    .total .grande { font-size: 15px; }
+
+    .assinatura { margin-top: 20px; text-align: center; font-size: 10px; }
+    .assinatura .linha { border-top: 1px solid #000; margin: 20px 5mm 3px; }
+
+    @media print {
+      @page { size: 58mm auto; margin: 2mm; }
+      body { padding: 0; max-width: 100%; }
+      .nao-imprime { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="center">
+    <h1>${nomeRest.toUpperCase()}</h1>
+    <div class="bold">BOLETIM DE CIERRE DE CAJA</div>
+    <div>Sesión #${sessao.id}</div>
+  </div>
+
+  <hr>
+  <div class="row"><span>Apertura:</span><span>${dataHora(resumo.abertura_em || sessao.aberto_em)}</span></div>
+  <div class="row"><span>Cierre:</span><span>${dataHora(resumo.fechamento_em || sessao.fechado_em)}</span></div>
+  <div class="row"><span>Operador:</span><span>${sessao.usuario_nome || "—"}</span></div>
+
+  <hr>
+  <h2>Facturación</h2>
+  ${linha("Facturación total:", fmt(resumo.faturamento))}
+  ${linha("Pedidos:", resumo.qtd_pedidos || 0)}
+
+  <h2>Por método</h2>
+  ${linha("Efectivo:",      fmt(p.efetivo))}
+  ${linha("Tarjeta:",       fmt(p.cartao))}
+  ${linha("Pix:",           fmt(p.pix))}
+  ${linha("Transferencia:", fmt(p.transferencia))}
+  ${linha("QR Celular:",    fmt(p.qr_celular))}
+  ${linha("QR Máquina:",    fmt(p.qr_maquina))}
+  ${linha("Na Nota quit.:", fmt(p.na_nota_quitado))}
+
+  <h2>Costos y movimientos</h2>
+  ${linha("Costo entregas:", fmt(resumo.custo_entregas))}
+  ${linha("Salidas:",        fmt(resumo.total_saidas))}
+  ${linha("Entradas:",       fmt(resumo.total_entradas))}
+  ${linha("Fondo apertura:", fmt(resumo.valor_abertura))}
+
+  <hr>
+  <div class="row total">
+    <span class="grande">RESULTADO</span>
+    <span class="grande">${fmt(resumo.resultado_operacional)}</span>
+  </div>
+  <div class="row total">
+    <span class="grande">DINHEIRO GAVETA</span>
+    <span class="grande">${fmt(resumo.dinheiro_na_gaveta)}</span>
+  </div>
+
+  <hr>
+  <h2>Movimientos</h2>
+  ${movsHtml}
+
+  <hr>
+  <div class="center" style="margin-top:6px">*** FIN DEL CIERRE ***</div>
+
+  <div class="assinatura">
+    <div class="linha"></div>
+    <div>Firma del operador</div>
+  </div>
+
+  <script>
+    window.onload = function() { setTimeout(function(){ window.print(); }, 400); };
+  <\/script>
+</body>
+</html>`;
+
+  const win = window.open("", "_blank", "width=400,height=700");
+  if (!win) { alert("Permita pop-ups para imprimir el boletín."); return; }
+  win.document.write(html);
+  win.document.close();
+}
+
+/**
+ * Calcula o boletim de uma sessão "na hora", quando ela não tem
+
 
 // ── Verifica bloqueio por sangria limite ───────────────────────────
 async function _verificarBloqueioCaixa(emailAtual) {
@@ -5045,11 +5323,20 @@ async function salvarProduto() {
         // Nenhum item existente selecionado: cria um item novo em
         // `inventario` automaticamente com o nome do produto e a
         // quantidade informada — sem precisar passar pela aba Estoque.
-        const qtdNova = parseInt(document.getElementById("prod-estoque-qtd-nova")?.value) || 0;
+                const qtdNova = parseInt(document.getElementById("prod-estoque-qtd-nova")?.value) || 0;
         const minNova = parseInt(document.getElementById("prod-estoque-min-nova")?.value) || 0;
         const nomeProdutoAtual = document.getElementById("prod-nome").value.trim() || "Produto sem nome";
+        // produtoIdReal é o id em edição (se houver) — em criação fica null por
+        // enquanto; o vínculo do produto novo com o estoque será feito abaixo,
+        // depois que o INSERT do produto retornar o id real.
+        const produtoIdReal = id ? parseInt(id) : null;
         try {
-          inventarioId = await _criarNovoItemInventario(nomeProdutoAtual, qtdNova, minNova);
+          inventarioId = await _criarNovoItemInventario(
+            nomeProdutoAtual,
+            qtdNova,
+            minNova,
+            produtoIdReal
+          );
         } catch (e) {
           console.warn("Falla al crear ítem de stock automático:", e.message);
           alert("⚠️ No fue posible crear el ítem de stock automáticamente: " + e.message + "\nEl producto se guardará sin control de stock vinculado.");
@@ -5109,11 +5396,32 @@ async function salvarProduto() {
     if (_saveError) {
       throw new Error(_saveError.message || "Falha ao salvar no banco de dados.");
     }
-    if (id && (!_savedRows || _savedRows.length === 0)) {
-      // Update "bem-sucedido" sem erro mas sem linhas afetadas = bloqueado por RLS/policy
+        if (id && (!_savedRows || _savedRows.length === 0)) {
       throw new Error(
         "O produto não foi salvo. Nenhuma linha foi alterada (provável bloqueio de permissão/RLS). Verifique se você tem permissão para editar este produto.",
       );
+    }
+
+    // ── SINCRONIZAÇÃO REVERSA: amarra inventario.produto_id ao produto ──
+    // Se o produto recebeu inventario_id (vinculado agora), garante que a
+    // linha de balcão em inventario tenha produto_id apontando de volta.
+    if (inventarioId) {
+      const _idProdutoFinal =
+        id ? parseInt(id) : (_savedRows && _savedRows[0]?.id) || null;
+
+      if (_idProdutoFinal) {
+        // Atualiza a(s) linha(s) de inventario que apontam pra este produto,
+        // garantindo que apenas a localização "balcao" carregue o vínculo de
+        // estoque principal (a de depósito é cópia de espelho).
+        await supa
+          .from("inventario")
+          .update({ produto_id: _idProdutoFinal })
+          .eq("id", inventarioId);
+
+        // Se o usuário escolheu um item de estoque existente (select), o
+        // item selecionado pode ter produto_id apontando para OUTRO produto.
+        // Forçamos a atualização acima para corrigir isso.
+      }
     }
 
     fecharModal("modal-produto");
@@ -9252,12 +9560,12 @@ async function carregarPDV() {
  * Mini-painel de caixa na aba PDV.
  * Visível para todos os perfis (funcionario, gerente, dono, etc).
  * Permite abrir o caixa sem precisar acessar a aba financeiro.
+ * Inclui botão de Despesa (além de Suprimento/Sangria/Cerrar).
  */
 async function pdvCarregarPainelCaixa() {
   const container = document.getElementById("pdv-painel-caixa");
   if (!container) return;
 
-  // Reutiliza _carregarSessaoCaixa se financeiro não foi aberto ainda
   const ehGestor = ["dono", "gerente", "adminMaster"].includes(perfilUsuario);
   const emailAtual = document.getElementById("user-email")?.innerText || "";
 
@@ -9272,7 +9580,7 @@ async function pdvCarregarPainelCaixa() {
   const { data } = await q;
   const sessao = data?.[0] || null;
 
-  // Sincroniza com _sessaoCaixaAtiva para que salvarMovimentacaoCaixa funcione
+  // Sincroniza com _sessaoCaixaAtiva
   _sessaoCaixaAtiva = sessao;
 
   if (!sessao) {
@@ -9294,13 +9602,16 @@ async function pdvCarregarPainelCaixa() {
       </div>`;
   } else {
     const dAbr = new Date(sessao.aberto_em).toLocaleString("pt-BR", {
-      day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"
+      day: "2-digit",
+      month: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
     });
     const podeFechar = ehGestor;
     container.innerHTML = `
       <div style="background:#eafaf1;border:1.5px solid #27ae60;border-radius:12px;
         padding:12px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
-        <div style="flex:1;min-width:200px">
+        <div style="flex:1;min-width:180px">
           <div style="font-weight:700;color:#1a6b3a;font-size:0.92rem">
             🟢 Caixa aberto desde ${dAbr}
           </div>
@@ -9308,21 +9619,26 @@ async function pdvCarregarPainelCaixa() {
             Operador: ${sessao.usuario_nome || sessao.usuario_email}
           </div>
         </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
           <button onclick="abrirModalCaixa('suprimento')"
             style="background:#2980b9;color:#fff;border:none;border-radius:8px;
-              padding:8px 14px;font-weight:600;cursor:pointer;font-size:0.82rem">
+              padding:8px 12px;font-weight:600;cursor:pointer;font-size:0.8rem">
             <i class="fas fa-plus-circle"></i> Suprimento
           </button>
           <button onclick="abrirModalCaixa('sangria')"
             style="background:#e67e22;color:#fff;border:none;border-radius:8px;
-              padding:8px 14px;font-weight:600;cursor:pointer;font-size:0.82rem">
+              padding:8px 12px;font-weight:600;cursor:pointer;font-size:0.8rem">
             <i class="fas fa-hand-holding-usd"></i> Sangria
+          </button>
+          <button onclick="abrirModalCaixa('despesa')"
+            style="background:#c0392b;color:#fff;border:none;border-radius:8px;
+              padding:8px 12px;font-weight:600;cursor:pointer;font-size:0.8rem">
+            <i class="fas fa-file-invoice-dollar"></i> Despesa
           </button>
           ${podeFechar ? `
           <button onclick="fecharCaixaResumo()"
             style="background:#2c3e50;color:#fff;border:none;border-radius:8px;
-              padding:8px 14px;font-weight:600;cursor:pointer;font-size:0.82rem">
+              padding:8px 12px;font-weight:600;cursor:pointer;font-size:0.8rem">
             <i class="fas fa-calculator"></i> Cerrar Día
           </button>` : ""}
         </div>
@@ -11828,23 +12144,39 @@ async function salvarPedidoBalcao() {
   if (carrinhoPDV.length === 0 && window._mesaAbertaId)
     return alert("Agregue al menos 1 ítem nuevo antes de lanzar.");
 
+  // ─────────────────────────────────────────────────────────────
+  // TRAVA DE CAIXA — nenhuma venda é liberada sem sessão aberta.
+  // Ao confirmar, abre o modal de abertura de caixa e interrompe o
+  // fluxo para o operador registrar o fundo de troco.
+  // ─────────────────────────────────────────────────────────────
+  await _carregarSessaoCaixa();
+  if (!_sessaoCaixaAtiva) {
+    const _okAbrir = confirm(
+      "⚠️ CAIXA FECHADO\n\n" +
+      "A venda só será liberada após a abertura do caixa.\n\n" +
+      "Deseja abrir o caixa agora?"
+    );
+    if (_okAbrir) {
+      abrirModalCaixa("abertura");
+    }
+    return;
+  }
+
   const _soKg = carrinhoPDV.length > 0 && carrinhoPDV.every((i) => i._isKg);
 
   let dadosFactura = null;
-  if (document.getElementById('pdv-check-factura').checked) {
-    const ruc = document.getElementById('pdv-cli-ruc').value.trim();
-    const razao = document.getElementById('pdv-cli-razao').value.trim();
+  if (document.getElementById("pdv-check-factura").checked) {
+    const ruc = document.getElementById("pdv-cli-ruc").value.trim();
+    const razao = document.getElementById("pdv-cli-razao").value.trim();
     if (ruc || razao) {
       dadosFactura = { ruc, razao };
     } else {
-      // Se marcou mas não preencheu, emitimos como Consumidor Final (opcional)
-      dadosFactura = { ruc: '', razao: 'Consumidor Final' };
+      dadosFactura = { ruc: "", razao: "Consumidor Final" };
     }
   }
 
   const mesa = document.getElementById("balcao-mesa").value.trim();
-  const cli =
-    document.getElementById("balcao-cliente").value.trim() || "Cliente";
+  const cli = document.getElementById("balcao-cliente").value.trim() || "Cliente";
   const tel = document.getElementById("balcao-telefone").value.trim() || "";
   let pag = document.getElementById("balcao-pag").value;
   const pagFinalPDV = _resolvePagFinalPDV(pag);
@@ -11857,25 +12189,18 @@ async function salvarPedidoBalcao() {
         ? `BALCÃO KG - ${cli}`
         : `BALCÃO - ${cli}`;
 
-  // ── Desconto manual ──────────────────────────────────────────
-  const descTipo =
-    document.getElementById("pdv-desconto-tipo")?.value || "fixo";
-  const descValRaw =
-    parseFloat(document.getElementById("pdv-desconto-val")?.value || "0") || 0;
-  const subtotalBruto = carrinhoPDV.reduce(
-    (a, i) => a + (i.preco || 0) * (i.qtd || 1),
-    0,
-  );
+  const descTipo = document.getElementById("pdv-desconto-tipo")?.value || "fixo";
+  const descValRaw = parseFloat(document.getElementById("pdv-desconto-val")?.value || "0") || 0;
+  const subtotalBruto = carrinhoPDV.reduce((a, i) => a + (i.preco || 0) * (i.qtd || 1), 0);
   let descontoAplicado = 0;
   if (descValRaw > 0) {
     descontoAplicado =
       descTipo === "percentual"
         ? Math.round((subtotalBruto * descValRaw) / 100)
         : Math.round(descValRaw);
-    descontoAplicado = Math.min(descontoAplicado, subtotalBruto); // não pode ser maior que o total
+    descontoAplicado = Math.min(descontoAplicado, subtotalBruto);
   }
 
-  // ── Tratamento Multipagamento ────────────────────────────────
   let obsPagPDV = "Pagamento no Balcão";
   if (pag === "Multipagamento") {
     const partesPDV = _coletarMultiPagamentoPDV();
@@ -11884,21 +12209,19 @@ async function salvarPedidoBalcao() {
       return;
     }
     const totalPedido = parseInt(
-      document.getElementById("balcao-total")?.innerText.replace(/\D/g, "") ||
-        "0",
+      document.getElementById("balcao-total")?.innerText.replace(/\D/g, "") || "0"
     );
     const somaPartes = partesPDV.reduce((a, p) => a + p.valor, 0);
     if (Math.abs(somaPartes - totalPedido) > 1) {
       alert(
-        `⚠️ El total de las formas (Gs ${somaPartes.toLocaleString("es-PY")}) no coincide con el total del pedido (Gs ${totalPedido.toLocaleString("es-PY")}).`,
+        `⚠️ El total de las formas (Gs ${somaPartes.toLocaleString("es-PY")}) no coincide con el total del pedido (Gs ${totalPedido.toLocaleString("es-PY")}).`
       );
       return;
     }
     obsPagPDV = JSON.stringify(partesPDV);
   }
 
-    // ── Validação Mensalista (0 = bloqueia, parcial = split automático) ──
-  let _mensSplitInfo = null; // { saldoDebitar, complemento, valorComplemento }
+  let _mensSplitInfo = null;
   if (pag === "Mensalista") {
     if (!_pdvMensalistaSel) {
       alert("Seleccione un mensualista antes de finalizar.");
@@ -11921,7 +12244,7 @@ async function salvarPedidoBalcao() {
     }
 
     if (totalPedido > saldoVal) {
-      const complemento = document.getElementById('pdv-mens-metodo-resto')?.value;
+      const complemento = document.getElementById("pdv-mens-metodo-resto")?.value;
       if (!complemento) {
         alert("⚠️ Saldo insuficiente. Seleccione la forma de pago complementaria.");
         return;
@@ -11940,10 +12263,9 @@ async function salvarPedidoBalcao() {
 
     const nomeMens = _pdvMensalistaSel.clientes?.nome || "";
     if (_mensSplitInfo) {
-      // Forma de pagamento vira Multipagamento para o Financeiro contar só a parte real
       pagFinalPDV = "Multipagamento";
       obsPagPDV = JSON.stringify([
-        { metodo: "Mensalista",           valor: _mensSplitInfo.saldoDebitar },
+        { metodo: "Mensalista", valor: _mensSplitInfo.saldoDebitar },
         { metodo: _mensSplitInfo.complemento, valor: _mensSplitInfo.valorComplemento },
       ]);
     } else {
@@ -11951,13 +12273,14 @@ async function salvarPedidoBalcao() {
     }
   }
 
-  // ── Validação Na Nota ─────────────────────────────────────────
   if (pag === "NaNota") {
-    if (!_pdvClienteNotaSel) { alert("Seleccione el cliente para poner en la cuenta."); return; }
+    if (!_pdvClienteNotaSel) {
+      alert("Seleccione el cliente para poner en la cuenta.");
+      return;
+    }
     obsPagPDV = `Na Nota: ${_pdvClienteNotaSel.nome} (${_pdvClienteNotaSel.telefone || ""})`;
   }
 
-  // ── Novos itens ganham status_item: 'pendente' ─────────────────
   const novosItens = carrinhoPDV.map((i) => ({
     id: i.id || Date.now() + Math.random(),
     nome: i.nome,
@@ -11969,31 +12292,22 @@ async function salvarPedidoBalcao() {
     categoria_slug: i.categoria_slug || "",
     es_bebida: i.es_bebida || false,
     promocao_dia: i.promocao_dia || false,
-    ...(i._isKg
-      ? { peso_gramas: i.peso_gramas, preco_kg: i.preco_kg, _isKg: true }
-      : {}),
-    status_item: "pendente", // ← campo de status por item
+    ...(i._isKg ? { peso_gramas: i.peso_gramas, preco_kg: i.preco_kg, _isKg: true } : {}),
+    status_item: "pendente",
     lancado_em: new Date().toISOString(),
   }));
 
   if (window._mesaAbertaId) {
-    // ── UPDATE: mantém itens existentes (com seus status_item atuais)
-    //           e acrescenta apenas os novos itens pendentes ──────────
     const itensExistentes = Array.isArray(window._mesaAbertaPedido?.itens)
       ? window._mesaAbertaPedido.itens
       : [];
 
     const itensMerged = [...itensExistentes, ...novosItens];
-    // Itens kg: preco já é o total pesado (preco_kg × peso), não multiplicar por qtd
     const novoTotal = itensMerged.reduce(
-      (acc, i) =>
-        acc + (i._isKg ? i.preco || 0 : (i.preco || 0) * (i.qtd || 1)),
-      0,
+      (acc, i) => acc + (i._isKg ? i.preco || 0 : (i.preco || 0) * (i.qtd || 1)),
+      0
     );
 
-    // Nota: "Lançar Pedido" apenas envia os itens novos para a cozinha —
-    // a forma de pagamento só é definida ao "Finalizar Pedido" (fechar a
-    // mesa), então não sobrescrevemos forma_pagamento/obs_pagamento aqui.
     const { error } = await supa
       .from("pedidos")
       .update({
@@ -12010,13 +12324,9 @@ async function salvarPedidoBalcao() {
       alert("Error al actualizar mesa: " + error.message);
       return;
     }
-    // Descontar estoque dos novos itens adicionados
     await _descontarEstoqueVendaItens(novosItens);
-
-    // Imprime para a cozinha SOMENTE os itens novos (a mesa continua aberta)
     _imprimirItensCozinhaMesaPDV(novosItens, `Mesa ${mesa}`, nomeFinal, window._mesaAbertaId);
 
-    // Reset
     window._mesaAbertaId = null;
     window._mesaAbertaTotal = 0;
     window._mesaAbertaPedido = null;
@@ -12039,9 +12349,7 @@ async function salvarPedidoBalcao() {
     return;
   }
 
-  // ── INSERT: novo pedido de balcão ─────────────────────────────
-  const tipoEntregaPDV =
-    document.getElementById("balcao-tipo-entrega")?.value || "balcao";
+  const tipoEntregaPDV = document.getElementById("balcao-tipo-entrega")?.value || "balcao";
   const fretePDV =
     tipoEntregaPDV === "delivery"
       ? parseInt(document.getElementById("balcao-frete")?.value || "0") || 0
@@ -12058,7 +12366,6 @@ async function salvarPedidoBalcao() {
   const _geoLat = document.getElementById("balcao-geo-lat")?.value || null;
   const _geoLng = document.getElementById("balcao-geo-lng")?.value || null;
 
-  // ── Bloqueia abrir uma mesa com número já em uso por outro pedido ativo ──
   if (mesa && tipoEntregaPDV !== "delivery") {
     const { data: mesaExistente } = await supa
       .from("pedidos")
@@ -12070,7 +12377,7 @@ async function salvarPedidoBalcao() {
       .maybeSingle();
     if (mesaExistente) {
       alert(
-        `⚠️ A Mesa ${mesa} já está aberta (pedido #${mesaExistente.id}${mesaExistente.cliente_nome ? " — " + mesaExistente.cliente_nome : ""}).\n\nAbra a comanda existente na aba Mesas em vez de criar um pedido novo, ou escolha outro número de mesa.`,
+        `⚠️ A Mesa ${mesa} já está aberta (pedido #${mesaExistente.id}${mesaExistente.cliente_nome ? " — " + mesaExistente.cliente_nome : ""}).\n\nAbra a comanda existente na aba Mesas em vez de criar um pedido novo, ou escolha outro número de mesa.`
       );
       return;
     }
@@ -12084,11 +12391,8 @@ async function salvarPedidoBalcao() {
   const totalNovo =
     subtotalLiquido + fretePDV + _taxaCartaoValorPDV + _taxaServicoValorPDV;
   const _agora = new Date().toISOString();
+
   const pedido = {
-    // uid_temporal removido: pedidos de balcão passam a exibir o ID
-    // numérico real (p.id), igual ao que já acontece com delivery — antes
-    // gerava um código aleatório "BALC-0..999" (podia até colidir entre
-    // pedidos diferentes, já que era só Math.random()).
     status: _soKg
       ? "entregue"
       : _todosSemCozinha(carrinhoPDV)
@@ -12131,53 +12435,42 @@ async function salvarPedidoBalcao() {
     alert("Error: " + error.message);
     return;
   }
-  // Descontar estoque imediatamente (PDV não passa por mudarStatus)
   if (novoPedido?.id) await _descontarEstoqueVenda(novoPedido.id, novosItens);
 
-    // ── Mensalista: desconta saldo (ou saldo + complemento) ─────
   if (pag === "Mensalista" && _pdvMensalistaSel) {
-    const pm      = _pdvMensalistaSel;
-    const debito  = _mensSplitInfo ? _mensSplitInfo.saldoDebitar : subtotalLiquido;
+    const pm = _pdvMensalistaSel;
+    const debito = _mensSplitInfo ? _mensSplitInfo.saldoDebitar : subtotalLiquido;
     const novoSaldo = Math.round(Number(pm.valor_restante || 0) - debito);
 
-    // 1) Atualiza saldo do plano
-    await supa.from('planos_mensalistas')
+    await supa.from("planos_mensalistas")
       .update({ valor_restante: novoSaldo })
-      .eq('id', pm.id);
+      .eq("id", pm.id);
 
-    // 2) Registra histórico em mensalista_entregas
     const obsHist = _mensSplitInfo
-      ? `PDV #${novoPedido?.id || '?'} — debitado Gs ${debito.toLocaleString('es-PY')} (resto Gs ${_mensSplitInfo.valorComplemento.toLocaleString('es-PY')} em ${_mensSplitInfo.complemento})`
-      : `PDV #${novoPedido?.id || '?'} — débito total`;
+      ? `PDV #${novoPedido?.id || "?"} — debitado Gs ${debito.toLocaleString("es-PY")} (resto Gs ${_mensSplitInfo.valorComplemento.toLocaleString("es-PY")} em ${_mensSplitInfo.complemento})`
+      : `PDV #${novoPedido?.id || "?"} — débito total`;
 
-    await supa.from('mensalista_entregas').insert([{
-      plano_id:         pm.id,
-      cliente_id:       pm.clientes?.id || null,
-      produto_nome:     pm.produto_nome,
-      quantidade:       0,
-      observacoes:      obsHist,
+    await supa.from("mensalista_entregas").insert([{
+      plano_id: pm.id,
+      cliente_id: pm.clientes?.id || null,
+      produto_nome: pm.produto_nome,
+      quantidade: 0,
+      observacoes: obsHist,
       valor_descontado: debito,
     }]);
 
-    // 3) Atualiza cache local e limpa estado
     _pdvMensalistaSel.valor_restante = novoSaldo;
     _mensSplitInfo = null;
     _pdvPularMovimentacao = false;
   }
 
-  // ── Na Nota: marca o pedido com cliente vinculado ─────────────
   if (pag === "NaNota" && _pdvClienteNotaSel) {
     await supa.from("pedidos")
       .update({ cliente_telefone: _pdvClienteNotaSel.telefone || "" })
       .eq("id", novoPedido.id);
-    // Na Nota também NÃO entra no financeiro como recebido
     _pdvPularMovimentacao = true;
   }
 
-  // ── Gaveta automática ─────────────────────────────────────────────────────
-  // Abre apenas no PDV, para Efetivo, Cartão (déb/créd) e Multipagamento
-  // que contenha ao menos um desses meios. pix e similares não abrem gaveta.
-  // Falha silenciosamente — venda NÃO é bloqueada se a gaveta não responder.
   if (_gavetaDeveAbrir(pag, obsPagPDV)) {
     _abrirGavetaDC335(`venda #${novoPedido?.uid_temporal ?? novoPedido?.id ?? "PDV"} — ${pag}`);
   }
@@ -12190,16 +12483,9 @@ async function salvarPedidoBalcao() {
     document.getElementById("pdv-cashback-box").style.display = "none";
   }
 
-  // ── Cashback: gerar crédito pela nova compra ──────────────────
-  if (tel) {
-    await crmGerarCashback(tel, totalNovo, novoPedido?.id || null);
-  }
+  if (tel) await crmGerarCashback(tel, totalNovo, novoPedido?.id || null);
 
-  // ── Impressão automática ───────────────────────────────────────
   if (novoPedido?.id) {
-    // Linhas extras impressas na nota (taxa de cartão / taxa de serviço),
-    // como itens visuais — garante que apareçam no ticket independente
-    // de o imprimir.html reconhecer campos novos em "valores".
     const itensParaImpressao = [...novosItens];
     if (_taxaServicoValorPDV > 0) {
       itensParaImpressao.push({
@@ -12215,7 +12501,6 @@ async function salvarPedidoBalcao() {
         qtd: 1,
       });
     }
-    // Monta dados direto (sem segunda busca no banco)
     const dadosImpressao = {
       id: novoPedido.uid_temporal || novoPedido.id,
       cliente: { nome: nomeFinal, tel: tel },
@@ -12242,16 +12527,14 @@ async function salvarPedidoBalcao() {
       pagamento: { metodo: pagFinalPDV, obs: obsPagPDV },
       data: new Date().toLocaleString("pt-BR"),
     };
-    const base64 = btoa(
-      unescape(encodeURIComponent(JSON.stringify(dadosImpressao))),
-    )
+    const base64 = btoa(unescape(encodeURIComponent(JSON.stringify(dadosImpressao))))
       .replace(/\+/g, "-")
       .replace(/\//g, "_")
       .replace(/=+$/, "");
     window.open(
       `imprimir.html?d=${base64}`,
       `PrintPDV_${novoPedido.id}_${Date.now()}`,
-      "width=400,height=600",
+      "width=400,height=600"
     );
   }
 
@@ -12263,12 +12546,9 @@ async function salvarPedidoBalcao() {
   { const _chkTS = document.getElementById("pdv-check-taxa-servico"); if (_chkTS) _chkTS.checked = false; }
   { const _pctTS = document.getElementById("pdv-taxa-servico-pct"); if (_pctTS) _pctTS.style.display = "none"; }
   document.getElementById("balcao-telefone").value = "";
-  // Reset tipo entrega e campos de delivery
+
   const tipoSelPDV = document.getElementById("balcao-tipo-entrega");
   if (tipoSelPDV) tipoSelPDV.value = "balcao";
-  // Reset visual das abas — sem isso a aba "Delivery/Retirada" clicada no
-  // pedido anterior continuava destacada mesmo com o valor já voltando pra
-  // "balcao", confundindo quem está no caixa sobre o tipo do próximo pedido
   document.querySelectorAll(".pdv-tipo-tab").forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.tipo === "balcao");
   });
@@ -12288,7 +12568,6 @@ async function salvarPedidoBalcao() {
   if (descValEl) descValEl.value = "";
   const descTipoEl = document.getElementById("pdv-desconto-tipo");
   if (descTipoEl) descTipoEl.value = "fixo";
-  // Reset multipagamento PDV
   const multiPartesPDV = document.getElementById("multi-partes-pdv");
   if (multiPartesPDV) multiPartesPDV.innerHTML = "";
   _multiContadorPDV = 0;
@@ -12296,31 +12575,28 @@ async function salvarPedidoBalcao() {
   document.getElementById("balcao-pag").style.display = "";
   const boxMultiPDV = document.getElementById("box-multi-pdv");
   if (boxMultiPDV) boxMultiPDV.style.display = "none";
-  // Reset Mensalista
   _pdvMensalistaSel = null;
   _pdvPularMovimentacao = false;
   const boxMensPDV = document.getElementById("box-mensalista-pdv");
-  if (boxMensPDV) { boxMensPDV.style.display = "none"; }
+  if (boxMensPDV) boxMensPDV.style.display = "none";
   const mensSel = document.getElementById("pdv-mens-selecionado");
   if (mensSel) mensSel.style.display = "none";
-  // Reset Na Nota
   _pdvClienteNotaSel = null;
   const boxNotaPDV = document.getElementById("box-nanota-pdv");
   if (boxNotaPDV) boxNotaPDV.style.display = "none";
   const notaSel = document.getElementById("pdv-nota-selecionado");
   if (notaSel) notaSel.style.display = "none";
-  // Reset box efetivo / troco
   const _recEl = document.getElementById("pdv-valor-recebido");
-  const _trEl  = document.getElementById("pdv-troco-row");
-  const _efEl  = document.getElementById("pdv-efetivo-box");
+  const _trEl = document.getElementById("pdv-troco-row");
+  const _efEl = document.getElementById("pdv-efetivo-box");
   if (_recEl) _recEl.value = "";
-  if (_trEl)  _trEl.style.display = "none";
-  if (_efEl)  _efEl.style.display = "none";
+  if (_trEl) _trEl.style.display = "none";
+  if (_efEl) _efEl.style.display = "none";
   atualizarCarrinhoPDV();
   atualizarBarraMesasAtivas();
   carregarMonitorMesas();
   atualizarTextoBotaoPDV();
-  // Toast não-bloqueante (alert segurava o popup de impressão)
+
   const _msgFinal = _soKg
     ? "✅ Venda registrada!"
     : _todosBebidas(novosItens)
@@ -14183,7 +14459,6 @@ async function carregarInventario() {
   container.innerHTML =
     '<div style="text-align:center;padding:30px;color:#aaa"><i class="fas fa-spinner fa-spin"></i></div>';
 
-  // Fetch incluindo localizacao
   const { data, error } = await supa
     .from("inventario")
     .select(
@@ -14207,12 +14482,12 @@ async function carregarInventario() {
 
   // ── Auto-cria depósitos faltantes para itens de balcão com produto_id ──
   const balcaoComProduto = _inventarioItems.filter(
-    (i) => i.produto_id && i.localizacao === "balcao",
+    (i) => i.produto_id && i.localizacao === "balcao"
   );
   const depositoIds = new Set(
     _inventarioItems
       .filter((i) => i.produto_id && i.localizacao === "deposito")
-      .map((i) => i.produto_id),
+      .map((i) => i.produto_id)
   );
   const faltantes = balcaoComProduto.filter((i) => !depositoIds.has(i.produto_id));
   if (faltantes.length > 0) {
@@ -14226,12 +14501,35 @@ async function carregarInventario() {
       localizacao: "deposito",
     }));
     await supa.from("inventario").insert(novos);
-    // Refetch para trazer os novos
     const { data: d3 } = await supa.from("inventario").select("*").order("nome");
     _inventarioItems = (d3 || []).map((i) => ({
       ...i,
       localizacao: i.localizacao || "balcao",
     }));
+  }
+
+  // ── Reconciliação inversa: produtos.inventario_id que apontam para item
+  //    de inventário sem produto_id vinculado (ex: item criado via PDV antigo)
+  try {
+    const { data: prodsComEstoque } = await supa
+      .from("produtos")
+      .select("id, inventario_id")
+      .not("inventario_id", "is", null);
+    if (prodsComEstoque?.length) {
+      const _invSemProduto = _inventarioItems.filter((i) => !i.produto_id);
+      for (const prod of prodsComEstoque) {
+        const inv = _invSemProduto.find((i) => i.id === prod.inventario_id);
+        if (inv) {
+          await supa
+            .from("inventario")
+            .update({ produto_id: prod.id })
+            .eq("id", inv.id);
+          inv.produto_id = prod.id;
+        }
+      }
+    }
+  } catch (_) {
+    /* reconciliação é best-effort, não bloqueia a tela */
   }
 
   _renderInventarioCards();
@@ -14580,18 +14878,48 @@ async function salvarInventario() {
   };
 
   if (id) {
-    // ── Edição: atualiza só a linha atual ──
+    // ── EDIÇÃO ─────────────────────────────────────────────────
+    const { data: _oldRow } = await supa
+      .from("inventario")
+      .select("produto_id, localizacao")
+      .eq("id", id)
+      .maybeSingle();
+
     const { error } = await supa.from("inventario").update(dados).eq("id", id);
     if (error) { alert("Error: " + error.message); return; }
+
+    // SINCRONIZAÇÃO: se o item mudou de produto (novo vínculo ou desvínculo),
+    // atualiza produtos.inventario_id correspondente.
+    const _oldProdId = _oldRow?.produto_id || null;
+    const _newProdId = produto_id;
+
+    if (_oldProdId !== _newProdId) {
+      // Remove vínculo do produto antigo (apenas se ele ainda aponta pra este item)
+      if (_oldProdId) {
+        await supa
+          .from("produtos")
+          .update({ inventario_id: null })
+          .eq("id", _oldProdId)
+          .eq("inventario_id", id);
+      }
+      // Adiciona vínculo ao produto novo (se houver e localizacao=balcao)
+      if (_newProdId && _oldRow?.localizacao === "balcao") {
+        await supa
+          .from("produtos")
+          .update({ inventario_id: id })
+          .eq("id", _newProdId);
+      }
+    }
   } else {
-    // ── Novo item ──
-    // Se vinculado a produto, cria balcão + depósito
+    // ── NOVO ITEM ──────────────────────────────────────────────
     if (produto_id) {
       const jaExiste = _inventarioItems.find(
-        (i) => i.produto_id === produto_id && i.localizacao === "balcao",
+        (i) => i.produto_id === produto_id && i.localizacao === "balcao"
       );
       if (jaExiste) {
-        alert("Este producto ya tiene stock controlado en el balcón. Edite el ítem existente en vez de crear uno nuevo.");
+        alert(
+          "Este producto ya tiene stock controlado en el balcón. Edite el ítem existente en vez de crear uno nuevo."
+        );
         return;
       }
 
@@ -14608,12 +14936,22 @@ async function salvarInventario() {
         data_validade: null,
       };
 
-      const { error } = await supa
+      const { data: inseridos, error } = await supa
         .from("inventario")
-        .insert([payloadBalcao, payloadDeposito]);
+        .insert([payloadBalcao, payloadDeposito])
+        .select("id, localizacao");
+
       if (error) { alert("Error: " + error.message); return; }
+
+      // SINCRONIZAÇÃO: amarra produtos.inventario_id ao balcão recém-criado
+      const _balcao = (inseridos || []).find((r) => r.localizacao === "balcao");
+      if (_balcao?.id) {
+        await supa
+          .from("produtos")
+          .update({ inventario_id: _balcao.id })
+          .eq("id", produto_id);
+      }
     } else {
-      // Sem produto vinculado: cria apenas balcão
       const { error } = await supa
         .from("inventario")
         .insert([{ ...dados, localizacao: "balcao" }]);
@@ -14908,13 +15246,31 @@ async function confirmarAjuste() {
 async function _carregarSelectInventario(selectedId = null) {
   const sel = document.getElementById("prod-inventario-id");
   if (!sel) return;
+
   sel.innerHTML = '<option value="">— Seleccione el ítem —</option>';
+
+  // Mostra apenas itens de BALCÃO (depósito é espelho interno, não deve
+  // aparecer como opção no produto). Oculta também itens já vinculados a
+  // outro produto para evitar vínculo cruzado.
   const { data } = await supa
     .from("inventario")
-    .select("id, nome, quantidade, unidade")
+    .select("id, nome, quantidade, unidade, produto_id, localizacao")
+    .eq("localizacao", "balcao")
     .order("nome");
+
+  const _produtoAtualId = document.getElementById("prod-id")?.value
+    ? parseInt(document.getElementById("prod-id").value)
+    : null;
+
   if (data) {
     data.forEach((i) => {
+      // Esconde itens já vinculados a outro produto (não deixa roubar vínculo)
+      const vinculadoAOutro =
+        i.produto_id &&
+        _produtoAtualId &&
+        i.produto_id !== _produtoAtualId;
+      if (vinculadoAOutro) return;
+
       const opt = document.createElement("option");
       opt.value = i.id;
       opt.textContent = `${i.nome} (${i.quantidade ?? 0} ${i.unidade || "un"})`;
@@ -14922,6 +15278,7 @@ async function _carregarSelectInventario(selectedId = null) {
       sel.appendChild(opt);
     });
   }
+
   _toggleCriarNovoEstoque();
 }
 
@@ -14935,27 +15292,56 @@ function _toggleCriarNovoEstoque() {
   area.style.display = sel.value ? "none" : "block";
 }
 
-// Cria um novo item em `inventario` (linkado a um produto simples, não a
-// uma variação) e registra o estoque inicial em inventario_movimentos —
-// mesma convenção usada em _sincronizarEstoqueVariacao. Permite criar o
-// estoque direto do modal de produto, sem precisar ir na aba Estoque antes;
-// o item criado aparece lá normalmente (mesma tabela, mesma lógica).
-async function _criarNovoItemInventario(nome, quantidade, minimo) {
+// Cria um novo item em `inventario` (balcão + depósito) linkado a um
+// produto e registra o estoque inicial em inventario_movimentos — mesma
+// convenção usada em _sincronizarEstoqueVariacao. Ao criar pelo modal
+// de produto, o vínculo é bidirecional: o produto recebe `inventario_id`
+// (feito pelo chamador) e a linha de balcão recebe `produto_id` (aqui).
+async function _criarNovoItemInventario(nome, quantidade, minimo, produtoId = null) {
+  const emailAtual = document.getElementById("user-email")?.innerText || "sistema";
+
+  // Cria balcão + depósito (padrão do sistema)
+  const payloadBalcao = {
+    nome,
+    unidade: "un",
+    quantidade,
+    quantidade_minima: minimo,
+    produto_id: produtoId,
+    localizacao: "balcao",
+  };
+  const payloadDeposito = {
+    nome,
+    unidade: "un",
+    quantidade: 0,
+    quantidade_minima: null,
+    produto_id: produtoId,
+    observacoes: "[Criado automaticamente como depósito]",
+    localizacao: "deposito",
+    perecivel: false,
+    data_validade: null,
+  };
+
   const { data, error } = await supa
     .from("inventario")
-    .insert([{ nome, unidade: "un", quantidade, quantidade_minima: minimo }])
-    .select("id")
-    .single();
+    .insert([payloadBalcao, payloadDeposito])
+    .select("id, localizacao");
+
   if (error) throw error;
+
+  const balcao = (data || []).find((r) => r.localizacao === "balcao");
+  if (!balcao?.id) throw new Error("Falha ao criar ítem de estoque (balcão).");
+
   if (quantidade > 0) {
-    const emailAtual = document.getElementById("user-email")?.innerText || "sistema";
     await supa.from("inventario_movimentos").insert([{
-      inventario_id: data.id, tipo: "add", quantidade,
+      inventario_id: balcao.id,
+      tipo: "add",
+      quantidade,
       motivo: `Estoque inicial (criado junto com o produto "${nome}")`,
       usuario_email: emailAtual,
     }]);
   }
-  return data.id;
+
+  return balcao.id;
 }
 
 // Cria (1ª vez) ou atualiza a linha de `inventario` vinculada a uma

@@ -907,12 +907,22 @@
       </select>
     </div>
 
-    <!-- NOVO FILTRO: somente despesas -->
+        <!-- NOVO FILTRO: somente despesas -->
     <div class="filtro-group" style="align-self:flex-end;padding-bottom:11px">
       <label style="display:flex;align-items:center;gap:6px;font-weight:600;cursor:pointer">
         <input type="checkbox" id="fin-somente-despesas" onchange="calcularFinanceiro()" style="width:16px;height:16px;cursor:pointer">
         🧾 Somente despesas
       </label>
+    </div>
+
+    <!-- NOVO FILTRO: tipo de cliente (mensalista vs normal) -->
+    <div class="filtro-group">
+      <label><i class="fas fa-users"></i> Cliente</label>
+      <select id="fin-cliente-tipo" onchange="calcularFinanceiro()">
+        <option value="todos">Todos</option>
+        <option value="mensalista">Somente mensalistas</option>
+        <option value="nao_mensalista">Não mensalistas</option>
+      </select>
     </div>
 
     <button class="btn-filtrar" onclick="calcularFinanceiro()">
