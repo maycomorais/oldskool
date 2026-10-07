@@ -256,6 +256,8 @@ if (typeof supa === "undefined") {
 // ==========================================
 let carrinho = [];
 let FEATURES_PAGAMENTOS_CLIENTE = null; // features_ativas.pagamentos (controlado pelo adminMaster)
+let DELIVERY_ABERTO_CLIENTE = true;
+let AVISO_DELIVERY_CLIENTE  = "";
 let freteCalculado = 0;
 // Marca quando o frete foi resolvido via fallback (GPS falhou, aplicou
 // o mínimo da tabela) — usada na validação do checkout pra não travar
@@ -411,6 +413,25 @@ async function verificarHorario() {
   if (data.qr_py_url) QR_PY_URL = data.qr_py_url;
   if (data.whatsapp_loja) WHATSAPP_LOJA_APP = data.whatsapp_loja;
 
+  // ── Delivery aberto/fechado + extensão de horário do dia ──────────
+  // Carregados ANTES do cálculo de aberto/fechado porque influenciam
+  // a decisão final de "aceita pedido agora?".
+  const _deliveryAberto = data.delivery_aberto !== false; // default true
+  const _avisoDelivery  = (data.aviso_delivery || "").trim();
+  DELIVERY_ABERTO_CLIENTE = _deliveryAberto;
+  AVISO_DELIVERY_CLIENTE  = _avisoDelivery;
+
+  // horario_extra_hoje: { data: 'YYYY-MM-DD', minutos: N }
+  // — extensão concedida pelo botão "+Horario" da aba Pedidos no admin
+  const _ext = data.horario_extra_hoje || null;
+  const _hojeStr = new Date().toISOString().split("T")[0];
+  const _extAtiva = !!(
+    _ext &&
+    _ext.data === _hojeStr &&
+    (Number(_ext.minutos) || 0) > 0
+  );
+  EXTENSAO_HORARIO_TEMP = _extAtiva ? Number(_ext.minutos) : 0;
+
   const agora = new Date();
   const horaAtual = agora.getHours() * 60 + agora.getMinutes();
   // 0=Dom,1=Seg...6=Sab → mapeia para as chaves do objeto
@@ -462,6 +483,30 @@ async function verificarHorario() {
     } else {
       // Sem grade configurada → loja_aberta=true é suficiente para abrir
       estaAberto = true;
+    }
+  }
+
+  // ── Aplica extensão de horário (+Horario) ────────────────────────
+  // Se o cálculo normal disse "fechado" mas hoje tem uma extensão
+  // ativa concedida pelo admin, checa se estamos dentro da janela
+  // estendida (último fechamento + minutos concedidos).
+  if (!estaAberto && EXTENSAO_HORARIO_TEMP > 0 && data.horarios_semanais) {
+    const _diaConfigExt = data.horarios_semanais[diaKey];
+    if (_diaConfigExt && !_diaConfigExt.fechado) {
+      const _turnosValidosExt = (_diaConfigExt.turnos || []).filter(
+        (t) => t.abre && t.fecha,
+      );
+      if (_turnosValidosExt.length > 0) {
+        // Pega o MAIOR "fecha" do dia — é o ponto de fechamento real
+        // que a extensão empurra pra frente.
+        const _ultimoFecha = Math.max(
+          ..._turnosValidosExt.map((t) => horaParaMin(t.fecha)),
+        );
+        const _fechaEstendido = _ultimoFecha + EXTENSAO_HORARIO_TEMP;
+        if (horaAtual >= _ultimoFecha && horaAtual < _fechaEstendido) {
+          estaAberto = true;
+        }
+      }
     }
   }
 
@@ -552,6 +597,9 @@ async function verificarHorario() {
   if (data.cor_primaria) {
     document.documentElement.style.setProperty("--primary", data.cor_primaria);
   }
+
+  // ── Aplica estado do delivery (botão + banner de aviso) ──────────
+  _aplicarEstadoDeliveryCliente(_deliveryAberto, _avisoDelivery);
 }
 
 // ── Auto-scroll do modal ao revelar nova seção ───────────────────────────────
@@ -591,6 +639,76 @@ function _aplicarFormasPagamentoCliente(features) {
       opt.style.display = "";
     }
   });
+}
+
+// ── Aplica estado do delivery no app do cliente ───────────────────────────
+// Chamada por verificarHorario() após ler configuracoes. Quando o operador
+// clica em "Cerrar" na aba Pedidos do admin, este é o ponto do app do
+// cliente que reflete a mudança: desabilita o botão Delivery, força o modo
+// Retirada (se o cliente estava em delivery) e mostra um banner com o
+// aviso que o operador digitou.
+function _aplicarEstadoDeliveryCliente(aberto, aviso) {
+  // ── 1. Botão "Delivery" ──────────────────────────────────────────
+  const btnDel = document.getElementById("btn-delivery");
+  if (btnDel) {
+    if (!aberto) {
+      btnDel.disabled = true;
+      btnDel.style.opacity = "0.45";
+      btnDel.style.cursor = "not-allowed";
+      btnDel.style.pointerEvents = "none";
+      btnDel.title = aviso || "Delivery cerrado en este momento";
+      // Se o modo atual é delivery, força retirada — senão o cliente
+      // continuaria no modo proibido até tentar fechar a compra.
+      if (modoEntrega === "delivery") {
+        mudarModoEntrega("retirada");
+      }
+    } else {
+      btnDel.disabled = false;
+      btnDel.style.opacity = "1";
+      btnDel.style.cursor = "pointer";
+      btnDel.style.pointerEvents = "";
+      btnDel.title = "";
+    }
+  }
+
+  // ── 2. Banner de aviso (injetado dinamicamente) ──────────────────
+  let banner = document.getElementById("delivery-aviso-banner");
+  if (banner) banner.remove();
+
+  if (!aberto && aviso) {
+    banner = document.createElement("div");
+    banner.id = "delivery-aviso-banner";
+    banner.style.cssText = [
+      "background:#fff3cd",
+      "border:1px solid #ffc107",
+      "border-left:5px solid #e67e22",
+      "color:#7a5100",
+      "padding:12px 16px",
+      "margin:12px 20px 0",
+      "border-radius:10px",
+      "font-size:0.88rem",
+      "line-height:1.5",
+      "display:flex",
+      "align-items:flex-start",
+      "gap:10px",
+    ].join(";");
+    banner.innerHTML = `
+      <span style="font-size:1.3rem;line-height:1;flex-shrink:0">🛵</span>
+      <div>
+        <strong style="display:block;margin-bottom:3px;color:#8a5a00">Delivery cerrado en este momento</strong>
+        <span style="color:#8a5a00">${aviso}</span>
+      </div>`;
+    const anchor =
+      document.querySelector(".banner-area") ||
+      document.querySelector(".category-nav") ||
+      document.querySelector(".menu-container");
+    if (anchor && anchor.parentNode) {
+      anchor.parentNode.insertBefore(banner, anchor);
+    } else {
+      // fallback: cola direto no body
+      document.body.insertBefore(banner, document.body.firstChild);
+    }
+  }
 }
 
 // Renderiza o Menu (Categories + Produtos com subcategorias)
