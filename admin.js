@@ -1578,6 +1578,25 @@ async function negarCancelamento(pedidoId) {
 }
 
 async function mudarStatus(id, novoStatus) {
+  // ─────────────────────────────────────────────────────────────
+  // TRAVA DE CAIXA no ACEITE DO PEDIDO
+  // Mover pendente → em_preparo é o momento em que o operador
+  // "aceita" o pedido. A partir daqui, ele passa a contar no caixa
+  // dele e na cozinha. Sem caixa aberto, bloqueia e oferece abrir.
+  // ─────────────────────────────────────────────────────────────
+  if (novoStatus === "em_preparo") {
+    await _carregarSessaoCaixa({ propria: true });
+    if (!_sessaoCaixaAtiva) {
+      const _ok = confirm(
+        "⚠️ CAIXA FECHADO\n\n" +
+        "Para ACEITAR este pedido é necessário abrir o caixa primeiro.\n\n" +
+        "Deseja abrir o caixa agora?"
+      );
+      if (_ok) abrirModalCaixa("abertura");
+      return; // pedido continua pendente até o operador abrir o caixa e aceitar novamente
+    }
+  }
+
   // Registra o timestamp do novo status no campo correspondente
   const camposTimestamp = {
     em_preparo: ["tempo_confirmado", "tempo_preparo_iniciado"], // aceita E começa a preparar
@@ -1594,6 +1613,13 @@ async function mudarStatus(id, novoStatus) {
     else updateData[campos] = agora;
   }
   // Status 'cancelado' mantém os timestamps existentes
+
+  // Vincula o pedido ao operador que aceitou (para o Financeiro
+  // conseguir filtrar por funcionário depois)
+  if (novoStatus === "em_preparo" && _perfilId) {
+    updateData.garcom_id   = _perfilId;
+    updateData.garcom_nome = _perfilNome || null;
+  }
 
   const { error } = await supa.from("pedidos").update(updateData).eq("id", id);
   if (error) {
@@ -1887,9 +1913,18 @@ async function _obterHoraServidor() {
   }
 }
 
-// Sessão de caixa ativa (carregada ao abrir a aba financeiro)
+// Sessão de caixa "principal" (sempre do próprio operador, ou a mais
+// recente visível para gestores). Mantida por retrocompatibilidade —
+// todo o código legado que lê `_sessaoCaixaAtiva.id` continua funcionando.
 let _sessaoCaixaAtiva = null;
 // { id, usuario_email, aberto_em, fechado_em, valor_abertura }
+
+// Conjunto de sessões que o usuário logado pode ver no Financeiro:
+//   - funcionário/garçom → array com 1 elemento (a dele) ou vazio
+//   - gestor             → array com N elementos (todos abertos no momento)
+// Alimentado por _carregarSessaoCaixa(). Consumido por calcularFinanceiro()
+// e _obterPeriodoFinanceiro() para montar a visão consolidada.
+let _sessoesCaixaAtivas = [];
 
 // true somente quando o GESTOR mexe manualmente nos campos de data do
 // Financeiro (input#fin-inicio/fin-fim) para gerar um relatório por período
@@ -1910,34 +1945,67 @@ function _finMarcarFiltroManual() {
 // ─────────────────────────────────────────────────────────────
 
 /**
- * Carrega a sessão de caixa ativa para o usuário corrente.
- * Gestores veem qualquer sessão aberta (ou a mais recente).
- * Empleado ve solo la suya.
+ * Carrega a(s) sessão(ões) de caixa visíveis para o usuário corrente.
+ *
+ * Popula DOIS globais:
+ *   - _sessoesCaixaAtivas (array) — todas as sessões que o usuário pode ver
+ *   - _sessaoCaixaAtiva (single)  — a "principal", para retrocompatibilidade
+ *
+ * @param {Object} [opcoes]
+ * @param {boolean} [opcoes.propria=false]
+ *   - true  → força buscar SEMPRE a sessão do PRÓPRIO usuário logado,
+ *             mesmo se for dono/gerente/adminMaster. O array terá 0 ou 1 item.
+ *             Usado por: PDV, aceite de pedido, fechamento de caixa,
+ *             registro de movimentações.
+ *   - false (default) → gestores veem TODAS as sessões abertas (array com N),
+ *             para o Financeiro consolidado. Funcionário sempre vê só a dele.
  */
-async function _carregarSessaoCaixa() {
+async function _carregarSessaoCaixa(opcoes = {}) {
+  const { propria = false } = opcoes;
   const ehGestor   = ["dono", "gerente", "adminMaster"].includes(perfilUsuario);
   const emailAtual = document.getElementById("user-email")?.innerText || "";
+
+  // Modo consolidado (gestor + não própria) → traz N sessões.
+  // Modo próprio (propria:true ou não-gestor)     → traz 0 ou 1 sessão.
+  const modoConsolidado = ehGestor && !propria;
 
   let q = supa
     .from("sessoes_caixa")
     .select("*")
-    .is("fechado_em", null)          // só sessões ABERTAS
-    .order("aberto_em", { ascending: false })
-    .limit(1);
+    .is("fechado_em", null)
+    .order("aberto_em", { ascending: false });
 
-  if (!ehGestor) q = q.eq("usuario_email", emailAtual);
+  if (!modoConsolidado) {
+    q = q.eq("usuario_email", emailAtual).limit(1);
+  } else {
+    q = q.limit(50); // teto de segurança — 50 caixas abertos simultâneos é raro
+  }
 
   const { data } = await q;
-  _sessaoCaixaAtiva = data?.[0] || null;
+  _sessoesCaixaAtivas = data || [];
+  _sessaoCaixaAtiva   = _sessoesCaixaAtivas[0] || null;
 
   // Atualiza o indicador visual de status do caixa (se existir no HTML)
   const elStatus = document.getElementById("status-sessao-caixa");
   if (elStatus) {
-    if (_sessaoCaixaAtiva) {
-      const dAbr = new Date(_sessaoCaixaAtiva.aberto_em).toLocaleString("pt-BR", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" });
-      elStatus.innerHTML = `<span style="color:#27ae60">🟢 Caixa aberto desde ${dAbr}</span>`;
+    if (modoConsolidado) {
+      const n = _sessoesCaixaAtivas.length;
+      if (n === 0) {
+        elStatus.innerHTML = `<span style="color:#e74c3c">🔴 Ninguna caja abierta</span>`;
+      } else if (n === 1) {
+        const s = _sessoesCaixaAtivas[0];
+        const dAbr = new Date(s.aberto_em).toLocaleString("pt-BR", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" });
+        elStatus.innerHTML = `<span style="color:#27ae60">🟢 1 caja abierta (${s.usuario_nome || s.usuario_email}) · desde ${dAbr}</span>`;
+      } else {
+        elStatus.innerHTML = `<span style="color:#27ae60">🟢 ${n} cajas abiertas (vista consolidada)</span>`;
+      }
     } else {
-      elStatus.innerHTML = `<span style="color:#e74c3c">🔴 Ninguna caja abierta</span>`;
+      if (_sessaoCaixaAtiva) {
+        const dAbr = new Date(_sessaoCaixaAtiva.aberto_em).toLocaleString("pt-BR", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" });
+        elStatus.innerHTML = `<span style="color:#27ae60">🟢 Tu caja abierta desde ${dAbr}</span>`;
+      } else {
+        elStatus.innerHTML = `<span style="color:#e74c3c">🔴 Ninguna caja abierta</span>`;
+      }
     }
   }
 }
@@ -1993,7 +2061,166 @@ async function _abrirSessaoCaixa(valorAbertura, descricao) {
 }
 
 // ============================================================
-//  FINANCEIRO — usando helper _obterPeriodoFinanceiro()
+//  PAINEL CONSOLIDADO DE CAIXAS ABERTOS
+//  Mostra um card por sessão aberta no momento — só para gestores
+//  (dono / gerente / adminMaster). Dá um resumo ao vivo do que cada
+//  operador já vendeu desde que abriu o caixa, com botão para
+//  abrir o boletim completo daquela sessão específica.
+// ============================================================
+async function _carregarCaixasConsolidados() {
+  const container = document.getElementById("caixas-consolidados-wrap");
+  if (!container) return;
+
+  const ehGestor = ["dono", "gerente", "adminMaster"].includes(perfilUsuario);
+
+  // Funcionário não vê este painel — só gestores.
+  if (!ehGestor) {
+    container.style.display = "none";
+    container.innerHTML = "";
+    return;
+  }
+
+  const sessoes = _sessoesCaixaAtivas || [];
+  if (!sessoes.length) {
+    container.style.display = "none";
+    container.innerHTML = "";
+    return;
+  }
+
+  // ── 1. Resolve garcom_id (uuid) a partir dos emails das sessões ────
+  // pedidos.garcom_id é UUID; sessoes_caixa.usuario_email é texto.
+  // Faz uma consulta única em perfis_acesso para mapear.
+  const emails = [...new Set(sessoes.map((s) => s.usuario_email).filter(Boolean))];
+  const emailToUserId = {};
+  if (emails.length) {
+    const { data: perfis } = await supa
+      .from("perfis_acesso")
+      .select("id, email")
+      .in("email", emails);
+    (perfis || []).forEach((p) => { emailToUserId[p.email] = p.id; });
+  }
+
+  // ── 2. Uma única query de pedidos cobrindo o maior intervalo ───────
+  // Pega desde a sessão mais antiga em diante, filtra em JS por sessão.
+  const menorAberto = sessoes.reduce((min, s) => {
+    const t = new Date(s.aberto_em).getTime();
+    return t < min ? t : min;
+  }, Infinity);
+
+  const { data: pedidos } = await supa
+    .from("pedidos")
+    .select("id, garcom_id, total_geral, forma_pagamento, quitado_em, obs_pagamento, status, created_at")
+    .gte("created_at", new Date(menorAberto).toISOString())
+    .neq("status", "cancelado")
+    .limit(5000);
+
+  const agora = Date.now();
+
+  // ── 3. Agrega por sessão (faturamento + qtd pedidos) ──────────────
+  const resumoPorSessao = {};
+  sessoes.forEach((s) => {
+    const uid = emailToUserId[s.usuario_email] || null;
+    const inicioMs = new Date(s.aberto_em).getTime();
+    let faturamento = 0, qtd = 0;
+
+    (pedidos || []).forEach((p) => {
+      const t = new Date(p.created_at).getTime();
+      if (t < inicioMs || t > agora) return;
+      // Se conseguimos resolver o UUID do operador, filtramos por ele.
+      // Se não (perfil órfão ou email fora do perfis_acesso), contamos
+      // por janela de tempo — melhor que nada.
+      if (uid && p.garcom_id !== uid) return;
+
+      const pag = (p.forma_pagamento || "").toLowerCase();
+      const isNaNota = pag === "nanota";
+      const isQuitado = !!p.quitado_em || (p.obs_pagamento || "").toLowerCase().includes("[quitado");
+      if (isNaNota && !isQuitado) return; // NaNota não quitado não é faturamento
+      if (pag === "mensalista") return;   // mensalista não movimenta caixa
+
+      faturamento += Number(p.total_geral || 0);
+      qtd++;
+    });
+
+    resumoPorSessao[s.id] = { faturamento, qtd };
+  });
+
+  // ── 4. Renderiza o painel ─────────────────────────────────────────
+  const totalConsolidado = Object.values(resumoPorSessao).reduce(
+    (a, r) => a + r.faturamento, 0
+  );
+  const totalQtd = Object.values(resumoPorSessao).reduce((a, r) => a + r.qtd, 0);
+
+  container.style.display = "block";
+  container.innerHTML = `
+    <div style="margin-bottom:16px;background:#f0fdf4;border:1.5px solid #86efac;border-radius:14px;padding:14px 18px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span style="font-weight:800;font-size:0.95rem;color:#14532d">
+            🟢 ${sessoes.length} caja${sessoes.length === 1 ? "" : "s"} abierta${sessoes.length === 1 ? "" : "s"}
+          </span>
+          <span style="font-size:0.76rem;color:#166534">
+            Vista consolidada — solo gestores
+          </span>
+        </div>
+        <div style="font-size:0.82rem;color:#14532d;font-weight:700">
+          💰 Total consolidado: Gs ${Math.round(totalConsolidado).toLocaleString("es-PY")}
+          <span style="font-weight:500;color:#166534;margin-left:6px">(${totalQtd} pedido${totalQtd === 1 ? "" : "s"})</span>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px">
+        ${sessoes
+          .map((s) => {
+            const dAbr = new Date(s.aberto_em).toLocaleString("pt-BR", {
+              day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+            });
+            const r = resumoPorSessao[s.id] || { faturamento: 0, qtd: 0 };
+            const inicial = (s.usuario_nome || s.usuario_email || "?")
+              .trim()
+              .split(/\s+/)
+              .map((w) => w[0])
+              .slice(0, 2)
+              .join("")
+              .toUpperCase();
+            return `
+              <div style="background:#fff;border:1.5px solid #d1fae5;border-radius:12px;padding:12px 14px;box-shadow:0 2px 6px rgba(0,0,0,0.04);position:relative">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+                  <div style="width:34px;height:34px;border-radius:50%;background:#dcfce7;color:#166534;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.8rem;flex-shrink:0">
+                    ${inicial}
+                  </div>
+                  <div style="flex:1;min-width:0">
+                    <div style="font-weight:700;font-size:0.86rem;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                      ${s.usuario_nome || s.usuario_email}
+                    </div>
+                    <div style="font-size:0.7rem;color:#888;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                      ${s.usuario_email}
+                    </div>
+                  </div>
+                  <span style="width:9px;height:9px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 3px #dcfce7;flex-shrink:0" title="Caja abierta"></span>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:3px;font-size:0.74rem;color:#555">
+                  <div>🕐 <span style="color:#777">Abierta:</span> <strong>${dAbr}</strong></div>
+                  <div>💰 <span style="color:#777">Apertura:</span> <strong>Gs ${Math.round(s.valor_abertura || 0).toLocaleString("es-PY")}</strong></div>
+                  <div style="color:#15803d">
+                    📊 <span style="color:#166534;font-weight:600">Ventas:</span>
+                    <strong style="font-size:0.92rem">Gs ${Math.round(r.faturamento).toLocaleString("es-PY")}</strong>
+                    <span style="color:#16a34a;font-weight:500;margin-left:4px">(${r.qtd})</span>
+                  </div>
+                </div>
+                <button onclick="verBoletimSessaoAtiva(${s.id})"
+                  style="margin-top:10px;width:100%;padding:7px;background:#2c3e50;color:#fff;border:none;border-radius:7px;font-size:0.75rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px">
+                  📋 Ver boletín
+                </button>
+              </div>`;
+          })
+          .join("")}
+      </div>
+    </div>`;
+}
+
+// ============================================================
+//  FINANCEIRO — visão consolidada para gestores
+//    - funcionário/garçom → movimentações da PRÓPRIA sessão
+//    - gestor             → movimentações de TODAS as sessões abertas
 // ============================================================
 async function calcularFinanceiro() {
   const abaFin = document.getElementById("financeiro");
@@ -2007,7 +2234,16 @@ async function calcularFinanceiro() {
   const ehGestor   = ["dono", "gerente", "adminMaster"].includes(perfilUsuario);
   const emailAtual = document.getElementById("user-email")?.innerText || "";
 
-  await _carregarSessaoCaixa();
+    // Carrega sessões — consolidadas para gestor, própria para funcionário
+  await _carregarSessaoCaixa({ propria: !ehGestor });
+
+  // ── Painel consolidado (só gestores) ──────────────────────────
+  // Renderizado primeiro, pois é a leitura "de relance" que o dono
+  // procura ao abrir o Financeiro com vários operadores ativos.
+  if (typeof _carregarCaixasConsolidados === "function") {
+    await _carregarCaixasConsolidados();
+  }
+
   if (typeof TAXA_MOTOBOY !== "number" || TAXA_MOTOBOY === 0 || AJUDA_COMBUSTIVEL === 0) {
     const { data: _cfgMot } = await supa
       .from("configuracoes")
@@ -2042,8 +2278,7 @@ async function calcularFinanceiro() {
     .gte("created_at", utcInicio)
     .lte("created_at", utcFim);
 
-    if (tipoFiltro !== "todos") {
-    // Agrupamentos (retrocompatível com códigos antigos)
+  if (tipoFiltro !== "todos") {
     if (tipoFiltro === "TarjetaALL") {
       query = query.in("forma_pagamento", [
         "TarjetaDebito", "TarjetaCredito",
@@ -2072,8 +2307,6 @@ async function calcularFinanceiro() {
       query = query.eq("forma_pagamento", tipoFiltro);
     }
   }
-  // Filtro por tipo de cliente: mensalista usa LIKE no obs_pagamento
-  // (o campo forma_pagamento pode ser "Multipagamento" quando há split)
   if (clienteTipoFiltro === "mensalista") {
     query = query.or(
       "forma_pagamento.eq.Mensalista,obs_pagamento.ilike.%Mensalista%"
@@ -2081,12 +2314,12 @@ async function calcularFinanceiro() {
   } else if (clienteTipoFiltro === "nao_mensalista") {
     query = query.not("forma_pagamento", "eq", "Mensalista");
   }
+  // Funcionário vê só pedidos em que ele é garcom (aceitos ou vendidos por ele)
   if (!ehGestor && _perfilId) query = query.eq("garcom_id", _perfilId);
 
   const { data: pedidos } = await query;
   let peds = pedidos || [];
 
-  // Aplica filtro "não mensalista" também em memória (para cobrir split)
   if (clienteTipoFiltro === "nao_mensalista") {
     peds = peds.filter((p) => {
       const fp = (p.forma_pagamento || "").toLowerCase();
@@ -2107,16 +2340,21 @@ async function calcularFinanceiro() {
   else if (facturaFiltro === "sem_factura")
     peds = peds.filter((p) => !p.dados_factura?.ruc && !p.dados_factura?.ci);
 
+  // ── Movimentações de caixa ─────────────────────────────────────
+  // Gestor: TODAS as sessões abertas no momento (array _sessoesCaixaAtivas)
+  // Funcionário: só a própria
   let caixa = [];
-  if (_sessaoCaixaAtiva?.id) {
+  if (_sessoesCaixaAtivas.length > 0) {
+    const idsSessoes = _sessoesCaixaAtivas.map((s) => s.id);
     let caixaQuery = supa
       .from("movimentacoes_caixa")
       .select("*")
-      .eq("sessao_id", _sessaoCaixaAtiva.id);
+      .in("sessao_id", idsSessoes);
     if (!ehGestor) caixaQuery = caixaQuery.eq("usuario_email", emailAtual);
     const { data: caixaData } = await caixaQuery;
     caixa = caixaData || [];
   } else if (ehGestor) {
+    // Nenhuma sessão aberta → busca por período (comportamento legado)
     const { data: caixaData } = await supa
       .from("movimentacoes_caixa")
       .select("*")
@@ -2139,41 +2377,30 @@ async function calcularFinanceiro() {
       totalEfetivo = 0, totalNaNota = 0, totalQrCelular = 0, totalQrMaquina = 0;
   let custoEntregas = 0, qtdPedidos = 0;
   let totalTaxaServico = 0, qtdPedidosComTaxaServico = 0;
-  // KPI dedicado para vendas mensalista
   let faturamentoMensalista = 0, qtdPedidosMensalista = 0;
   const motoMap = {};
 
   function _acumularMetodo(metodoRaw, valor) {
     const m = (metodoRaw || "").toLowerCase().trim();
-
-    // Cartão BR (novo + legado)
     if (m === "tarjetabrdebito" || m === "tarjetabrcredito" ||
         m === "cartãobr - débito" || m === "cartãobr - crédito" ||
         m === "cartao br - debito" || m === "cartao br - credito" ||
         m === "tarjeta br - débito" || m === "tarjeta br - crédito" ||
         m === "cartãobr" || m === "cartaobr" || m === "cartao br") {
-      totalCartao += valor;
-      return;
+      totalCartao += valor; return;
     }
-    // Cartão PY (novo + legado)
     if (m === "tarjetadebito" || m === "tarjetacredito" ||
         m === "cartão - débito" || m === "cartão - crédito" ||
         m === "cartao - debito" || m === "cartao - credito" ||
         m === "tarjeta - débito" || m === "tarjeta - crédito" ||
         m === "cartao" || m === "cartão" || m === "tarjeta") {
-      totalCartao += valor;
-      return;
+      totalCartao += valor; return;
     }
-    // Pix
     if (m.includes("pix")) { totalPix += valor; return; }
-    // Transferência / Alias
     if (m.includes("transfer") || m.includes("alias")) { totalTransf += valor; return; }
-    // Efetivo / Dinheiro
     if (m.includes("efetivo") || m.includes("dinheiro") || m === "efectivo") { totalEfetivo += valor; return; }
-    // QR (novo + legado)
     if (m === "qr" || m === "qrmaquina" || m === "qrmarina" || m === "qrcelular" || m === "qrpy" || m.includes("qr")) {
-      totalQrCelular += valor;
-      return;
+      totalQrCelular += valor; return;
     }
   }
 
@@ -2184,7 +2411,6 @@ async function calcularFinanceiro() {
     const isNaNota = pag === "nanota";
     const isQuitado = !!p.quitado_em || (p.obs_pagamento || "").toLowerCase().includes("[quitado");
 
-    // Contabiliza KPI de mensalista (antes de qualquer skip)
     if (isMensalista) {
       faturamentoMensalista += safeNum(p.total_geral);
       qtdPedidosMensalista++;
@@ -2244,7 +2470,12 @@ async function calcularFinanceiro() {
     if (c.tipo === "despesa" || c.tipo === "sangria") totalSaidas += v;
   });
 
-  const fundoAbertura = safeNum(_sessaoCaixaAtiva?.valor_abertura);
+  // Fundo de abertura: para funcionário, é o da própria sessão;
+  // para gestor consolidado, é a SOMA dos fundos de todas as sessões.
+  const fundoAbertura = _sessoesCaixaAtivas.length > 0
+    ? _sessoesCaixaAtivas.reduce((acc, s) => acc + safeNum(s.valor_abertura), 0)
+    : 0;
+
   const lucro = faturamento - custoEntregas - totalSaidas;
 
   const setV = (id, v) => { const el = document.getElementById(id); if (el) el.innerText = v; };
@@ -2271,7 +2502,7 @@ async function calcularFinanceiro() {
   setV("card-qtd-pedidos", qtdPedidos);
   setV("card-ticket-medio", fmt(qtdPedidos > 0 ? faturamento / qtdPedidos : 0));
 
-  // Exibe KPI mensalista (novo card criado dinamicamente abaixo do card-faturamento)
+  // KPI mensalista (card criado dinamicamente)
   let _elMsgMens = document.getElementById("fin-kpi-mensalista");
   if (!_elMsgMens) {
     const _anchor = document.querySelector(".kpi-grid");
@@ -2296,22 +2527,33 @@ async function calcularFinanceiro() {
   if (typeof renderizarHistoricoCaixa === "function") renderizarHistoricoCaixa(caixa, _sessaoCaixaAtiva);
   if (typeof carregarHistoricoFechamentos === "function") carregarHistoricoFechamentos();
 
+  // Badge superior — indica visão consolidada para gestor, individual para funcionário
   const badgeCaixa = document.getElementById("badge-caixa-operador");
   if (badgeCaixa) {
-    if (_sessaoCaixaAtiva) {
-      const dAbr = new Date(_sessaoCaixaAtiva.aberto_em).toLocaleString("pt-BR", {
-        day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
-      });
-      const dFch = _sessaoCaixaAtiva.fechado_em
-        ? new Date(_sessaoCaixaAtiva.fechado_em).toLocaleString("pt-BR", {
-            day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
-          })
-        : "em aberto";
-      badgeCaixa.textContent = ehGestor
-        ? `📊 Visão geral — sessão ${_sessaoCaixaAtiva.id} (${_sessaoCaixaAtiva.usuario_email}) · ${dAbr} → ${dFch}`
-        : `💼 Seu caixa — aberto ${dAbr} → ${dFch}`;
+    const n = _sessoesCaixaAtivas.length;
+    if (ehGestor) {
+      if (n === 0) {
+        badgeCaixa.textContent = `📊 Visión consolidada — ${elInicio?.value || ""} até ${elFim?.value || ""} (sin sesión abierta)`;
+      } else if (n === 1) {
+        const s = _sessoesCaixaAtivas[0];
+        const dAbr = new Date(s.aberto_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+        const dFch = s.fechado_em
+          ? new Date(s.fechado_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
+          : "em aberto";
+        badgeCaixa.textContent = `📊 Visión consolidada — 1 caja abierta (${s.usuario_nome || s.usuario_email}) · ${dAbr} → ${dFch}`;
+      } else {
+        badgeCaixa.textContent = `📊 Visión consolidada — ${n} cajas abiertas · total sumado`;
+      }
     } else {
-      badgeCaixa.textContent = `📊 Visão geral — ${elInicio?.value || ""} até ${elFim?.value || ""} (sem sessão de caixa)`;
+      if (_sessaoCaixaAtiva) {
+        const dAbr = new Date(_sessaoCaixaAtiva.aberto_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+        const dFch = _sessaoCaixaAtiva.fechado_em
+          ? new Date(_sessaoCaixaAtiva.fechado_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
+          : "em aberto";
+        badgeCaixa.textContent = `💼 Tu caja — aberta ${dAbr} → ${dFch}`;
+      } else {
+        badgeCaixa.textContent = `💼 Sin caja abierta`;
+      }
     }
   }
 
@@ -2371,8 +2613,6 @@ async function calcularFinanceiro() {
     }
   }
 }
-
-
 
 // ============================================================
 //  RENDERIZA HISTÓRICO DE CAIXA (colapsável)
@@ -2574,6 +2814,10 @@ function imprimirHistoricoCaixa() {
 //  HISTÓRICO DE FECHAMENTOS (dias/sessões passadas)
 //  Lista sessões JÁ FECHADAS com botão para reabrir o boletim
 //  (lido de sessoes_caixa.resumo_fechamento) e botão para imprimir.
+//
+//  Visibilidade:
+//   - dono / gerente / adminMaster → histórico de TODOS os operadores
+//   - funcionário / garçom         → somente o próprio histórico
 // ============================================================
 async function carregarHistoricoFechamentos() {
   let section = document.getElementById("historico-fechamentos-section");
@@ -2606,16 +2850,32 @@ async function carregarHistoricoFechamentos() {
   if (!container) return;
   container.innerHTML = '<div style="text-align:center;padding:16px;color:#aaa;">Cargando...</div>';
 
-  const { data: sessoes, error } = await supa
+  // ── Escopo de visibilidade ─────────────────────────────────
+  // Funcionário / garçom vê só o histórico dele.
+  // Gestores veem histórico de todos.
+  const ehGestor   = ["dono", "gerente", "adminMaster"].includes(perfilUsuario);
+  const emailAtual = document.getElementById("user-email")?.innerText || "";
+
+  let query = supa
     .from("sessoes_caixa")
     .select("id, usuario_nome, usuario_email, aberto_em, fechado_em, valor_fechamento, resumo_fechamento")
     .not("fechado_em", "is", null)
     .order("fechado_em", { ascending: false })
     .limit(30);
 
+  if (!ehGestor) {
+    query = query.eq("usuario_email", emailAtual);
+  }
+
+  const { data: sessoes, error } = await query;
+
   if (error || !sessoes?.length) {
     container.innerHTML =
-      '<div style="text-align:center;padding:16px;color:#aaa;">Ningún cierre registrado todavía.</div>';
+      '<div style="text-align:center;padding:16px;color:#aaa;">' +
+      (ehGestor
+        ? "Ningún cierre registrado todavía."
+        : "Todavía no has cerrado ninguna caja.") +
+      "</div>";
     return;
   }
 
@@ -2636,11 +2896,18 @@ async function carregarHistoricoFechamentos() {
         minute: "2-digit",
       });
       const temResumo = !!s.resumo_fechamento;
+
+      // Para gestores, mostra o nome/e-mail do operador na linha.
+      // Para o próprio funcionário, é redundante (é ele mesmo) — omite.
+      const operadorHtml = ehGestor
+        ? `<div style="color:#888;font-size:0.76rem;">${s.usuario_nome || s.usuario_email || "—"} · Sesión #${s.id}</div>`
+        : `<div style="color:#888;font-size:0.76rem;">Sesión #${s.id}</div>`;
+
       return `
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;padding:10px;border-bottom:1px solid #eee;">
         <div>
           <div style="font-weight:700;font-size:0.88rem;">${abertoFmt} → ${fechadoFmt}</div>
-          <div style="color:#888;font-size:0.76rem;">${s.usuario_nome || s.usuario_email || "—"} · Sesión #${s.id}</div>
+          ${operadorHtml}
         </div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
           <strong style="color:#2d6a4f;font-size:0.9rem;">${fmt(s.valor_fechamento)}</strong>
@@ -2874,6 +3141,146 @@ async function abrirRelatorioFechamento(sessaoId) {
     </div>
   `;
     overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+}
+
+// ══════════════════════════════════════════════════════════════
+//  BOLETIM DE UMA SESSÃO AINDA ABERTA (em tempo real)
+//  Reaproveita `_calcularResumoSessaoLegado` — que já sabe computar
+//  um boletim de qualquer janela [aberto_em, fim]. Aqui passamos
+//  "agora" como fim, e o modal mostra os totais PARCIAIS.
+// ══════════════════════════════════════════════════════════════
+async function verBoletimSessaoAtiva(sessaoId) {
+  const { data: sessao, error } = await supa
+    .from("sessoes_caixa")
+    .select("*")
+    .eq("id", sessaoId)
+    .single();
+
+  if (error || !sessao) {
+    alert("No fue posible cargar la sesión: " + (error?.message || "no encontrada"));
+    return;
+  }
+
+  // Snapshot do "agora" via servidor (mesma referência de tempo que
+  // os outros cálculos usam)
+  const horaServ = await _obterHoraServidor();
+  const resumo = await _calcularResumoSessaoLegado(sessao, horaServ.iso);
+
+  const { data: movs } = await supa
+    .from("movimentacoes_caixa")
+    .select("*")
+    .eq("sessao_id", sessaoId)
+    .order("created_at", { ascending: true });
+
+  const fmt = (n) => "Gs " + Math.round(n || 0).toLocaleString("es-PY");
+  const dataHora = (iso) =>
+    iso
+      ? new Date(iso).toLocaleString("pt-BR", {
+          day: "2-digit", month: "2-digit", year: "numeric",
+          hour: "2-digit", minute: "2-digit",
+          timeZone: "America/Asuncion",
+        })
+      : "—";
+
+  const p = resumo.por_forma_pagamento || {};
+
+  document.getElementById("modal-boletim-ativo")?.remove();
+
+  const overlay = document.createElement("div");
+  overlay.id = "modal-boletim-ativo";
+  overlay.style.cssText =
+    "position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px";
+  overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+
+  const modal = document.createElement("div");
+  modal.style.cssText =
+    "background:#fff;border-radius:16px;padding:0;max-width:480px;width:100%;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3)";
+
+  modal.innerHTML = `
+    <div style="padding:20px 22px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:#fff;border-radius:16px 16px 0 0;z-index:1">
+      <div>
+        <h3 style="margin:0;font-size:1.1rem;">📋 Boletim (en curso)</h3>
+        <div style="font-size:0.74rem;color:#166534;font-weight:700;margin-top:2px">
+          🟢 Caja abierta — valores parciales en tiempo real
+        </div>
+      </div>
+      <button onclick="document.getElementById('modal-boletim-ativo').remove()"
+        style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:#999">✕</button>
+    </div>
+    <div style="padding:20px 22px;">
+      <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:6px;">
+        <span style="color:#888">Operador</span>
+        <strong>${sessao.usuario_nome || sessao.usuario_email}</strong>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:6px;">
+        <span style="color:#888">Apertura</span><strong>${dataHora(sessao.aberto_em)}</strong>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:16px;">
+        <span style="color:#888">Snapshot</span><strong>${dataHora(horaServ.iso)}</strong>
+      </div>
+
+      <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:14px;margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:6px;">
+          <span>🏦 Valor de Apertura</span><strong>${fmt(resumo.valor_abertura)}</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:6px;">
+          <span>💰 Facturación parcial</span><strong style="color:#16a34a">${fmt(resumo.faturamento)}</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:6px;">
+          <span>🏍️ Custo Entregas</span><strong>${fmt(resumo.custo_entregas)}</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:6px;">
+          <span>💸 Salidas (gastos/retiros)</span><strong>${fmt(resumo.total_saidas)}</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:6px;">
+          <span>➕ Entradas</span><strong>${fmt(resumo.total_entradas)}</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:6px;">
+          <span>📦 Qtd. Pedidos</span><strong>${resumo.qtd_pedidos}</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:0.95rem;margin-top:10px;padding-top:10px;border-top:1px solid #86efac;">
+          <span style="font-weight:700">Resultado parcial</span>
+          <strong style="color:#16a34a">${fmt(resumo.resultado_operacional)}</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:0.95rem;margin-top:6px;">
+          <span style="font-weight:700">💰 Dinheiro en gaveta</span><strong>${fmt(resumo.dinheiro_na_gaveta)}</strong>
+        </div>
+      </div>
+
+      <div style="font-weight:700;font-size:0.85rem;margin-bottom:8px;">💳 Por Forma de Pago</div>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px">
+        ${[
+          ["💵 Efectivo",       p.efetivo],
+          ["💳 Tarjeta",        p.cartao],
+          ["📱 Pix",            p.pix],
+          ["🏦 Transferencia",  p.transferencia],
+          ["📱 QR",             (p.qr_celular || 0) + (p.qr_maquina || 0)],
+          ["📋 Na Nota (quit.)", p.na_nota_quitado],
+        ].map(([label, val]) => `
+          <div style="display:flex;justify-content:space-between;font-size:0.85rem;background:#f9fafb;border-radius:6px;padding:8px 10px">
+            <span>${label}</span><strong>${fmt(val)}</strong>
+          </div>`).join("")}
+      </div>
+
+      <div style="font-weight:700;font-size:0.85rem;margin-bottom:8px;">📑 Movimientos de esta sesión</div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        ${(movs && movs.length)
+          ? movs.map((m) => `
+            <div style="display:flex;justify-content:space-between;font-size:0.8rem;padding:8px 10px;border:1px solid #eee;border-radius:6px">
+              <span style="color:#555">${m.descricao || m.tipo}</span>
+              <strong style="color:${m.tipo === "despesa" || m.tipo === "sangria" ? "#dc2626" : "#16a34a"}">${fmt(m.valor)}</strong>
+            </div>`).join("")
+          : `<div style="color:#aaa;font-size:0.82rem;text-align:center;padding:12px">Ningún movimiento registrado todavía.</div>`}
+      </div>
+
+      <button onclick="document.getElementById('modal-boletim-ativo').remove()"
+        style="margin-top:16px;width:100%;padding:11px;background:#f5f5f5;color:#555;border:none;border-radius:10px;font-weight:600;cursor:pointer;font-size:0.88rem">
+        Cerrar
+      </button>
+    </div>
+  `;
+  overlay.appendChild(modal);
   document.body.appendChild(overlay);
 }
 
@@ -3549,6 +3956,14 @@ async function salvarMovimentacaoCaixa() {
 
   if (!valor || valor <= 0) { alert("Ingrese un valor válido."); return; }
 
+  // Garante que movimentações (despesa, sangria, suprimento, fechamento)
+  // vão para o caixa do PRÓPRIO operador. Num contexto de gestor no
+  // Financeiro, _sessaoCaixaAtiva pode estar apontando para a sessão
+  // consolidada de outro usuário — recarregar com `propria:true` corrige.
+  if (tipo !== "abertura") {
+    await _carregarSessaoCaixa({ propria: true });
+  }
+
   const emailAtual = document.getElementById("user-email")?.innerText || "";
 
   // Bloquear se caixa bloqueado
@@ -3611,8 +4026,14 @@ async function salvarMovimentacaoCaixa() {
 }
 
 async function fecharCaixaResumo() {
+  // Garante que estamos fechando a PRÓPRIA sessão — em um contexto
+  // de gestor no Financeiro, _sessaoCaixaAtiva poderia apontar para
+  // uma sessão consolidada (a mais recente de qualquer operador).
+  // Recarregar com `propria:true` garante que é o próprio caixa.
+  await _carregarSessaoCaixa({ propria: true });
+
   if (!_sessaoCaixaAtiva) {
-    alert('Ninguna caja abierta para cerrar.');
+    alert('Ninguna caja tuya abierta para cerrar.');
     return;
   }
 
@@ -8899,7 +9320,9 @@ async function _uploadLogoIdentidade(input) {
 }
 
 // ============================================================
-//  DASHBOARD — usando helper _obterPeriodoFinanceiro()
+//  DASHBOARD — visão consolidada para gestores, própria para
+//  funcionários. Reusa _obterPeriodoFinanceiro() para manter o
+//  mesmo período que o Financeiro (sessões abertas ou filtro manual).
 // ============================================================
 async function carregarDashboard() {
   // Saudação
@@ -8915,33 +9338,44 @@ async function carregarDashboard() {
     });
   }
 
-  // 1. Carrega sessão ativa (necessária para o helper)
-  await _carregarSessaoCaixa();
+  // 1. Carrega sessões — consolidadas para gestor, própria para funcionário
+  const ehGestor = ["dono", "gerente", "adminMaster"].includes(perfilUsuario);
+  await _carregarSessaoCaixa({ propria: !ehGestor });
 
-  // 2. Obtém o período via helper (usado para os KPIs e para passar aos rankings)
+  // 2. Obtém o período via helper (que já consolidou N sessões)
   const { utcInicio, utcFim, usandoSessao } = await _obterPeriodoFinanceiro();
 
-  // 3. Atualiza o aviso sobre a sessão (sem ocultar os filtros)
+  // 3. Aviso sobre o modo em uso
   const avisoRank = document.getElementById("dash-ranking-aviso");
   if (avisoRank) {
-    if (usandoSessao) {
-      const dAbr = new Date(_sessaoCaixaAtiva.aberto_em).toLocaleString("pt-BR", {
-        day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"
-      });
-      avisoRank.textContent = `📊 Rankings baseados na sessão de caixa aberta desde ${dAbr}`;
+    if (usandoSessao && _sessoesCaixaAtivas.length > 0) {
+      if (_sessoesCaixaAtivas.length === 1) {
+        const s = _sessoesCaixaAtivas[0];
+        const dAbr = new Date(s.aberto_em).toLocaleString("pt-BR", {
+          day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"
+        });
+        avisoRank.textContent = ehGestor
+          ? `📊 Datos de la sesión abierta por ${s.usuario_nome || s.usuario_email} desde ${dAbr}`
+          : `📊 Datos de tu caja desde ${dAbr}`;
+      } else {
+        avisoRank.textContent = `📊 Datos consolidados de ${_sessoesCaixaAtivas.length} cajas abiertas`;
+      }
       avisoRank.style.display = "block";
     } else {
       avisoRank.style.display = "none";
     }
   }
 
-  // 4. Busca pedidos com critérios unificados (para os KPIs)
-  const { data: pedidos } = await supa
+  // 4. Busca pedidos do período (com filtro por garcom para funcionário)
+  let qPed = supa
     .from("pedidos")
     .select("*")
     .in("status", ["entregue", "em_preparo", "pronto_entrega", "saiu_entrega"])
     .gte("created_at", utcInicio)
     .lte("created_at", utcFim);
+  if (!ehGestor && _perfilId) qPed = qPed.eq("garcom_id", _perfilId);
+
+  const { data: pedidos } = await qPed;
 
   // Filtra NaNota não quitado e Mensalista
   const pedsFiltrados = (pedidos || []).filter((p) => {
@@ -8955,7 +9389,8 @@ async function carregarDashboard() {
   const total = pedsFiltrados.reduce((a, b) => a + (b.total_geral || 0), 0);
   const qtdPedidos = pedsFiltrados.length;
 
-  // 5. Pedidos em preparo (sem filtro de pagamento)
+  // 5. Pedidos em preparo (sempre todos da loja — status operacional,
+  //    não financeiro; mesmo funcionário vê todos, é o KDS global)
   const { count: emPreparo } = await supa
     .from("pedidos")
     .select("*", { count: "exact", head: true })
@@ -8969,7 +9404,7 @@ async function carregarDashboard() {
   setVal("kpi-vendas", `Gs ${total.toLocaleString("es-PY")}`);
   setVal("kpi-pedidos", qtdPedidos);
 
-  // Custo entregas (igual ao financeiro)
+  // Custo entregas
   let custoMoto = 0;
   const motosUnicas = new Set();
   pedsFiltrados.forEach((p) => {
@@ -8983,18 +9418,18 @@ async function carregarDashboard() {
   setVal("kpi-moto", `Gs ${custoMoto.toLocaleString("es-PY")}`);
   setVal("kpi-em-preparo", emPreparo || 0);
 
-  // 6. Rankings — passamos as datas da sessão (se houver) para que usem o mesmo período
-  //    Mas se o usuário alterar os filtros manualmente, as funções internas
-  //    ignorarão essas datas e lerão o seletor de período.
+  // 6. Rankings
   await carregarRankingProdutos(utcInicio, utcFim);
   await carregarRankingClientes(utcInicio, utcFim);
 }
 
 // ============================================================
-//  HELPER — obter período com base na sessão ou filtro manual
+//  HELPER — obter período com base na(s) sessão(ões) ou filtro manual
+//  Para gestores com múltiplas sessões abertas, retorna a JANELA
+//  que engloba TODAS elas (menor aberto_em → maior fechado_em/agora).
+//  Para funcionários, é só a janela da própria sessão.
 // ============================================================
 async function _obterPeriodoFinanceiro() {
-  // Retorna { utcInicio, utcFim, usandoSessao }
   const elInicio = document.getElementById("fin-inicio");
   const elFim    = document.getElementById("fin-fim");
   const ehGestor = ["dono", "gerente", "adminMaster"].includes(perfilUsuario);
@@ -9007,14 +9442,23 @@ async function _obterPeriodoFinanceiro() {
   let utcInicio, utcFim, usandoSessao = false;
 
   if (ehGestor && _finFiltroManualAtivo && elInicio?.value && elFim?.value) {
+    // ── Filtro manual do gestor (ignora sessões) ──
     const _tz = 3 * 60 * 60 * 1000;
     utcInicio = new Date(new Date(elInicio.value + "T00:00:00").getTime() + _tz).toISOString();
     utcFim    = new Date(new Date(elFim.value   + "T23:59:59").getTime() + _tz).toISOString();
-  } else if (_sessaoCaixaAtiva) {
-    utcInicio = _sessaoCaixaAtiva.aberto_em;
-    utcFim    = _sessaoCaixaAtiva.fechado_em || horaServ.iso;
+  } else if (_sessoesCaixaAtivas.length > 0) {
+    // ── Modo sessão (1 ou N) ──
+    // Pega a MENOR data de abertura e a MAIOR data de fechamento
+    // (ou "agora", se alguma ainda estiver aberta) entre todas as sessões.
+    const aberturas = _sessoesCaixaAtivas.map((s) => new Date(s.aberto_em).getTime());
+    const fechamentos = _sessoesCaixaAtivas.map((s) =>
+      s.fechado_em ? new Date(s.fechado_em).getTime() : new Date(horaServ.iso).getTime(),
+    );
+    utcInicio = new Date(Math.min(...aberturas)).toISOString();
+    utcFim    = new Date(Math.max(...fechamentos)).toISOString();
     usandoSessao = true;
   } else {
+    // ── Fallback: nenhuma sessão e sem filtro manual → hoje ──
     const hoje = horaServ.date_py;
     const _tz = 3 * 60 * 60 * 1000;
     utcInicio = new Date(new Date(hoje + "T00:00:00").getTime() + _tz).toISOString();
@@ -9663,39 +10107,27 @@ async function carregarPDV() {
 
 /**
  * Mini-painel de caixa na aba PDV.
- * Visível para todos os perfis (funcionario, gerente, dono, etc).
- * Permite abrir o caixa sem precisar acessar a aba financeiro.
- * Inclui botão de Despesa (além de Suprimento/Sangria/Cerrar).
+ * SEMPRE mostra a sessão do PRÓPRIO operador logado — mesmo para
+ * gestores, que têm o próprio caixa. O gestor NÃO herda o caixa
+ * do funcionário aqui; vê o seu, para bater com o que o PDV vai
+ * registrar na hora da venda.
  */
 async function pdvCarregarPainelCaixa() {
   const container = document.getElementById("pdv-painel-caixa");
   if (!container) return;
 
-  const ehGestor = ["dono", "gerente", "adminMaster"].includes(perfilUsuario);
-  const emailAtual = document.getElementById("user-email")?.innerText || "";
-
-  let q = supa
-    .from("sessoes_caixa")
-    .select("*")
-    .is("fechado_em", null)
-    .order("aberto_em", { ascending: false })
-    .limit(1);
-  if (!ehGestor) q = q.eq("usuario_email", emailAtual);
-
-  const { data } = await q;
-  const sessao = data?.[0] || null;
-
-  // Sincroniza com _sessaoCaixaAtiva
-  _sessaoCaixaAtiva = sessao;
+  // Carrega SEMPRE a própria sessão (dono incluso)
+  await _carregarSessaoCaixa({ propria: true });
+  const sessao = _sessaoCaixaAtiva;
 
   if (!sessao) {
     container.innerHTML = `
       <div style="background:#fff3cd;border:1.5px solid #f0a500;border-radius:12px;
         padding:14px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
         <div style="flex:1;min-width:200px">
-          <div style="font-weight:700;color:#7a5100;font-size:0.92rem">⚠️ Caja no abierta</div>
+          <div style="font-weight:700;color:#7a5100;font-size:0.92rem">⚠️ Tu caja no está abierta</div>
           <div style="font-size:0.8rem;color:#9a6400;margin-top:2px">
-            Abra la caja para que las ventas se contabilicen en esta sesión.
+            Abre tu caja para que las ventas de este operador se contabilicen.
           </div>
         </div>
         <button onclick="abrirModalCaixa('abertura')"
@@ -9712,13 +10144,13 @@ async function pdvCarregarPainelCaixa() {
       hour: "2-digit",
       minute: "2-digit",
     });
-    const podeFechar = ehGestor;
+    const podeFechar = true; // qualquer operador fecha o PRÓPRIO caixa
     container.innerHTML = `
       <div style="background:#eafaf1;border:1.5px solid #27ae60;border-radius:12px;
         padding:12px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
         <div style="flex:1;min-width:180px">
           <div style="font-weight:700;color:#1a6b3a;font-size:0.92rem">
-            🟢 Caixa aberto desde ${dAbr}
+            🟢 Tu caja está abierta desde ${dAbr}
           </div>
           <div style="font-size:0.8rem;color:#2e7d52;margin-top:2px">
             Operador: ${sessao.usuario_nome || sessao.usuario_email}
@@ -9744,7 +10176,7 @@ async function pdvCarregarPainelCaixa() {
           <button onclick="fecharCaixaResumo()"
             style="background:#2c3e50;color:#fff;border:none;border-radius:8px;
               padding:8px 12px;font-weight:600;cursor:pointer;font-size:0.8rem">
-            <i class="fas fa-calculator"></i> Cerrar Día
+            <i class="fas fa-calculator"></i> Cerrar Mi Caja
           </button>` : ""}
         </div>
       </div>`;
@@ -12207,7 +12639,7 @@ async function salvarPedidoBalcao() {
   // Ao confirmar, abre o modal de abertura de caixa e interrompe o
   // fluxo para o operador registrar o fundo de troco.
   // ─────────────────────────────────────────────────────────────
-  await _carregarSessaoCaixa();
+  await _carregarSessaoCaixa({ propria: true });
   if (!_sessaoCaixaAtiva) {
     const _okAbrir = confirm(
       "⚠️ CAIXA FECHADO\n\n" +
