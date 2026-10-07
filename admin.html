@@ -269,14 +269,39 @@
 
 
       <!-- Seletor de idioma PT / ES -->
-      <div style="display:flex;gap:6px;padding:8px 12px;justify-content:center;border-top:1px solid rgba(255,255,255,0.1);margin-top:4px">
-        <button class="lang-btn" data-lang="pt" onclick="setAdminLang('pt')"
-          style="flex:1;padding:6px 4px;border:none;border-radius:8px;font-size:0.78rem;font-weight:700;cursor:pointer;background:rgba(255,255,255,0.12);color:rgba(255,255,255,0.7);transition:all .15s"
-          title="Português">🇧🇷 PT</button>
-        <button class="lang-btn" data-lang="es" onclick="setAdminLang('es')"
-          style="flex:1;padding:6px 4px;border:none;border-radius:8px;font-size:0.78rem;font-weight:700;cursor:pointer;background:rgba(255,255,255,0.12);color:rgba(255,255,255,0.7);transition:all .15s"
-          title="Español">🇵🇾 ES</button>
-      </div>
+<div id="lang-selector"
+     style="display:flex;gap:6px;padding:8px 12px;justify-content:center;
+            border-top:1px solid rgba(255,255,255,0.1);margin-top:4px">
+  <button type="button" class="lang-btn" data-lang="pt"
+    style="flex:1;padding:8px 4px;border:none;border-radius:8px;font-size:0.78rem;
+           font-weight:700;cursor:pointer;background:rgba(255,255,255,0.12);
+           color:rgba(255,255,255,0.7);transition:all .15s"
+    title="Português">🇧🇷 PT</button>
+  <button type="button" class="lang-btn" data-lang="es"
+    style="flex:1;padding:8px 4px;border:none;border-radius:8px;font-size:0.78rem;
+           font-weight:700;cursor:pointer;background:rgba(255,255,255,0.12);
+           color:rgba(255,255,255,0.7);transition:all .15s"
+    title="Español">🇵🇾 ES</button>
+</div>
+
+<script>
+// Fallback robusto: liga clique via JS (não depende do onclick inline)
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.lang-btn').forEach(btn => {
+      // remove onclick inline pra evitar duplo-fire caso o inline exista
+      btn.removeAttribute('onclick');
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const lang = btn.dataset.lang || btn.getAttribute('data-lang');
+        if (typeof setAdminLang === 'function') {
+          setAdminLang(lang);
+        } else {
+          console.warn('[i18n] setAdminLang não definido — admin-i18n.js carregou?');
+        }
+      });
+    });
+  });
+  </script>
 
       <div class="menu-item" onclick="abrirModalAlterarSenha()" style="background:#145a22;color:#d1fae5" title="Cambiar mi contraseña">
         <i class="fas fa-key"></i><span class="mobile-hide"> Contraseña</span>
