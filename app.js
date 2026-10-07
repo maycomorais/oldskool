@@ -605,6 +605,75 @@ function verificarLojaAbertaParaPedido() {
   return { aberto: estaAberto, proximoDia: null };
 }
 
+// ═════════════════════════════════════════════════════════════════
+//  ESTOQUE — Cliente final
+//  Carrega o inventário vinculado aos produtos do cardápio e permite
+//  bloquear a venda quando a quantidade chega a zero.
+// ═════════════════════════════════════════════════════════════════
+
+let _estoqueMapApp = {};
+
+async function _carregarEstoqueApp(produtos) {
+  const ids = new Set();
+  (produtos || []).forEach((p) => {
+    if (p.inventario_id) ids.add(p.inventario_id);
+    let cfg = p.montagem_config;
+    if (typeof cfg === "string") {
+      try { cfg = JSON.parse(cfg); } catch (_) { cfg = null; }
+    }
+    if (cfg && cfg.__tipo === "variacoes" && Array.isArray(cfg.variacoes)) {
+      cfg.variacoes.forEach((v) => {
+        if (v.inventario_id) ids.add(v.inventario_id);
+      });
+    }
+  });
+
+  _estoqueMapApp = {};
+  if (!ids.size) return;
+
+  try {
+    const { data } = await supa
+      .from("inventario")
+      .select("id, quantidade")
+      .in("id", [...ids]);
+    (data || []).forEach((i) => {
+      _estoqueMapApp[i.id] = i.quantidade ?? 0;
+    });
+  } catch (_) {
+    /* falha de rede não bloqueia cardápio */
+  }
+}
+
+// Retorna true se o produto está SEM estoque e deve ser ocultado/desabilitado.
+function _produtoSemEstoqueApp(p) {
+  let cfg = p.montagem_config;
+  if (typeof cfg === "string") {
+    try { cfg = JSON.parse(cfg); } catch (_) { cfg = null; }
+  }
+
+  // (a) Inventário direto
+  if (p.inventario_id && p.inventario_id in _estoqueMapApp) {
+    if (_estoqueMapApp[p.inventario_id] <= 0) return true;
+  }
+
+  // (b) Multivariação — bloqueia só se todas as ativas estiverem zeradas
+  if (cfg && cfg.__tipo === "variacoes" && Array.isArray(cfg.variacoes)) {
+    const ativas = cfg.variacoes.filter((v) => v.ativo !== false);
+    if (ativas.length > 0) {
+      const comControle = ativas.filter((v) => v.inventario_id);
+      const semControle = ativas.filter((v) => !v.inventario_id);
+      if (comControle.length > 0 && semControle.length === 0) {
+        const todasZeradas = comControle.every(
+          (v) => (_estoqueMapApp[v.inventario_id] ?? 0) <= 0
+        );
+        if (todasZeradas) return true;
+      }
+    }
+  }
+
+  return false;
+}
+
 // ── Mostra alerta quando a loja está fechada ──────────────────────────────
 function mostrarAlertaLojaFechada(proximoDia) {
   const lang = localStorage.getItem("language") || "es";
@@ -675,6 +744,10 @@ async function renderMenu() {
     return;
   }
 
+  // ── Carrega o mapa de estoque e filtra produtos zerados ───────
+  await _carregarEstoqueApp(produtos);
+  const _produtosDisponiveis = produtos.filter((p) => !_produtoSemEstoqueApp(p));
+
   const subcats = subcatsDb || [];
 
   // Monta mapa: categoria_slug -> lista de subcategorias
@@ -689,7 +762,7 @@ async function renderMenu() {
   const prodPorSubcat = {};
   const prodSemSubcat = {};
 
-  produtos.forEach((p) => {
+  _produtosDisponiveis.forEach((p) => {
     const cat = p.categoria_slug;
     const sub = p.subcategoria_slug;
     const item = {
@@ -885,9 +958,25 @@ let _comboFechadoConfig = {
 };
 
 function abrirModal(item) {
+  // Dupla checagem: mesmo que o card apareça, bloqueia no clique.
+  if (_produtoSemEstoqueApp(item)) {
+    mostrarToast(
+      tt({
+        es: "⚠️ Producto sin stock. Intente más tarde.",
+        pt: "⚠️ Produto sem estoque. Tente mais tarde.",
+        en: "⚠️ Product out of stock. Try again later.",
+        de: "⚠️ Produkt nicht vorrätig. Versuchen Sie es später.",
+      }),
+      "warning",
+      3000
+    );
+    return;
+  }
+
   prodAtual = item;
   qtd = 1;
   itensMontagem = {};
+  
   _pizzaConfig = {
     p: null,
     tamanhoSelecionado: null,
@@ -2886,16 +2975,6 @@ function toggleFactura() {
 
 function verificarPagamento() {
   const pag = document.getElementById("forma-pag").value;
-  const pagFinal =
-    pag === "CartaoBR"
-      ? _cartaoBRTipo === "debito"
-        ? tt({es:"Tarjeta BR - Débito",pt:"Cartão BR - Débito",en:"Card BR - Debit",de:"Karte BR - Debit"})
-        : tt({es:"Tarjeta BR - Crédito",pt:"Cartão BR - Crédito",en:"Card BR - Credit",de:"Karte BR - Kredit"})
-      : pag === "Cartao"
-        ? _cartaoPYTipo === "debito"
-          ? tt({es:"Tarjeta - Débito",pt:"Cartão - Débito",en:"Card - Debit",de:"Karte - Debit"})
-          : tt({es:"Tarjeta - Crédito",pt:"Cartão - Crédito",en:"Card - Credit",de:"Karte - Kredit"})
-        : pag;
   const infoDiv = document.getElementById("info-pagamento-extra");
   const boxTroco = document.getElementById("box-troco");
   const boxMulti = document.getElementById("box-multipagamento");
@@ -2905,162 +2984,105 @@ function verificarPagamento() {
   boxTroco.classList.add("hidden");
   if (boxMulti) boxMulti.style.display = "none";
 
-  if (pag === "Efetivo") {
-    boxTroco.classList.remove("hidden");
-  } else if (pag === "CartaoBR") {
-    infoDiv.style.display = "block";
-
-    const _calcTotalGs = () => {
-      const totalItens = carrinho.reduce((a, i) => a + i.preco * i.qtd, 0);
-      let frete = modoEntrega === "delivery" ? Math.max(0, freteCalculado) : 0;
-      let desconto = 0;
-      if (cupomAplicado) {
-        if (cupomAplicado.tipo === "percentual")
-          desconto = Math.round(totalItens * (cupomAplicado.valor / 100));
-        else if (cupomAplicado.tipo === "frete") frete = 0;
-      }
-      return totalItens - desconto + frete;
-    };
-
-    const _renderCartaoBR = () => {
-      const totalGs = _calcTotalGs();
-      const taxa =
-        _cartaoBRTipo === "debito" ? TAXA_DEBITO_BR : TAXA_CREDITO_BR;
-      const brl =
-        COTACAO_REAL > 0 && totalGs > 0
-          ? ((totalGs / COTACAO_REAL) * (1 + taxa / 100)).toFixed(2)
-          : "---";
-      const el = document.getElementById("info-pagamento-extra");
-      if (!el) return;
-      el.style.display = "block";
-      el.innerHTML = `
-        <div style="font-weight:700;margin-bottom:8px;font-size:0.9rem">💳🇧🇷 Cartão Brasileiro</div>
-        <div style="display:flex;gap:8px;margin-bottom:10px">
-          <button type="button" onclick="window._setBRTipo('debito')"
-            style="flex:1;padding:9px 6px;border-radius:8px;font-weight:700;cursor:pointer;font-size:0.83rem;
-                   border:2px solid ${_cartaoBRTipo === "debito" ? "#1a7a2e" : "#ccc"};
-                   background:${_cartaoBRTipo === "debito" ? "#eafaf1" : "#f8f9fa"};
-                   color:${_cartaoBRTipo === "debito" ? "#1a7a2e" : "#555"}">
-            💳 Débito<br><small style="font-weight:400">${TAXA_DEBITO_BR.toFixed(2).replace(".", ",")}%</small>
-          </button>
-          <button type="button" onclick="window._setBRTipo('credito')"
-            style="flex:1;padding:9px 6px;border-radius:8px;font-weight:700;cursor:pointer;font-size:0.83rem;
-                   border:2px solid ${_cartaoBRTipo === "credito" ? "#1a7a2e" : "#ccc"};
-                   background:${_cartaoBRTipo === "credito" ? "#eafaf1" : "#f8f9fa"};
-                   color:${_cartaoBRTipo === "credito" ? "#1a7a2e" : "#555"}">
-            💳 Crédito<br><small style="font-weight:400">${TAXA_CREDITO_BR.toFixed(2).replace(".", ",")}%</small>
-          </button>
-        </div>
-        <div style="background:#fff;border:1.5px solid #1a7a2e;border-radius:8px;padding:10px;text-align:center">
-          <div style="font-size:0.78rem;color:#666;margin-bottom:2px">Valor a cobrar (com taxa)</div>
-          <div style="font-size:1.3rem;font-weight:900;color:#1a7a2e">
-            ${brl === "---" ? '<span style="font-size:0.9rem;color:#999">Adicione itens ao carrinho</span>' : "R$ " + brl}
-          </div>
-        </div>`;
-    };
-
-    window._renderCartaoBR = _renderCartaoBR;
-    window._setBRTipo = (tipo) => {
-      _cartaoBRTipo = tipo;
-      window._renderCartaoBR();
-    };
-    _renderCartaoBR();
-  } else if (pag === "Cartao") {
-    infoDiv.style.display = "block";
-
-    const _calcTotalGsPY = () => {
-      const totalItens = carrinho.reduce((a, i) => a + i.preco * i.qtd, 0);
-      let frete = modoEntrega === "delivery" ? Math.max(0, freteCalculado) : 0;
-      let desconto = 0;
-      if (cupomAplicado) {
-        if (cupomAplicado.tipo === "percentual")
-          desconto = Math.round(totalItens * (cupomAplicado.valor / 100));
-        else if (cupomAplicado.tipo === "frete") frete = 0;
-      }
-      return totalItens - desconto + frete;
-    };
-
-    const _renderCartaoPY = () => {
-      const totalGs = _calcTotalGsPY();
-      const taxa = _cartaoPYTipo === "debito" ? TAXA_DEBITO_BR : TAXA_CREDITO_BR;
-      const totalComTaxa =
-        totalGs > 0 ? Math.round(totalGs * (1 + taxa / 100)) : 0;
-      const el = document.getElementById("info-pagamento-extra");
-      if (!el) return;
-      el.style.display = "block";
-      el.innerHTML = `
-        <div style="font-weight:700;margin-bottom:8px;font-size:0.9rem">💳 Tarjeta</div>
-        <div style="display:flex;gap:8px;margin-bottom:10px">
-          <button type="button" onclick="window._setPYTipo('debito')"
-            style="flex:1;padding:9px 6px;border-radius:8px;font-weight:700;cursor:pointer;font-size:0.83rem;
-                   border:2px solid ${_cartaoPYTipo === "debito" ? "#1a7a2e" : "#ccc"};
-                   background:${_cartaoPYTipo === "debito" ? "#eafaf1" : "#f8f9fa"};
-                   color:${_cartaoPYTipo === "debito" ? "#1a7a2e" : "#555"}">
-            💳 Débito<br><small style="font-weight:400">${TAXA_DEBITO_BR.toFixed(2).replace(".", ",")}%</small>
-          </button>
-          <button type="button" onclick="window._setPYTipo('credito')"
-            style="flex:1;padding:9px 6px;border-radius:8px;font-weight:700;cursor:pointer;font-size:0.83rem;
-                   border:2px solid ${_cartaoPYTipo === "credito" ? "#1a7a2e" : "#ccc"};
-                   background:${_cartaoPYTipo === "credito" ? "#eafaf1" : "#f8f9fa"};
-                   color:${_cartaoPYTipo === "credito" ? "#1a7a2e" : "#555"}">
-            💳 Crédito<br><small style="font-weight:400">${TAXA_CREDITO_BR.toFixed(2).replace(".", ",")}%</small>
-          </button>
-        </div>
-        <div style="background:#fff;border:1.5px solid #1a7a2e;border-radius:8px;padding:10px;text-align:center">
-          <div style="font-size:0.78rem;color:#666;margin-bottom:2px">Valor a cobrar (con tasa)</div>
-          <div style="font-size:1.3rem;font-weight:900;color:#1a7a2e">
-            ${totalComTaxa === 0 ? '<span style="font-size:0.9rem;color:#999">Adicione itens ao carrinho</span>' : "Gs " + totalComTaxa.toLocaleString("es-PY")}
-          </div>
-        </div>`;
-    };
-
-    window._renderCartaoPY = _renderCartaoPY;
-    window._setPYTipo = (tipo) => {
-      _cartaoPYTipo = tipo;
-      window._renderCartaoPY();
-    };
-    _renderCartaoPY();
-  } else if (pag === "Pix") {
-    infoDiv.style.display = "block";
+  // Helper local: calcula total atual sem depender do chamador
+  const _calcTotalGs = () => {
     const totalItens = carrinho.reduce((a, i) => a + i.preco * i.qtd, 0);
-    let freteAplicado =
-      modoEntrega === "delivery" ? Math.max(0, freteCalculado) : 0;
+    let frete = modoEntrega === "delivery" ? Math.max(0, freteCalculado) : 0;
     let desconto = 0;
     if (cupomAplicado) {
       if (cupomAplicado.tipo === "percentual")
         desconto = Math.round(totalItens * (cupomAplicado.valor / 100));
-      else if (cupomAplicado.tipo === "frete") freteAplicado = 0;
+      else if (cupomAplicado.tipo === "frete") frete = 0;
     }
-    const totalGs = totalItens - desconto + freteAplicado;
-    const totalBrl =
-      COTACAO_REAL > 0 ? (totalGs / COTACAO_REAL).toFixed(2) : "---";
+    return totalItens - desconto + frete;
+  };
+
+  // ── EFETIVO → mostra campo de troco ────────────────────────
+  if (pag === "Efetivo") {
+    boxTroco.classList.remove("hidden");
+    return;
+  }
+
+  // ── CARTÃO BR (Débito / Crédito) ───────────────────────────
+  if (pag === "TarjetaBRDebito" || pag === "TarjetaBRCredito") {
+    const tipo = pag === "TarjetaBRDebito" ? "debito" : "credito";
+    const taxa = tipo === "debito" ? TAXA_DEBITO_BR : TAXA_CREDITO_BR;
+    const totalGs = _calcTotalGs();
+    const brl = COTACAO_REAL > 0 && totalGs > 0
+      ? ((totalGs / COTACAO_REAL) * (1 + taxa / 100)).toFixed(2)
+      : "---";
+    infoDiv.style.display = "block";
+    infoDiv.innerHTML = `
+      <div style="font-weight:700;margin-bottom:8px;font-size:0.9rem">💳🇧🇷 Tarjeta Brasileña (${tipo === "debito" ? "Débito" : "Crédito"})</div>
+      <div style="background:#fff;border:1.5px solid #1a7a2e;border-radius:8px;padding:10px;text-align:center">
+        <div style="font-size:0.78rem;color:#666;margin-bottom:2px">Valor a cobrar (con tasa ${taxa.toFixed(2).replace(".", ",")}%)</div>
+        <div style="font-size:1.3rem;font-weight:900;color:#1a7a2e">
+          ${brl === "---" ? '<span style="font-size:0.9rem;color:#999">Adicione itens ao carrinho</span>' : "R$ " + brl}
+        </div>
+      </div>`;
+    return;
+  }
+
+  // ── CARTÃO PY (Débito / Crédito) ───────────────────────────
+  if (pag === "TarjetaDebito" || pag === "TarjetaCredito") {
+    const tipo = pag === "TarjetaDebito" ? "debito" : "credito";
+    const taxa = tipo === "debito" ? TAXA_DEBITO_BR : TAXA_CREDITO_BR;
+    const totalGs = _calcTotalGs();
+    const totalComTaxa = totalGs > 0 ? Math.round(totalGs * (1 + taxa / 100)) : 0;
+    infoDiv.style.display = "block";
+    infoDiv.innerHTML = `
+      <div style="font-weight:700;margin-bottom:8px;font-size:0.9rem">💳 Tarjeta (${tipo === "debito" ? "Débito" : "Crédito"})</div>
+      <div style="background:#fff;border:1.5px solid #1a7a2e;border-radius:8px;padding:10px;text-align:center">
+        <div style="font-size:0.78rem;color:#666;margin-bottom:2px">Valor a cobrar (con tasa ${taxa.toFixed(2).replace(".", ",")}%)</div>
+        <div style="font-size:1.3rem;font-weight:900;color:#1a7a2e">
+          ${totalComTaxa === 0 ? '<span style="font-size:0.9rem;color:#999">Adicione itens ao carrinho</span>' : "Gs " + totalComTaxa.toLocaleString("es-PY")}
+        </div>
+      </div>`;
+    return;
+  }
+
+  // ── PIX ────────────────────────────────────────────────────
+  if (pag === "Pix") {
+    infoDiv.style.display = "block";
+    const totalGs = _calcTotalGs();
+    const totalBrl = COTACAO_REAL > 0 ? (totalGs / COTACAO_REAL).toFixed(2) : "---";
     infoDiv.innerHTML = `<strong>💳 Chave Pix:</strong><br>${CHAVE_PIX}<br><small>Titular: ${NOME_PIX}</small><br><strong style="color:#27ae60;font-size:1rem">💰 Valor: R$ ${totalBrl}</strong>`;
-  } else if (pag === "Transferencia") {
+    return;
+  }
+
+  // ── TRANSFERÊNCIA / ALIAS ─────────────────────────────────
+  if (pag === "Transferencia") {
     infoDiv.style.display = "block";
     const qrHtml = QR_ALIAS_URL
       ? `<br><img src="${QR_ALIAS_URL}" alt="QR Alias" style="width:160px;height:160px;margin-top:8px;border-radius:8px;border:2px solid #e0e0e0">`
       : "";
     infoDiv.innerHTML = `<strong>🏦 Transferencia / Alias:</strong><br>${DADOS_ALIAS}<br>${ALIAS_PY}${qrHtml}`;
-  } else if (pag === "QrPy") {
+    return;
+  }
+
+  // ── QR ─────────────────────────────────────────────────────
+  if (pag === "Qr") {
     infoDiv.style.display = "block";
     const qrPyHtml = QR_PY_URL
       ? `<br><img src="${QR_PY_URL}" alt="QR Paraguay" style="width:160px;height:160px;margin-top:8px;border-radius:8px;border:2px solid #e0e0e0">`
       : "";
     infoDiv.innerHTML = `<strong>📱 QR Paraguay:</strong><br><small>Tigo Money · Personal Pay · Bancard</small>${qrPyHtml}<br><small style="color:#888">Escaneie e envie o comprovante</small>`;
-  } else if (pag === "Multipagamento") {
+    return;
+  }
+
+  // ── MULTIPAGAMENTO ────────────────────────────────────────
+  if (pag === "Multipagamento") {
     if (boxMulti) {
       boxMulti.style.display = "block";
-      // Esconde o select enquanto está no modo multi
       selectPag.style.display = "none";
-      // Inicializa com 2 formas se ainda não há nenhuma
       const partes = document.getElementById("multi-partes");
       if (partes && partes.children.length === 0) {
-        adicionarPartePagamento(); // 1ª forma
-        adicionarPartePagamento(); // 2ª forma
+        adicionarPartePagamento();
+        adicionarPartePagamento();
       }
       atualizarRestanteMulti();
     }
-    return; // Não chama atualizarRestanteMulti de novo
+    return;
   }
 
   // Garante que o select volte a aparecer se não for Multipagamento
@@ -3072,46 +3094,69 @@ function verificarPagamento() {
 // ==========================================
 let _multiContador = 0;
 
+// Mapa de retrocompatibilidade: feature key antiga → usada para filtro de features
+const _PAG_FEAT_MAP_CLIENTE = {
+  Efetivo: "Efetivo",
+  TarjetaDebito: "Cartao",
+  TarjetaCredito: "Cartao",
+  TarjetaBRDebito: "CartaoBR",
+  TarjetaBRCredito: "CartaoBR",
+  Pix: "Pix",
+  Transferencia: "Transferencia",
+  Qr: "QrMaquina",
+};
+
 function _getMetodosPag() {
   const todos = tt({
     es: [
-      { value: "Efetivo", label: "💵 Efectivo" },
-      { value: "Cartao", label: "💳 Tarjeta" },
-      { value: "CartaoBR", label: "💳🇧🇷 Tarjeta BR" },
-      { value: "Pix", label: "🟢 Pix (BR)" },
-      { value: "Transferencia", label: "🏦 Alias/Transferencia" },
-      { value: "QrPy", label: "📱 QR Paraguay" },
+      { value: "Efetivo",         label: "💵 Efectivo" },
+      { value: "TarjetaDebito",   label: "💳 Tarjeta Débito" },
+      { value: "TarjetaCredito",  label: "💳 Tarjeta Crédito" },
+      { value: "TarjetaBRDebito", label: "💳🇧🇷 Tarjeta BR Débito" },
+      { value: "TarjetaBRCredito",label: "💳🇧🇷 Tarjeta BR Crédito" },
+      { value: "Pix",             label: "✅ Pix (BR)" },
+      { value: "Transferencia",   label: "🏦 Alias/Transferencia" },
+      { value: "Qr",              label: "📱 QR Paraguay" },
     ],
     pt: [
-      { value: "Efetivo", label: "💵 Dinheiro" },
-      { value: "Cartao", label: "💳 Cartão" },
-      { value: "CartaoBR", label: "💳🇧🇷 Cartão BR" },
-      { value: "Pix", label: "🟢 Pix (BR)" },
-      { value: "Transferencia", label: "🏦 Alias/Transferência" },
-      { value: "QrPy", label: "📱 QR Paraguai" },
+      { value: "Efetivo",         label: "💵 Dinheiro" },
+      { value: "TarjetaDebito",   label: "💳 Cartão Débito" },
+      { value: "TarjetaCredito",  label: "💳 Cartão Crédito" },
+      { value: "TarjetaBRDebito", label: "💳🇧🇷 Cartão BR Débito" },
+      { value: "TarjetaBRCredito",label: "💳🇧🇷 Cartão BR Crédito" },
+      { value: "Pix",             label: "✅ Pix (BR)" },
+      { value: "Transferencia",   label: "🏦 Alias/Transferência" },
+      { value: "Qr",              label: "📱 QR Paraguai" },
     ],
     en: [
-      { value: "Efetivo", label: "💵 Cash" },
-      { value: "Cartao", label: "💳 Card" },
-      { value: "CartaoBR", label: "💳🇧🇷 Card BR" },
-      { value: "Pix", label: "🟢 Pix (BR)" },
-      { value: "Transferencia", label: "🏦 Alias/Transfer" },
-      { value: "QrPy", label: "📱 QR Paraguay" },
+      { value: "Efetivo",         label: "💵 Cash" },
+      { value: "TarjetaDebito",   label: "💳 Card Debit" },
+      { value: "TarjetaCredito",  label: "💳 Card Credit" },
+      { value: "TarjetaBRDebito", label: "💳🇧🇷 Card BR Debit" },
+      { value: "TarjetaBRCredito",label: "💳🇧🇷 Card BR Credit" },
+      { value: "Pix",             label: "✅ Pix (BR)" },
+      { value: "Transferencia",   label: "🏦 Alias/Transfer" },
+      { value: "Qr",              label: "📱 QR Paraguay" },
     ],
     de: [
-      { value: "Efetivo", label: "💵 Bargeld" },
-      { value: "Cartao", label: "💳 Karte" },
-      { value: "CartaoBR", label: "💳🇧🇷 Karte BR" },
-      { value: "Pix", label: "🟢 Pix (BR)" },
-      { value: "Transferencia", label: "🏦 Alias/Überweisung" },
-      { value: "QrPy", label: "📱 QR Paraguay" },
+      { value: "Efetivo",         label: "💵 Bargeld" },
+      { value: "TarjetaDebito",   label: "💳 Karte Debit" },
+      { value: "TarjetaCredito",  label: "💳 Karte Kredit" },
+      { value: "TarjetaBRDebito", label: "💳🇧🇷 Karte BR Debit" },
+      { value: "TarjetaBRCredito",label: "💳🇧🇷 Karte BR Kredit" },
+      { value: "Pix",             label: "✅ Pix (BR)" },
+      { value: "Transferencia",   label: "🏦 Alias/Überweisung" },
+      { value: "Qr",              label: "📱 QR Paraguay" },
     ],
   });
-  // Não deixa escolher, no "Dividir Pagamento", uma forma que o adminMaster
-  // desativou globalmente em Configurações → Controle de Features.
+
   if (!FEATURES_PAGAMENTOS_CLIENTE) return todos;
-  return todos.filter((m) => FEATURES_PAGAMENTOS_CLIENTE[m.value] !== false);
+  return todos.filter((m) => {
+    const featKey = _PAG_FEAT_MAP_CLIENTE[m.value] || m.value;
+    return FEATURES_PAGAMENTOS_CLIENTE[featKey] !== false;
+  });
 }
+
 const METODOS_PAG = [
   { value: "Efetivo", label: "💵 Efectivo" },
   { value: "Cartao", label: "💳 Tarjeta" },
@@ -3640,17 +3685,8 @@ async function enviarZap() {
     ? document.getElementById("cli-nasc").value
     : null;
 
-  // Resolve o nome final do método de pagamento (CartaoBR/Cartao têm sub-tipos)
-  const pagFinal =
-    pag === "CartaoBR"
-      ? _cartaoBRTipo === "debito"
-        ? tt({es:"Tarjeta BR - Débito",pt:"Cartão BR - Débito",en:"Card BR - Debit",de:"Karte BR - Debit"})
-        : tt({es:"Tarjeta BR - Crédito",pt:"Cartão BR - Crédito",en:"Card BR - Credit",de:"Karte BR - Kredit"})
-      : pag === "Cartao"
-        ? _cartaoPYTipo === "debito"
-          ? tt({es:"Tarjeta - Débito",pt:"Cartão - Débito",en:"Card - Debit",de:"Karte - Debit"})
-          : tt({es:"Tarjeta - Crédito",pt:"Cartão - Crédito",en:"Card - Credit",de:"Karte - Kredit"})
-        : pag;
+  // Novo: o código já carrega o tipo (Débito/Crédito)
+  const pagFinal = pag;
 
   if (!nome || !tel || !pag)
     return alert(tt({es:"¡Complete todos los campos obligatorios!",pt:"Preencha todos os campos obrigatórios!",en:"Fill in all required fields!",de:"Füllen Sie alle Pflichtfelder aus!"}));
@@ -4058,16 +4094,14 @@ async function enviarZap() {
   }
 
   // Avisos de Pix/Alias
-  if (pag === "Pix" || pag === "Transferencia" || pag === "QrPy") {
+    if (pag === "Pix" || pag === "Transferencia" || pag === "Qr") {
     if (pag === "Pix") {
-      const totalBrl =
-        COTACAO_REAL > 0 ? (totalGeral / COTACAO_REAL).toFixed(2) : "---";
+      const totalBrl = COTACAO_REAL > 0 ? (totalGeral / COTACAO_REAL).toFixed(2) : "---";
       msg += `\n💠 ${_wl.pixChave}: ${CHAVE_PIX}\n`;
       msg += `💰 ${_wl.pixValorReais}: R$ ${totalBrl}\n`;
     }
     if (pag === "Transferencia") msg += `\n📎 ${_wl.aliasLabel}: ${ALIAS_PY}\n`;
-    if (pag === "QrPy")
-      msg += `\n📱 ${_wl.pagoPorQr}\n`;
+    if (pag === "Qr") msg += `\n📱 ${_wl.pagoPorQr}\n`;
     msg += `\n⚠️ *${_wl.envieComprovante}*\n`;
   }
 
@@ -4083,7 +4117,7 @@ async function enviarZap() {
       if (p.metodo === "Transferencia") {
         msg += `\n📎 ${_wl.aliasLabel} (${_wl.formaN} ${idx + 1}): ${ALIAS_PY}\n`;
       }
-      if (p.metodo === "QrPy") {
+      if (p.metodo === "Qr") {
         msg += `\n📱 QR Paraguay (${_wl.formaN} ${idx + 1}): Tigo / Personal / Bancard\n`;
       }
     });
@@ -4091,7 +4125,7 @@ async function enviarZap() {
       (p) =>
         p.metodo === "Pix" ||
         p.metodo === "Transferencia" ||
-        p.metodo === "QrPy",
+        p.metodo === "Qr",
     );
     if (temDigital)
       msg += `\n⚠️ *${_wl.envieComprovantes}*\n`;

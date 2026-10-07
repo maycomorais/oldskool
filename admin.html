@@ -668,17 +668,18 @@
                 </div>
               </div>
 
-              <!-- Pagamento -->
+                            <!-- Pagamento -->
               <div style="padding:4px 8px 0">
                 <select id="balcao-pag" class="pdv-dir-input"
                   onchange="atualizarInfoPagPDV(window._pdvTotalBaseSemTaxas || 0)">
                   <option value="Efetivo">💵 Efectivo</option>
-                  <option value="Cartao">💳 Tarjeta PY</option>
-                  <option value="CartaoBR">💳🇧🇷 Tarjeta BR</option>
+                  <option value="TarjetaDebito">💳 Tarjeta Débito</option>
+                  <option value="TarjetaCredito">💳 Tarjeta Crédito</option>
+                  <option value="TarjetaBRDebito">💳🇧🇷 Tarjeta BR Débito</option>
+                  <option value="TarjetaBRCredito">💳🇧🇷 Tarjeta BR Crédito</option>
                   <option value="Pix">✅ Pix</option>
                   <option value="Transferencia">🏦 Alias (PY)</option>
-                  <option value="QrMaquina">📱 QR Maquina</option>
-                  <option value="QrCelular">📱 QR Celular</option>
+                  <option value="Qr">📱 QR</option>
                   <option value="Multipagamento">🔀 Dividir</option>
                   <option value="Mensalista">🎫 Mensalista</option>
                   <option value="NaNota">📋 Colocar na Nota</option>
@@ -884,16 +885,20 @@
       <input type="date" id="fin-fim" onchange="_finMarcarFiltroManual()" />
     </div>
 
-    <div class="filtro-group">
+        <div class="filtro-group">
       <label><i class="fas fa-wallet"></i> Pagamento</label>
       <select id="fin-tipo">
         <option value="todos">Todos</option>
-        <option value="Efetivo">Dinheiro</option>
-        <option value="Cartao">Tarjeta</option>
-        <option value="Pix">Pix</option>
-        <option value="QrMaquina">QR Maquina</option>
-        <option value="QrCelular">QR Celular</option>
-        <option value="Transferencia">Transferencia</option>
+        <option value="Efetivo">💵 Efectivo</option>
+        <option value="TarjetaDebito">💳 Tarjeta Débito</option>
+        <option value="TarjetaCredito">💳 Tarjeta Crédito</option>
+        <option value="TarjetaALL">💳 Tarjeta (todas)</option>
+        <option value="TarjetaBRDebito">💳🇧🇷 Tarjeta BR Débito</option>
+        <option value="TarjetaBRCredito">💳🇧🇷 Tarjeta BR Crédito</option>
+        <option value="TarjetaBRALL">💳🇧🇷 Tarjeta BR (todas)</option>
+        <option value="Pix">✅ Pix</option>
+        <option value="Transferencia">🏦 Transferencia</option>
+        <option value="Qr">📱 QR (todos)</option>
       </select>
     </div>
 

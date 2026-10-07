@@ -731,17 +731,33 @@ async function _carregarFeaturesGlobais() {
   if (data.cotacao_real) COTACAO_REAL = Number(data.cotacao_real);
 }
 
-// ── Filtra formas de pagamento em todos os selects conforme features_ativas.pagamentos ──
+// Mapeia novo código → chave de feature (as 4 variantes de cartão compartilham
+// a mesma chave legada "Cartao"/"CartaoBR" nos toggles de features — assim o
+// dono/master não precisa configurar 4 checkboxes para o mesmo cartão).
+const _PAG_FEAT_MAP = {
+  Efetivo: "Efetivo",
+  TarjetaDebito: "Cartao",
+  TarjetaCredito: "Cartao",
+  TarjetaBRDebito: "CartaoBR",
+  TarjetaBRCredito: "CartaoBR",
+  Pix: "Pix",
+  Transferencia: "Transferencia",
+  Qr: "QrMaquina", // features antigas — usa a mesma chave para QR
+  Multipagamento: "Multipagamento",
+  Mensalista: "Mensalista",
+  NaNota: "NaNota",
+};
+
 function _aplicarFormasPagamentoPDV(features) {
   const pags = features?.pagamentos;
-  // Aplica nos selects do PDV e do filtro financeiro
   ["balcao-pag", "fin-tipo"].forEach((sid) => {
     const select = document.getElementById(sid);
     if (!select) return;
     Array.from(select.options).forEach((opt) => {
-      if (!opt.value || opt.value === "todos") return; // "todos" nunca some
+      if (!opt.value || opt.value === "todos") return;
       if (!pags) { opt.style.display = ""; return; }
-      if (pags[opt.value] === false) {
+      const featKey = _PAG_FEAT_MAP[opt.value] || opt.value;
+      if (pags[featKey] === false) {
         opt.style.display = "none";
         if (select.value === opt.value)
           select.value = sid === "fin-tipo" ? "todos" : "Efetivo";
@@ -988,13 +1004,11 @@ async function renderPainelFeatures() {
   const pags = f.pagamentos || {};
   const chkPags = [
     ["Efetivo",        "💵 Efectivo/Dinheiro"],
-    ["Cartao",         "💳 Tarjeta PY"],
-    ["CartaoBR",       "💳🇧🇷 Tarjeta BR (R$)"],
+    ["Cartao",         "💳 Tarjeta (Débito + Crédito)"],
+    ["CartaoBR",       "💳🇧🇷 Tarjeta BR (Débito + Crédito)"],
     ["Pix",            "🟢 Pix (BR)"],
     ["Transferencia",  "🏦 Alias/Transferência PY"],
-    ["QrPy",           "📱 QR Paraguay (App Cliente)"],
-    ["QrMaquina",      "📱 QR Máquina (PDV)"],
-    ["QrCelular",      "📱 QR Celular (PDV)"],
+    ["QrMaquina",      "📱 QR (Máquina + Celular + App)"],
     ["Multipagamento", "🔀 Dividir Pagamento"],
     ["Mensalista",     "🎫 Mensalista"],
     ["NaNota",         "📋 Colocar na Nota"],
@@ -2028,9 +2042,32 @@ async function calcularFinanceiro() {
     .gte("created_at", utcInicio)
     .lte("created_at", utcFim);
 
-  if (tipoFiltro !== "todos") {
-    if (tipoFiltro === "QrMaquina") {
-      query = query.in("forma_pagamento", ["QrMaquina", "QrMarina"]);
+    if (tipoFiltro !== "todos") {
+    // Agrupamentos (retrocompatível com códigos antigos)
+    if (tipoFiltro === "TarjetaALL") {
+      query = query.in("forma_pagamento", [
+        "TarjetaDebito", "TarjetaCredito",
+        "Cartao", "Cartão - Débito", "Cartão - Crédito",
+        "Tarjeta - Débito", "Tarjeta - Crédito",
+      ]);
+    } else if (tipoFiltro === "TarjetaBRALL") {
+      query = query.in("forma_pagamento", [
+        "TarjetaBRDebito", "TarjetaBRCredito",
+        "CartaoBR", "Cartão BR - Débito", "Cartão BR - Crédito",
+        "Tarjeta BR - Débito", "Tarjeta BR - Crédito",
+      ]);
+    } else if (tipoFiltro === "Qr") {
+      query = query.in("forma_pagamento", [
+        "Qr", "QrMaquina", "QrMarina", "QrCelular", "QrPy",
+      ]);
+    } else if (tipoFiltro === "TarjetaDebito") {
+      query = query.in("forma_pagamento", ["TarjetaDebito", "Cartão - Débito", "Tarjeta - Débito"]);
+    } else if (tipoFiltro === "TarjetaCredito") {
+      query = query.in("forma_pagamento", ["TarjetaCredito", "Cartão - Crédito", "Tarjeta - Crédito"]);
+    } else if (tipoFiltro === "TarjetaBRDebito") {
+      query = query.in("forma_pagamento", ["TarjetaBRDebito", "Cartão BR - Débito", "Tarjeta BR - Débito"]);
+    } else if (tipoFiltro === "TarjetaBRCredito") {
+      query = query.in("forma_pagamento", ["TarjetaBRCredito", "Cartão BR - Crédito", "Tarjeta BR - Crédito"]);
     } else {
       query = query.eq("forma_pagamento", tipoFiltro);
     }
@@ -2108,12 +2145,36 @@ async function calcularFinanceiro() {
 
   function _acumularMetodo(metodoRaw, valor) {
     const m = (metodoRaw || "").toLowerCase().trim();
-    if (m.includes("pix")) totalPix += valor;
-    else if (m.includes("transfer")) totalTransf += valor;
-    else if (m.includes("cartao") || m.includes("cartão")) totalCartao += valor;
-    else if (m.includes("efetivo") || m.includes("dinheiro")) totalEfetivo += valor;
-    else if (m === "qrmaquina" || m === "qrmarina") totalQrMaquina += valor;
-    else if (m.includes("qr")) totalQrCelular += valor;
+
+    // Cartão BR (novo + legado)
+    if (m === "tarjetabrdebito" || m === "tarjetabrcredito" ||
+        m === "cartãobr - débito" || m === "cartãobr - crédito" ||
+        m === "cartao br - debito" || m === "cartao br - credito" ||
+        m === "tarjeta br - débito" || m === "tarjeta br - crédito" ||
+        m === "cartãobr" || m === "cartaobr" || m === "cartao br") {
+      totalCartao += valor;
+      return;
+    }
+    // Cartão PY (novo + legado)
+    if (m === "tarjetadebito" || m === "tarjetacredito" ||
+        m === "cartão - débito" || m === "cartão - crédito" ||
+        m === "cartao - debito" || m === "cartao - credito" ||
+        m === "tarjeta - débito" || m === "tarjeta - crédito" ||
+        m === "cartao" || m === "cartão" || m === "tarjeta") {
+      totalCartao += valor;
+      return;
+    }
+    // Pix
+    if (m.includes("pix")) { totalPix += valor; return; }
+    // Transferência / Alias
+    if (m.includes("transfer") || m.includes("alias")) { totalTransf += valor; return; }
+    // Efetivo / Dinheiro
+    if (m.includes("efetivo") || m.includes("dinheiro") || m === "efectivo") { totalEfetivo += valor; return; }
+    // QR (novo + legado)
+    if (m === "qr" || m === "qrmaquina" || m === "qrmarina" || m === "qrcelular" || m === "qrpy" || m.includes("qr")) {
+      totalQrCelular += valor;
+      return;
+    }
   }
 
   peds.forEach((p) => {
@@ -2976,10 +3037,6 @@ async function imprimirFechamentoPorId(sessaoId) {
   win.document.write(html);
   win.document.close();
 }
-
-/**
- * Calcula o boletim de uma sessão "na hora", quando ela não tem
-
 
 // ── Verifica bloqueio por sangria limite ───────────────────────────
 async function _verificarBloqueioCaixa(emailAtual) {
@@ -9415,14 +9472,29 @@ let _taxaCreditoPDV = 4.98;
 let _cartaoBRTipoPDV = "debito";
 let _cartaoPYTipoPDV = "debito"; // idem, para a Tarjeta local (Cartao) no PDV
 
-// Resolve o texto final da forma de pagamento pro banco — CartaoBR e
-// Cartao (tarjeta local) têm sub-tipo Débito/Crédito com taxa diferente.
+// Mapeia código canônico → { taxaPct, isCartaoBR, tipo }
+// Retorna null se o código não for de cartão.
+function _infoCartaoPDV(codigoPag) {
+  switch (codigoPag) {
+    case "TarjetaDebito":     return { taxaPct: _taxaDebitoPDV,   isCartaoBR: false, tipo: "debito" };
+    case "TarjetaCredito":    return { taxaPct: _taxaCreditoPDV,  isCartaoBR: false, tipo: "credito" };
+    case "TarjetaBRDebito":   return { taxaPct: _taxaDebitoPDV,   isCartaoBR: true,  tipo: "debito" };
+    case "TarjetaBRCredito":  return { taxaPct: _taxaCreditoPDV,  isCartaoBR: true,  tipo: "credito" };
+    // Aliases legados (só por segurança — não são mais emitidos pela UI)
+    case "Cartao":   return { taxaPct: _cartaoPYTipoPDV === "debito" ? _taxaDebitoPDV : _taxaCreditoPDV, isCartaoBR: false, tipo: _cartaoPYTipoPDV };
+    case "CartaoBR": return { taxaPct: _cartaoBRTipoPDV === "debito" ? _taxaDebitoPDV : _taxaCreditoPDV, isCartaoBR: true, tipo: _cartaoBRTipoPDV };
+    default: return null;
+  }
+}
+
+// Mantido por retrocompatibilidade — agora é passthrough, pois a UI já
+// envia o código correto com sub-tipo embutido.
 function _resolvePagFinalPDV(pag) {
   if (pag === "CartaoBR") {
-    return _cartaoBRTipoPDV === "debito" ? "Cartão BR - Débito" : "Cartão BR - Crédito";
+    return _cartaoBRTipoPDV === "debito" ? "TarjetaBRDebito" : "TarjetaBRCredito";
   }
   if (pag === "Cartao") {
-    return _cartaoPYTipoPDV === "debito" ? "Cartão - Débito" : "Cartão - Crédito";
+    return _cartaoPYTipoPDV === "debito" ? "TarjetaDebito" : "TarjetaCredito";
   }
   return pag;
 }
@@ -9490,6 +9562,39 @@ function _statusEstoque(p) {
   if (quantidade <= limiteCritico) return { nivel: "critico", quantidade, minimo: quantidade_minima };
   if (quantidade <= limiteAtencao) return { nivel: "atencao", quantidade, minimo: quantidade_minima };
   return null; // estoque saudável — sem badge, evita poluir a grade
+}
+// Retorna true se o produto NÃO pode ser vendido por falta de estoque.
+// Considera: (a) inventário direto do produto; (b) para multivariação,
+// só bloqueia quando TODAS as variações ativas estão sem estoque — se
+// houver ao menos uma com estoque, o cliente ainda pode escolher.
+function _produtoSemEstoque(p) {
+  let cfg = p.montagem_config;
+  if (typeof cfg === "string") {
+    try { cfg = JSON.parse(cfg); } catch (_) { cfg = null; }
+  }
+
+  // (a) Inventário direto no produto
+  if (p.inventario_id && _estoqueMap[p.inventario_id]) {
+    if ((_estoqueMap[p.inventario_id].quantidade ?? 0) <= 0) return true;
+  }
+
+  // (b) Multivariação — bloqueia só se TODAS as ativas estiverem zeradas
+  if (cfg && cfg.__tipo === "variacoes" && Array.isArray(cfg.variacoes)) {
+    const ativas = cfg.variacoes.filter((v) => v.ativo !== false);
+    if (ativas.length > 0) {
+      const comControle = ativas.filter((v) => v.inventario_id);
+      const semControle = ativas.filter((v) => !v.inventario_id);
+      if (comControle.length > 0 && semControle.length === 0) {
+        const todasZeradas = comControle.every((v) => {
+          const est = _estoqueMap[v.inventario_id];
+          return est && (est.quantidade ?? 0) <= 0;
+        });
+        if (todasZeradas) return true;
+      }
+    }
+  }
+
+  return false;
 }
 
 // Recarrega o mapa de estoque e re-renderiza a tela relevante (PDV e/ou
@@ -9774,34 +9879,32 @@ function _criarCardPDV(p) {
   }
   const isKg = cfg && !Array.isArray(cfg) && cfg.__tipo === "kg";
   const precoKg = isKg ? cfg.preco_kg || p.preco || 0 : 0;
+  const semEstoque = _produtoSemEstoque(p);
 
   // Detectar se tem variações
   let temVariacoes = false;
   if (cfg && !Array.isArray(cfg)) {
     const tipo = cfg.__tipo;
-    if (tipo === "variacoes" && cfg.variacoes && cfg.variacoes.length > 0) {
-      temVariacoes = true;
-    } else if (tipo === "pizza" && cfg.sabores && cfg.sabores.length > 0) {
-      temVariacoes = true;
-    } else if (tipo === "acai" && cfg.tamanhos && cfg.tamanhos.length > 0) {
-      temVariacoes = true;
-    } else if (tipo === "shake" && cfg.shake && cfg.shake.sabores && cfg.shake.sabores.length > 0) {
-      temVariacoes = true;
-    } else if (tipo === "suco" && cfg.etapas && cfg.etapas.length > 0) {
-      temVariacoes = true;
-    } else if (tipo === "sorvete" && cfg.sabores && cfg.sabores.length > 0) {
-      temVariacoes = true;
-    } else if (tipo === "montavel" && cfg.etapas && cfg.etapas.length > 0) {
-      temVariacoes = true;
-    } else if (tipo === "combo_fechado" && cfg.sabores && cfg.sabores.length > 0) {
-      temVariacoes = true;
-    }
+    if (tipo === "variacoes" && cfg.variacoes && cfg.variacoes.length > 0) temVariacoes = true;
+    else if (tipo === "pizza" && cfg.sabores && cfg.sabores.length > 0) temVariacoes = true;
+    else if (tipo === "acai" && cfg.tamanhos && cfg.tamanhos.length > 0) temVariacoes = true;
+    else if (tipo === "shake" && cfg.shake && cfg.shake.sabores && cfg.shake.sabores.length > 0) temVariacoes = true;
+    else if (tipo === "suco" && cfg.etapas && cfg.etapas.length > 0) temVariacoes = true;
+    else if (tipo === "sorvete" && cfg.sabores && cfg.sabores.length > 0) temVariacoes = true;
+    else if (tipo === "montavel" && cfg.etapas && cfg.etapas.length > 0) temVariacoes = true;
+    else if (tipo === "combo_fechado" && cfg.sabores && cfg.sabores.length > 0) temVariacoes = true;
   }
 
   const card = document.createElement("div");
-  card.className = "pdv-card" + (isKg ? " pdv-card-kg" : "");
-  card.title = p.nome;
-  card.onclick = () => adicionarItemPDV(p);
+  card.className = "pdv-card" + (isKg ? " pdv-card-kg" : "") + (semEstoque ? " pdv-card-sem-estoque" : "");
+  card.title = semEstoque ? "Sin stock — venta bloqueada" : p.nome;
+  // Bloqueia clique se sem estoque
+  card.onclick = semEstoque ? null : () => adicionarItemPDV(p);
+  if (semEstoque) {
+    card.style.opacity = "0.55";
+    card.style.cursor = "not-allowed";
+    card.style.filter = "grayscale(0.7)";
+  }
 
   const imgHtml = img
     ? `<div class="pdv-card-img" style="background-image:url('${img}')"></div>`
@@ -9812,10 +9915,11 @@ function _criarCardPDV(p) {
     : `Gs ${p.preco.toLocaleString("es-PY")}`;
 
   const badge = isKg ? `<span class="pdv-card-kg-badge">⚖️ Kg</span>` : "";
-  const varBadge = temVariacoes ? `<span class="pdv-card-var-badge" style="font-size:0.6rem;background:#e9d5ff;color:#7c3aed;border-radius:3px;padding:0 4px;margin-left:4px;font-weight:700;">🎨</span>` : "";
+  const varBadge = temVariacoes
+    ? `<span class="pdv-card-var-badge" style="font-size:0.6rem;background:#e9d5ff;color:#7c3aed;border-radius:3px;padding:0 4px;margin-left:4px;font-weight:700;">🎨</span>`
+    : "";
 
-  // Badge de estoque baixo — só aparece quando o nível realmente pede
-  // atenção (crítico ou em alerta); estoque saudável não polui a grade.
+  // Badge de estoque baixo
   const estoqueStatus = _statusEstoque(p);
   let estoqueBadgeHtml = "";
   if (estoqueStatus) {
@@ -9823,8 +9927,8 @@ function _criarCardPDV(p) {
     const cor = isCritico ? "#dc2626" : "#f59e0b";
     const corBg = isCritico ? "#fee2e2" : "#fef3c7";
     const titulo = isCritico
-      ? `Estoque crítico: ${estoqueStatus.quantidade} restante(s)${estoqueStatus.minimo ? ` (mínimo: ${estoqueStatus.minimo})` : ""}`
-      : `Estoque baixo: ${estoqueStatus.quantidade} restante(s)${estoqueStatus.minimo ? ` (mínimo: ${estoqueStatus.minimo})` : ""}`;
+      ? `Estoque crítico: ${estoqueStatus.quantidade} restante(s)`
+      : `Estoque baixo: ${estoqueStatus.quantidade} restante(s)`;
     card.classList.add("pdv-card-estoque-" + estoqueStatus.nivel);
     estoqueBadgeHtml = `
       <div class="pdv-card-estoque-badge" style="background:${cor};box-shadow:0 0 0 2px ${corBg}" title="${titulo}">
@@ -9832,7 +9936,17 @@ function _criarCardPDV(p) {
       </div>`;
   }
 
+  // Overlay "ESGOTADO" quando sem estoque
+  const semEstoqueOverlay = semEstoque
+    ? `<div style="position:absolute;inset:0;background:rgba(220,38,38,0.85);color:#fff;
+        display:flex;align-items:center;justify-content:center;font-weight:800;
+        font-size:0.72rem;letter-spacing:0.5px;border-radius:12px;z-index:5;
+        text-align:center;padding:4px;">ESGOTADO</div>`
+    : "";
+
+  card.style.position = "relative";
   card.innerHTML = `
+    ${semEstoqueOverlay}
     ${estoqueBadgeHtml}
     ${imgHtml}
     <div class="pdv-card-body">
@@ -9904,6 +10018,13 @@ async function _filtrarVariacoesComEstoque(variacoes) {
 }
 
 function adicionarItemPDV(p) {
+  // ── TRAVA DE ESTOQUE ──────────────────────────────────────
+  // Se o produto está sem estoque, bloqueia o clique no PDV.
+  if (_produtoSemEstoque(p)) {
+    _pdvToast("⚠️ Sin stock — venta bloqueada para " + p.nome, 2500);
+    return;
+  }
+
   // montagem_config pode chegar como string JSON de bancos antigos
   let cfg = p.montagem_config;
   if (typeof cfg === "string") {
@@ -9925,14 +10046,12 @@ function adicionarItemPDV(p) {
   if (tipo === "variacoes" && cfg.variacoes?.length > 0) {
     const ativas = cfg.variacoes.filter((v) => v.ativo !== false);
     if (!ativas.length) {
-      alert("⏸️ Todas las variaciones están pausadas.");
+      _pdvToast("⏸️ Todas las variaciones están pausadas.", 2500);
       return;
     }
-    // Consulta estoque atual de cada variação vinculada a um item de inventário
-    // e bloqueia (oculta) as que estiverem zeradas.
     _filtrarVariacoesComEstoque(ativas).then((disponiveis) => {
       if (!disponiveis.length) {
-        alert("📦 Todas las variaciones están sin stock por el momento.");
+        _pdvToast("📦 Todas las variaciones están sin stock.", 2500);
         return;
       }
       const cfgComEstoque = { ...cfg, variacoes: disponiveis };
@@ -9940,26 +10059,11 @@ function adicionarItemPDV(p) {
     });
     return;
   }
-  if (tipo === "pizza") {
-    _mostrarModalOpcoesPDV(p, "pizza");
-    return;
-  }
-  if (tipo === "acai") {
-    _mostrarModalOpcoesPDV(p, "acai");
-    return;
-  }
-  if (tipo === "shake") {
-    _mostrarModalOpcoesPDV(p, "shake");
-    return;
-  }
-  if (tipo === "suco") {
-    _mostrarModalOpcoesPDV(p, "suco");
-    return;
-  }
-  if (tipo === "sorvete") {
-    _mostrarModalOpcoesPDV(p, "sorvete");
-    return;
-  }
+  if (tipo === "pizza") { _mostrarModalOpcoesPDV(p, "pizza"); return; }
+  if (tipo === "acai")  { _mostrarModalOpcoesPDV(p, "acai");  return; }
+  if (tipo === "shake") { _mostrarModalOpcoesPDV(p, "shake"); return; }
+  if (tipo === "suco")  { _mostrarModalOpcoesPDV(p, "suco");  return; }
+  if (tipo === "sorvete") { _mostrarModalOpcoesPDV(p, "sorvete"); return; }
   if (tipo === "montavel" && cfg.etapas?.length > 0) {
     _mostrarModalOpcoesPDV(p, "montavel");
     return;
@@ -11671,14 +11775,6 @@ function atualizarInfoPagPDV(total) {
   const recebidoInput = document.getElementById("pdv-valor-recebido");
   const trocoRow = document.getElementById("pdv-troco-row");
   if (efetivoBox) {
-    // CORRIGIDO: antes, .focus() rodava toda vez que atualizarInfoPagPDV()
-    // era chamada — inclusive a cada dígito digitado no campo de Desconto
-    // (que chama atualizarCarrinhoPDV() -> atualizarInfoPagPDV() a cada
-    // tecla via oninput). Isso roubava o foco do campo de desconto para o
-    // campo "valor recebido" a cada caractere digitado, dando a impressão
-    // de que só dava para digitar um número por vez. Agora só focamos
-    // quando a caixa de Efetivo está de fato aparecendo agora (mudança
-    // real de forma de pagamento), não em todo recálculo de total.
     const jaEstavaVisivel = efetivoBox.style.display === "block";
     if (pag === "Efetivo") {
       efetivoBox.style.display = "block";
@@ -11691,89 +11787,49 @@ function atualizarInfoPagPDV(total) {
     }
   }
 
-  // Reseta o valor de taxa de cartão calculado (recalculado abaixo se aplicável)
+  // Reseta o valor de taxa de cartão calculado
   window._pdvTaxaCartaoValor = 0;
   window._pdvTaxaCartaoPct = 0;
 
-  if (pag === "CartaoBR" && total > 0 && (_taxaDebitoPDV > 0 || _taxaCreditoPDV > 0)) {
-    infoBox.style.display = "block";
-    const _renderCarBR = () => {
-      const taxa =
-        _cartaoBRTipoPDV === "debito" ? _taxaDebitoPDV : _taxaCreditoPDV;
-      const taxaValor = Math.round(total * (taxa / 100));
+  // ── CARTÃO (débito/crédito, PY ou BR) ──────────────────────
+  const _info = _infoCartaoPDV(pag);
+  if (_info && total > 0) {
+    const { taxaPct, isCartaoBR } = _info;
+    if (taxaPct > 0) {
+      const taxaValor = Math.round(total * (taxaPct / 100));
       window._pdvTaxaCartaoValor = taxaValor;
-      window._pdvTaxaCartaoPct = taxa;
+      window._pdvTaxaCartaoPct = taxaPct;
       const totalComTaxa = total + taxaValor;
-      const brl =
-        _cotacaoPDV > 0 ? (totalComTaxa / _cotacaoPDV).toFixed(2) : "---";
-      infoBox.innerHTML = `
-        <div style="font-size:0.78rem;font-weight:700;margin-bottom:6px">💳🇧🇷 Tarjeta Brasileña</div>
-        <div style="display:flex;gap:6px;margin-bottom:8px">
-          <button type="button" onclick="_setPDVBRTipo('debito')"
-            style="flex:1;padding:6px 4px;border-radius:6px;font-weight:700;cursor:pointer;font-size:0.75rem;
-                   border:2px solid ${_cartaoBRTipoPDV === "debito" ? "#1a7a2e" : "#ccc"};
-                   background:${_cartaoBRTipoPDV === "debito" ? "#eafaf1" : "#f8f9fa"};
-                   color:${_cartaoBRTipoPDV === "debito" ? "#1a7a2e" : "#555"}">
-            Débito<br><small>${_taxaDebitoPDV.toFixed(2)}%</small></button>
-          <button type="button" onclick="_setPDVBRTipo('credito')"
-            style="flex:1;padding:6px 4px;border-radius:6px;font-weight:700;cursor:pointer;font-size:0.75rem;
-                   border:2px solid ${_cartaoBRTipoPDV === "credito" ? "#1a7a2e" : "#ccc"};
-                   background:${_cartaoBRTipoPDV === "credito" ? "#eafaf1" : "#f8f9fa"};
-                   color:${_cartaoBRTipoPDV === "credito" ? "#1a7a2e" : "#555"}">
-            Crédito<br><small>${_taxaCreditoPDV.toFixed(2)}%</small></button>
-        </div>
-        <div style="text-align:center">
-          <div style="font-size:0.72rem;color:#666">+ Gs ${taxaValor.toLocaleString("es-PY")} de taxa → Total: Gs ${totalComTaxa.toLocaleString("es-PY")}</div>
-          <div style="font-size:1rem;font-weight:900;color:#1a7a2e">R$ ${brl}</div>
-        </div>`;
+
+      if (isCartaoBR) {
+        const brl = _cotacaoPDV > 0 ? (totalComTaxa / _cotacaoPDV).toFixed(2) : "---";
+        infoBox.style.display = "block";
+        infoBox.innerHTML = `
+          <div style="font-size:0.78rem;font-weight:700;margin-bottom:4px">💳🇧🇷 Tarjeta BR (${_info.tipo === "debito" ? "Débito" : "Crédito"})</div>
+          <div style="text-align:center">
+            <div style="font-size:0.72rem;color:#666">+ Gs ${taxaValor.toLocaleString("es-PY")} (${taxaPct.toFixed(2)}%) → Total: Gs ${totalComTaxa.toLocaleString("es-PY")}</div>
+            <div style="font-size:1rem;font-weight:900;color:#1a7a2e">R$ ${brl}</div>
+          </div>`;
+      } else {
+        infoBox.style.display = "block";
+        infoBox.innerHTML = `
+          <div style="font-size:0.78rem;font-weight:700;margin-bottom:4px">💳 Tarjeta (${_info.tipo === "debito" ? "Débito" : "Crédito"})</div>
+          <div style="font-size:0.72rem;color:#666;text-align:center;margin-bottom:2px">+ Gs ${taxaValor.toLocaleString("es-PY")} (${taxaPct.toFixed(2)}%)</div>
+          <div style="text-align:center;font-size:1rem;font-weight:900;color:#1a7a2e">Gs ${totalComTaxa.toLocaleString("es-PY")}</div>`;
+      }
       _pdvAtualizarTotalComTaxas();
-    };
-    window._setPDVBRTipo = (tipo) => {
-      _cartaoBRTipoPDV = tipo;
-      _renderCarBR();
-    };
-    window._renderCarBRPDV = _renderCarBR;
-    _renderCarBR();
-  } else if (pag === "Cartao" && total > 0 && (_taxaDebitoPDV > 0 || _taxaCreditoPDV > 0)) {
-    infoBox.style.display = "block";
-    const _renderCarPY = () => {
-      const taxa =
-        _cartaoPYTipoPDV === "debito" ? _taxaDebitoPDV : _taxaCreditoPDV;
-      const taxaValor = Math.round(total * (taxa / 100));
-      window._pdvTaxaCartaoValor = taxaValor;
-      window._pdvTaxaCartaoPct = taxa;
-      const totalComTaxa = total + taxaValor;
-      infoBox.innerHTML = `
-        <div style="font-size:0.78rem;font-weight:700;margin-bottom:6px">💳 Tarjeta</div>
-        <div style="display:flex;gap:6px;margin-bottom:8px">
-          <button type="button" onclick="_setPDVPYTipo('debito')"
-            style="flex:1;padding:6px 4px;border-radius:6px;font-weight:700;cursor:pointer;font-size:0.75rem;
-                   border:2px solid ${_cartaoPYTipoPDV === "debito" ? "#1a7a2e" : "#ccc"};
-                   background:${_cartaoPYTipoPDV === "debito" ? "#eafaf1" : "#f8f9fa"};
-                   color:${_cartaoPYTipoPDV === "debito" ? "#1a7a2e" : "#555"}">
-            Débito<br><small>${_taxaDebitoPDV.toFixed(2)}%</small></button>
-          <button type="button" onclick="_setPDVPYTipo('credito')"
-            style="flex:1;padding:6px 4px;border-radius:6px;font-weight:700;cursor:pointer;font-size:0.75rem;
-                   border:2px solid ${_cartaoPYTipoPDV === "credito" ? "#1a7a2e" : "#ccc"};
-                   background:${_cartaoPYTipoPDV === "credito" ? "#eafaf1" : "#f8f9fa"};
-                   color:${_cartaoPYTipoPDV === "credito" ? "#1a7a2e" : "#555"}">
-            Crédito<br><small>${_taxaCreditoPDV.toFixed(2)}%</small></button>
-        </div>
-        <div style="font-size:0.72rem;color:#666;text-align:center;margin-bottom:2px">+ Gs ${taxaValor.toLocaleString("es-PY")} de taxa</div>
-        <div style="text-align:center;font-size:1rem;font-weight:900;color:#1a7a2e">Gs ${totalComTaxa.toLocaleString("es-PY")}</div>`;
-      _pdvAtualizarTotalComTaxas();
-    };
-    window._setPDVPYTipo = (tipo) => {
-      _cartaoPYTipoPDV = tipo;
-      _renderCarPY();
-    };
-    window._renderCarPYPDV = _renderCarPY;
-    _renderCarPY();
-  } else if (pag === "Pix" && total > 0) {
+      return;
+    }
+  }
+
+  // ── PIX ────────────────────────────────────────────────────
+  if (pag === "Pix" && total > 0) {
     const valorReais = (total / _cotacaoPDV).toFixed(2);
     infoBox.style.display = "block";
     infoBox.innerHTML = `<i class="fas fa-qrcode"></i> <strong>Cobrar em Pix: R$ ${valorReais}</strong>`;
-  } else if (pag === "Multipagamento") {
+  }
+  // ── MULTIPAGAMENTO ─────────────────────────────────────────
+  else if (pag === "Multipagamento") {
     if (selectPag) selectPag.style.display = "none";
     if (boxMultiPDV) {
       boxMultiPDV.style.display = "block";
@@ -11784,12 +11840,15 @@ function atualizarInfoPagPDV(total) {
       }
       atualizarRestanteMultiPDV();
     }
-    } else if (pag === "Mensalista") {
+  }
+  // ── MENSALISTA ─────────────────────────────────────────────
+  else if (pag === "Mensalista") {
     const box = document.getElementById("box-mensalista-pdv");
     if (box) { box.style.display = "block"; pdvCarregarMensalistas(); }
-    // ⚡ NOVO: recalcula o painel (status + complemento) sempre que o pagamento é reavaliado
-    if (typeof pdvMensAtualizarPainel === 'function') pdvMensAtualizarPainel();
-  } else if (pag === "NaNota") {
+    if (typeof pdvMensAtualizarPainel === "function") pdvMensAtualizarPainel();
+  }
+  // ── NA NOTA ────────────────────────────────────────────────
+  else if (pag === "NaNota") {
     const box = document.getElementById("box-nanota-pdv");
     if (box) { box.style.display = "block"; pdvCarregarClientesNota(); }
   }
@@ -11804,8 +11863,7 @@ function atualizarInfoPagPDV(total) {
     if (b) b.style.display = "none";
   }
 
-  // Recalcula a taxa de serviço (se marcada) sobre o total-base atual e
-  // atualiza o total exibido somando taxa de cartão + taxa de serviço.
+  // Recalcula taxa de serviço
   if (document.getElementById("pdv-check-taxa-servico")) {
     pdvAtualizarPctServico();
   } else {
@@ -12024,14 +12082,14 @@ function adicionarPartePagamentoPDV() {
   const id = _multiContadorPDV;
   const ordinal = ["1ª", "2ª", "3ª", "4ª", "5ª"][id - 1] || `${id}ª`;
   const opts = [
-    { v: "Efetivo", l: "💵 Efectivo" },
-    { v: "Cartao", l: "💳 Tarjeta" },
-    { v: "CartaoBR", l: "💳🇧🇷 Tarjeta BR" },
-    { v: "Pix", l: "🟢 Pix" },
-    { v: "Transferencia", l: "🏦 Alias" },
-    { v: "QrPy", l: "📱 QR Paraguay" },
-    { v: "QrMaquina", l: "📱 QR Máquina" },
-    { v: "QrCelular", l: "📱 QR Celular" },
+    { v: "Efetivo",           l: "💵 Efectivo" },
+    { v: "TarjetaDebito",     l: "💳 Tarjeta Débito" },
+    { v: "TarjetaCredito",    l: "💳 Tarjeta Crédito" },
+    { v: "TarjetaBRDebito",   l: "💳🇧🇷 Tarjeta BR Débito" },
+    { v: "TarjetaBRCredito",  l: "💳🇧🇷 Tarjeta BR Crédito" },
+    { v: "Pix",               l: "✅ Pix" },
+    { v: "Transferencia",     l: "🏦 Alias" },
+    { v: "Qr",                l: "📱 QR" },
   ]
     // Não deixa escolher, no "Dividir Pagamento", uma forma que o
     // adminMaster desativou globalmente em Configurações → Controle de Features.

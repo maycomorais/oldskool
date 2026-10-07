@@ -348,6 +348,7 @@ const ADMIN_LANGS = {
     'pdv.buscar_produto':   '🔍 Buscar produto...',
     'pdv.cashback_disponivel': 'Cashback disponível',
     'pdv.usar_cashback':    'Usar cashback',
+    'pdv.taxa_servico_label': 'Taxa de Serviço',
 
     // ── CRM ────────────────────────────────────────────────────────
     'crm.title':            '🤝 CRM Clientes',
@@ -1138,6 +1139,7 @@ const ADMIN_LANGS = {
     'geral.hoje':           'Hoy',
 
     // ── PDV (chaves faltando) ──────────────────────────────────────
+    'pdv.taxa_servico_label': 'Propina',
     'pdv.novo_pedido':      'Nuevo Pedido',
     'pdv.tipo_balcao':      'Mostrador',
     'pdv.tipo_delivery':    'Delivery',

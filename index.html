@@ -728,14 +728,16 @@ window.addEventListener('DOMContentLoaded', () => {
 
                 <div class="form-section">
                     <h4 data-lang-key="pagamento">Pago</h4>
-                        <select id="forma-pag" class="input-field" onchange="verificarPagamento()">
+                                                <select id="forma-pag" class="input-field" onchange="verificarPagamento()">
                             <option value="" data-lang-key="forma-pag">Seleccione la forma de pago...</option>
-                            <option value="Efetivo" data-lang-key="pag-dinheiro">Efectivo (Guaraníes)</option>
-                            <option value="Cartao" data-lang-key="pag-cartao">Tarjeta de Crédito/Débito</option>
-                            <option value="CartaoBR">💳🇧🇷 Cartão Brasileiro (R$)</option>
-                            <option value="Pix" data-lang-key="pag-pix">Pix (BR)</option>
-                            <option value="Transferencia" data-lang-key="pag-transfer">Transferencia / Alias (PY)</option>
-                            <option value="QrPy" data-lang-key="qr_py">QR Paraguay (Tigo / Personal / Bancard)</option>
+                            <option value="Efetivo" data-lang-key="pag-dinheiro">💵 Efectivo (Guaraníes)</option>
+                            <option value="TarjetaDebito">💳 Tarjeta Débito</option>
+                            <option value="TarjetaCredito">💳 Tarjeta Crédito</option>
+                            <option value="TarjetaBRDebito">💳🇧🇷 Tarjeta BR Débito (R$)</option>
+                            <option value="TarjetaBRCredito">💳🇧🇷 Tarjeta BR Crédito (R$)</option>
+                            <option value="Pix" data-lang-key="pag-pix">✅ Pix (BR)</option>
+                            <option value="Transferencia" data-lang-key="pag-transfer">🏦 Alias / Transferencia (PY)</option>
+                            <option value="Qr" data-lang-key="qr_py">📱 QR Paraguay (Tigo / Personal / Bancard)</option>
                             <option value="Multipagamento">🔀 Dividir Pagamento</option>
                         </select>
 
