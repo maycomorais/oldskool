@@ -13603,128 +13603,178 @@ function imprimirComandaMesa(pedido) {
 
 async function carregarMonitorMesas() {
   const div = document.getElementById("lista-mesas-andamento");
-  if (!div) return;
-
-  // Busca pedidos de Balcão com número de mesa
-  const { data, error } = await supa
-    .from("pedidos")
-    .select("*")
-    .eq("tipo_entrega", "balcao")
-    .neq("status", "entregue")
-    .ilike("endereco_entrega", "Mesa%")
-    .order("id", { ascending: false });
-
-  if (error) {
-    console.error("Erro ao carregar mesas:", error);
-    div.innerHTML = `<p class="mesa-grid-empty">${t('geral.erro')}</p>`;
+  if (!div) {
+    console.warn("[mesas] #lista-mesas-andamento no encontrado en el DOM.");
     return;
   }
 
-  div.innerHTML = "";
+  // ── 1. Estado de carga ──────────────────────────────────────────
+  div.innerHTML = `<p style="text-align:center;font-size:0.85rem;color:#94a3b8;padding:20px">
+    <i class="fas fa-spinner fa-spin"></i> Cargando mesas...
+  </p>`;
 
-  if (!data || data.length === 0) {
-    div.innerHTML = `
-      <div class="mesa-grid-empty">
-        <i class="fas fa-chair" style="font-size:2rem;color:#ccc;"></i>
-        <p>${t('mesas.nenhuma')}</p>
-      </div>
-    `;
-    return;
-  }
+  try {
+    // ── 2. Query simples — .select("*") evita erro caso alguma coluna
+    //       específica (uid_temporal, created_at) não exista no schema ──
+    const { data, error } = await supa
+      .from("pedidos")
+      .select("*")
+      .eq("tipo_entrega", "balcao")
+      .in("status", ["pendente", "em_preparo", "pronto_entrega", "saiu_entrega"])
+      .order("id", { ascending: false });
 
-  const grid = document.createElement("div");
-  grid.className = "mesa-grid";
-
-  data.forEach((pedido) => {
-    const nrMesa = (pedido.endereco_entrega || "").replace("Mesa ", "") || pedido.uid_temporal || pedido.id;
-    const itens = Array.isArray(pedido.itens) ? pedido.itens : [];
-    const pendentes = itens.filter(i => !i.status_item || i.status_item === "pendente");
-    const totalItens = itens.length;
-    const pendentesCount = pendentes.length;
-
-    // Status com tradução
-    let statusLabel = "";
-    let statusClass = "";
-    if (pedido.status === "pronto_entrega") {
-      statusLabel = t('status.pronto_entrega');
-      statusClass = "status-pronto";
-    } else if (pedido.status === "em_preparo") {
-      statusLabel = t('status.em_preparo');
-      statusClass = "status-preparo";
-    } else {
-      statusLabel = t('mesas.status_pendente');
-      statusClass = "status-pendente";
+    if (error) {
+      console.error("[mesas] Error al buscar mesas:", error);
+      div.innerHTML = `
+        <div class="mesa-grid-empty">
+          <i class="fas fa-exclamation-triangle" style="font-size:2rem;color:#f39c12;"></i>
+          <p>Error al cargar mesas: ${error.message || "desconocido"}</p>
+        </div>`;
+      return;
     }
 
-    // Texto de pendentes com plural/singular
-    const pendenteTexto = pendentesCount === 1
-      ? t('mesas.pendente_singular')
-      : t('mesas.pendente_plural');
-
-    // Resumo dos itens (máx 2)
-    const itensResumo = itens.slice(0, 2).map(item => {
-      const nome = item.nome || item.n || "Item";
-      const qtd = item.qtd || item.q || 1;
-      return `${qtd}x ${nome}`;
-    }).join(", ");
-    const maisItens = itens.length > 2 ? ` + ${itens.length - 2} ${t('mesas.outros')}` : "";
-
-    // Cria o card
-    const card = document.createElement("div");
-    card.className = `mesa-card ${statusClass}`;
-    card.style.cursor = "pointer";
-
-    card.innerHTML = `
-      <div class="mesa-card-header">
-        <span class="mesa-numero">${t('mesas.mesa_prefixo')} ${nrMesa}</span>
-        <span class="mesa-status-badge ${statusClass}">${statusLabel}</span>
-      </div>
-      <div class="mesa-card-cliente">
-        <i class="fas fa-user"></i> ${pedido.cliente_nome || "Cliente"}
-      </div>
-      <div class="mesa-card-itens">
-        <span class="mesa-item-count">${pendentesCount} ${pendenteTexto} / ${totalItens} ${t('mesas.total')}</span>
-        <span class="mesa-item-resumo">${itensResumo}${maisItens}</span>
-      </div>
-      <div class="mesa-card-total">
-        <span class="mesa-total-label">${t('mesas.total')}</span>
-        <span class="mesa-total-valor">Gs ${(pedido.total_geral || 0).toLocaleString("es-PY")}</span>
-      </div>
-      <div class="mesa-card-actions">
-        <button class="btn btn-primary btn-sm btn-abrir-comanda" type="button">
-          <i class="fas fa-pen"></i> ${t('mesas.abrir_comanda')}
-        </button>
-        <button class="btn btn-secondary btn-sm btn-imprimir-comanda" type="button" title="Imprimir Comanda">
-          <i class="fas fa-print"></i> <span data-i18n="mesas.imprimir_comanda">Imprimir</span>
-        </button>
-      </div>
-    `;
-
-    // Eventos (mesma lógica)
-    card.addEventListener("click", (e) => {
-      if (e.target.closest("button")) return;
-      abrirMesaExistente(pedido);
+    // ── 3. Log de diagnóstico — mostra cada linha devolvida ─────────
+    const todos = data || [];
+    console.log(`[mesas] Pedidos de balcón activos devueltos: ${todos.length}`);
+    todos.forEach((p) => {
+      console.log(
+        `  #${p.id} | status=${p.status}` +
+        ` | tipo=${p.tipo_entrega}` +
+        ` | endereco="${p.endereco_entrega}"` +
+        ` | cliente="${p.cliente_nome}"`
+      );
     });
 
-    const btnAbrir = card.querySelector(".btn-abrir-comanda");
-    btnAbrir.addEventListener("click", (e) => {
-      e.stopPropagation();
-      abrirMesaExistente(pedido);
+    // ── 4. Filtra em JS — só os que têm "Mesa" no início do endereço ──
+    //       Case-insensitive + trim para pegar qualquer variação
+    //       ("Mesa 5", "mesa 5", "MESA 5", "Mesa  5"...)
+    const mesas = todos.filter((p) => {
+      const end = (p.endereco_entrega || "").toLowerCase().trim();
+      return end.startsWith("mesa");
     });
 
-    const btnImprimir = card.querySelector(".btn-imprimir-comanda");
-    btnImprimir.addEventListener("click", (e) => {
-      e.stopPropagation();
-      imprimirComandaMesa(pedido);
+    console.log(`[mesas] Mesas activas después del filtro: ${mesas.length}`);
+
+    // ── 5. Estado vazio ────────────────────────────────────────────
+    if (mesas.length === 0) {
+      const naoMesa = todos.length;
+      div.innerHTML = `
+        <div class="mesa-grid-empty">
+          <i class="fas fa-chair" style="font-size:2rem;color:#ccc;"></i>
+          <p>${t('mesas.nenhuma')}</p>
+          ${naoMesa > 0 ? `
+            <small style="color:#94a3b8;font-size:0.75rem;display:block;margin-top:10px;
+                          padding:8px 12px;background:rgba(148,163,184,0.08);
+                          border-radius:8px;max-width:420px;margin-left:auto;margin-right:auto">
+              ℹ️ Hay <b>${naoMesa}</b> pedido(s) de balcón activo(s), pero ninguno tiene
+              número de mesa (endereço distinto de "Mesa X").
+              Verifique en la consola (F12) los endereços exactos.
+            </small>` : ""}
+        </div>`;
+      return;
+    }
+
+    // ── 6. Monta o grid de cards ───────────────────────────────────
+    div.innerHTML = "";
+    const grid = document.createElement("div");
+    grid.className = "mesa-grid";
+
+    mesas.forEach((pedido) => {
+      const nrMesa = (pedido.endereco_entrega || "")
+        .replace(/^mesa\s*/i, "")
+        .trim() || pedido.uid_temporal || pedido.id;
+
+      const itens = Array.isArray(pedido.itens) ? pedido.itens : [];
+      const pendentes = itens.filter(i => !i.status_item || i.status_item === "pendente");
+      const totalItens = itens.length;
+      const pendentesCount = pendentes.length;
+
+      let statusLabel = "";
+      let statusClass = "";
+      if (pedido.status === "pronto_entrega") {
+        statusLabel = t('status.pronto_entrega');
+        statusClass = "status-pronto";
+      } else if (pedido.status === "em_preparo") {
+        statusLabel = t('status.em_preparo');
+        statusClass = "status-preparo";
+      } else {
+        statusLabel = t('mesas.status_pendente');
+        statusClass = "status-pendente";
+      }
+
+      const pendenteTexto = pendentesCount === 1
+        ? t('mesas.pendente_singular')
+        : t('mesas.pendente_plural');
+
+      const itensResumo = itens.slice(0, 2).map(item => {
+        const nome = item.nome || item.n || "Item";
+        const qtd = item.qtd || item.q || 1;
+        return `${qtd}x ${nome}`;
+      }).join(", ");
+      const maisItens = itens.length > 2
+        ? ` + ${itens.length - 2} ${t('mesas.outros')}`
+        : "";
+
+      const card = document.createElement("div");
+      card.className = `mesa-card ${statusClass}`;
+      card.style.cursor = "pointer";
+
+      card.innerHTML = `
+        <div class="mesa-card-header">
+          <span class="mesa-numero">${t('mesas.mesa_prefixo')} ${nrMesa}</span>
+          <span class="mesa-status-badge ${statusClass}">${statusLabel}</span>
+        </div>
+        <div class="mesa-card-cliente">
+          <i class="fas fa-user"></i> ${pedido.cliente_nome || "Cliente"}
+        </div>
+        <div class="mesa-card-itens">
+          <span class="mesa-item-count">${pendentesCount} ${pendenteTexto} / ${totalItens} ${t('mesas.total')}</span>
+          <span class="mesa-item-resumo">${itensResumo}${maisItens}</span>
+        </div>
+        <div class="mesa-card-total">
+          <span class="mesa-total-label">${t('mesas.total')}</span>
+          <span class="mesa-total-valor">Gs ${(pedido.total_geral || 0).toLocaleString("es-PY")}</span>
+        </div>
+        <div class="mesa-card-actions">
+          <button class="btn btn-primary btn-sm btn-abrir-comanda" type="button">
+            <i class="fas fa-pen"></i> ${t('mesas.abrir_comanda')}
+          </button>
+          <button class="btn btn-secondary btn-sm btn-imprimir-comanda" type="button" title="Imprimir Comanda">
+            <i class="fas fa-print"></i> Imprimir
+          </button>
+        </div>
+      `;
+
+      card.addEventListener("click", (e) => {
+        if (e.target.closest("button")) return;
+        abrirMesaExistente(pedido);
+      });
+
+      const btnAbrir = card.querySelector(".btn-abrir-comanda");
+      if (btnAbrir) btnAbrir.addEventListener("click", (e) => {
+        e.stopPropagation();
+        abrirMesaExistente(pedido);
+      });
+
+      const btnImprimir = card.querySelector(".btn-imprimir-comanda");
+      if (btnImprimir) btnImprimir.addEventListener("click", (e) => {
+        e.stopPropagation();
+        imprimirComandaMesa(pedido);
+      });
+
+      grid.appendChild(card);
     });
 
-   // Botão "Finalizar" foi removido — o fechamento de mesa acontece agora
-    // exclusivamente pelo PDV (botão "Fechar Conta e Receber")
+    div.appendChild(grid);
 
-    grid.appendChild(card);
-  });
-
-  div.appendChild(grid);
+  } catch (err) {
+    console.error("[mesas] Error inesperado:", err);
+    div.innerHTML = `
+      <div class="mesa-grid-empty">
+        <i class="fas fa-exclamation-triangle" style="font-size:2rem;color:#e74c3c;"></i>
+        <p>Error al cargar mesas: ${err.message || "desconocido"}</p>
+      </div>`;
+  }
 }
 
 // ── Baixa parcial: marca 1 item como 'entregue' no banco ──────────
@@ -14938,92 +14988,86 @@ let _inventarioItems = [];
 let _tipoAjuste = "add";
 
 async function carregarInventario() {
+  // ── 1. Somente gestores carregam o inventário ──
   if (
     perfilUsuario !== "dono" &&
     perfilUsuario !== "gerente" &&
     perfilUsuario !== "adminMaster"
-  )
-    return;
+  ) return;
+
   const container = document.getElementById("inventario-lista");
-  if (!container) return;
-  container.innerHTML =
-    '<div style="text-align:center;padding:30px;color:#aaa"><i class="fas fa-spinner fa-spin"></i></div>';
+  if (!container) {
+    console.warn("[inventario] #inventario-lista no encontrado.");
+    return;
+  }
 
-  const { data, error } = await supa
-    .from("inventario")
-    .select(
-      "id, nome, quantidade, unidade, quantidade_minima, observacoes, produto_id, perecivel, data_validade, localizacao, produtos!inventario_produto_id_fkey(nome)",
-    )
-    .order("nome");
+  // ── 2. Estado de carga ──
+  container.innerHTML = `
+    <div style="text-align:center;padding:30px;color:#aaa">
+      <i class="fas fa-spinner fa-spin"></i> Cargando inventario...
+    </div>`;
 
-  if (error) {
-    const { data: d2 } = await supa.from("inventario").select("*").order("nome");
-    _inventarioItems = (d2 || []).map((i) => ({
-      ...i,
-      produtos: null,
-      localizacao: i.localizacao || "balcao",
-    }));
-  } else {
+  try {
+    // ── 3. Query simples, sem join (mais tolerante a nomes de FK
+    //       diferentes no banco) ──
+    const { data, error } = await supa
+      .from("inventario")
+      .select("*")
+      .order("nome");
+
+    if (error) {
+      console.error("[inventario] Error al cargar:", error);
+      container.innerHTML = `
+        <div style="text-align:center;padding:30px;color:#e74c3c">
+          <i class="fas fa-exclamation-triangle" style="font-size:2rem"></i>
+          <p style="margin-top:8px">Error al cargar inventario: ${error.message}</p>
+        </div>`;
+      return;
+    }
+
+    // ── 4. Normaliza os itens — garante campos que o render espera ──
     _inventarioItems = (data || []).map((i) => ({
       ...i,
       localizacao: i.localizacao || "balcao",
+      perecivel: i.perecivel || false,
+      data_validade: i.data_validade || null,
+      produtos: null, // preenchido no passo 5
     }));
-  }
 
-  // ── Auto-cria depósitos faltantes para itens de balcão com produto_id ──
-  const balcaoComProduto = _inventarioItems.filter(
-    (i) => i.produto_id && i.localizacao === "balcao"
-  );
-  const depositoIds = new Set(
-    _inventarioItems
-      .filter((i) => i.produto_id && i.localizacao === "deposito")
-      .map((i) => i.produto_id)
-  );
-  const faltantes = balcaoComProduto.filter((i) => !depositoIds.has(i.produto_id));
-  if (faltantes.length > 0) {
-    const novos = faltantes.map((i) => ({
-      nome: i.nome,
-      unidade: i.unidade || "un",
-      quantidade: 0,
-      quantidade_minima: null,
-      produto_id: i.produto_id,
-      observacoes: "[Criado automaticamente como depósito]",
-      localizacao: "deposito",
-    }));
-    await supa.from("inventario").insert(novos);
-    const { data: d3 } = await supa.from("inventario").select("*").order("nome");
-    _inventarioItems = (d3 || []).map((i) => ({
-      ...i,
-      localizacao: i.localizacao || "balcao",
-    }));
-  }
-
-  // ── Reconciliação inversa: produtos.inventario_id que apontam para item
-  //    de inventário sem produto_id vinculado (ex: item criado via PDV antigo)
-  try {
-    const { data: prodsComEstoque } = await supa
-      .from("produtos")
-      .select("id, inventario_id")
-      .not("inventario_id", "is", null);
-    if (prodsComEstoque?.length) {
-      const _invSemProduto = _inventarioItems.filter((i) => !i.produto_id);
-      for (const prod of prodsComEstoque) {
-        const inv = _invSemProduto.find((i) => i.id === prod.inventario_id);
-        if (inv) {
-          await supa
-            .from("inventario")
-            .update({ produto_id: prod.id })
-            .eq("id", inv.id);
-          inv.produto_id = prod.id;
-        }
+    // ── 5. Enriquece com nome do produto (best-effort, sem FK join) ──
+    const produtoIds = [...new Set(
+      _inventarioItems.map(i => i.produto_id).filter(Boolean)
+    )];
+    if (produtoIds.length > 0) {
+      try {
+        const { data: prods } = await supa
+          .from("produtos")
+          .select("id, nome")
+          .in("id", produtoIds);
+        const prodMap = {};
+        (prods || []).forEach(p => { prodMap[p.id] = p.nome; });
+        _inventarioItems.forEach(i => {
+          if (i.produto_id && prodMap[i.produto_id]) {
+            i.produtos = { nome: prodMap[i.produto_id] };
+          }
+        });
+      } catch (_) {
+        // falha não crítica — segue sem nome do produto vinculado
       }
     }
-  } catch (_) {
-    /* reconciliação é best-effort, não bloqueia a tela */
-  }
 
-  _renderInventarioCards();
-  _verificarAlertasEstoque();
+    // ── 6. Renderiza os cards ──
+    _renderInventarioCards();
+    _verificarAlertasEstoque();
+
+  } catch (err) {
+    console.error("[inventario] Error inesperado:", err);
+    container.innerHTML = `
+      <div style="text-align:center;padding:30px;color:#e74c3c">
+        <i class="fas fa-exclamation-triangle" style="font-size:2rem"></i>
+        <p style="margin-top:8px">Error inesperado: ${err.message}</p>
+      </div>`;
+  }
 }
 
 function _renderInventarioCards() {

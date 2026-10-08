@@ -13,7 +13,7 @@ const ADMIN_LANGS = {
   // ══════════════════════════════════════════════════════════
   pt: {
     'pdv.lancar_pedido': 'Lançar Pedido',
-
+    'pdv.baixar': 'Baixar Item',
     // ── Sidebar ────────────────────────────────────────────
     'sidebar.visao':        'Visão',
     'sidebar.pdv':          'PDV Balcão',
@@ -929,6 +929,8 @@ const ADMIN_LANGS = {
     'pdv.mesas_andamento':  'Pedidos en Curso',
     'pdv.entregar':         'Entregar / Cerrar',
     'pdv.na_cozinha':       '🔥 En Cocina',
+    'pdv.baixar':           'Bajar Iten',
+
 
     // ── Financeiro ─────────────────────────────────────────
     'fin.title':            '💰 Control Financiero',
