@@ -222,18 +222,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Inicia Monitoramento Realtime
   iniciarRealtime();
 
-  // === SISTEMA DE AUTO-REFRESH (10 SEGUNDOS) ===
+  // === SISTEMA DE AUTO-REFRESH (15 SEGUNDOS) ===
+  // Atualizado para função iniciarAutoRefreshPedidos()
   // Backup caso o Realtime falhe
-  setInterval(() => {
-    const abaAtual = localStorage.getItem("app_lastTab");
-    // true = modo silencioso (sem recarregar som se já estiver tocando)
-    if (abaAtual === "pedidos") carregarPedidos(true);
-    if (abaAtual === "cozinha") carregarCozinha();
-    if (abaAtual === "pdv") carregarMonitorMesas();
-    // if (abaAtual === 'financeiro') calcularFinanceiro();
-    if (abaAtual === "dashboard") carregarDashboard();
-
-  }, 10000);
+  iniciarAutoRefreshPedidos();
 
   if (typeof initFacturacion === 'function') {
     // Será chamado quando a aba for aberta
@@ -1186,11 +1178,15 @@ function pararAlarme() {
   _alarmePlaying = false;
 }
 
-// =========================================
-// 4. GESTÃO DE PEDIDOS (COM IMPRESSÃO)
-// =========================================
-async function carregarPedidos(silencioso = false) {
-  // === TRAVA DE SEGURANÇA (Para não limpar sua seleção) ===
+// ── Globais de paginação (adicionar junto com outros globais do admin.js,
+//    antes da função carregarPedidos — ex.: abaixo de "let carrinhoPDV = [];") ──
+let _pedidosPaginaAtual  = 0;
+const _PEDIDOS_PAGE_SIZE = 25;
+let _pedidosPagTotal     = 0;
+let _pedidosPagFiltroAtivo = false; // true = sem filtro de data (usuário escolheu "Todos")
+
+async function carregarPedidos(silencioso = false, pagina = null) {
+  // === TRAVA DE SEGURANÇA (Para não limpar seleção) ===
   if (silencioso) {
     const selecionados = document.querySelectorAll(".check-pedido:checked");
     if (selecionados.length > 0) {
@@ -1199,10 +1195,14 @@ async function carregarPedidos(silencioso = false) {
     }
   }
 
-  // 1. Som e Notificação
+  if (pagina !== null && Number.isInteger(pagina) && pagina >= 0) {
+    _pedidosPaginaAtual = pagina;
+  }
+
+  // 1. Som e Notificação (count pendentes — query leve)
   const { count, error: countError } = await supa
     .from("pedidos")
-    .select("*", { count: "exact", head: true })
+    .select("id", { count: "exact", head: true })
     .eq("status", "pendente");
 
   if (countError) {
@@ -1215,52 +1215,67 @@ async function carregarPedidos(silencioso = false) {
     if (typeof pararAlarme === "function") pararAlarme();
   }
 
-  // 2. Busca Dados - inclui cancelamento_solicitado para badge
-  const { data: pedidos } = await supa
+  // 2. AUTO-CONFIRM: pedidos saiu_entrega há mais de 4h (query dedicada, sem paginação)
+  try {
+    const _corte4h = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
+    const { data: _paraAuto } = await supa
+      .from("pedidos")
+      .select("id")
+      .eq("status", "saiu_entrega")
+      .lt("tempo_saiu_entrega", _corte4h);
+    if (_paraAuto && _paraAuto.length > 0) {
+      const _ids = _paraAuto.map((p) => p.id);
+      await supa
+        .from("pedidos")
+        .update({ status: "entregue", tempo_entregue: new Date().toISOString() })
+        .in("id", _ids);
+      console.log(`⏰ Auto-confirmados ${_ids.length} pedido(s) >4h em saiu_entrega`);
+    }
+  } catch (e) {
+    console.warn("Auto-confirm 4h falhou:", e.message);
+  }
+
+  // 3. Query paginada (colunas explícitas, filtro de data para reduzir payload)
+  const from = _pedidosPaginaAtual * _PEDIDOS_PAGE_SIZE;
+  const to   = from + _PEDIDOS_PAGE_SIZE - 1;
+
+  let query = supa
     .from("pedidos")
-    .select("*")
-    .or(
-      "status.eq.pendente,status.eq.em_preparo,status.eq.pronto_entrega,status.eq.saiu_entrega",
+    .select(
+      "id, uid_temporal, status, tipo_entrega, cliente_nome, cliente_telefone, " +
+      "endereco_entrega, total_geral, frete_motoboy, cancelamento_solicitado, " +
+      "cancelamento_motivo, cancelamento_solicitado_por, created_at, " +
+      "tempo_saiu_entrega, motoboy_id",
+      { count: "exact" }
     )
-    .order("id", { ascending: false });
+    .or("status.eq.pendente,status.eq.em_preparo,status.eq.pronto_entrega,status.eq.saiu_entrega")
+    .order("id", { ascending: false })
+    .range(from, to);
+
+  if (!_pedidosPagFiltroAtivo) {
+    const _corte = new Date();
+    _corte.setHours(0, 0, 0, 0);
+    _corte.setDate(_corte.getDate() - 2); // inclui o que sobrou de ontem
+    query = query.gte("created_at", _corte.toISOString());
+  }
+
+  const { data: pedidos, count: totalCount } = await query;
+  _pedidosPagTotal = totalCount || 0;
 
   const tbody = document.getElementById("lista-pedidos");
   if (!tbody) return;
   tbody.innerHTML = "";
 
-  // Container de cards mobile
   const cardsDiv = document.getElementById("lista-pedidos-cards");
   if (cardsDiv) cardsDiv.innerHTML = "";
 
-  // ── AUTO-CONFIRM: pedidos saiu_entrega há mais de 4h ──────────────────────
-  const _QUATRO_HORAS_MS = 4 * 60 * 60 * 1000;
-  const _agora = Date.now();
-  const pedidosParaAutoConfirmar = (pedidos || []).filter(
-    (p) =>
-      p.status === "saiu_entrega" &&
-      p.tempo_saiu_entrega &&
-      _agora - new Date(p.tempo_saiu_entrega).getTime() > _QUATRO_HORAS_MS,
-  );
-  for (const p of pedidosParaAutoConfirmar) {
-    console.log(
-      `⏰ Auto-confirmando entrega do pedido #${p.id} (mais de 4h em saiu_entrega)`,
-    );
-    await supa
-      .from("pedidos")
-      .update({
-        status: "entregue",
-        tempo_entregue: new Date().toISOString(),
-      })
-      .eq("id", p.id);
-  }
-  // ───────────────────────────────────────────────────────────────────────────
-
-  // Badge de cancelamento pendente para o dono / adminMaster
+  // 4. Badge de cancelamento pendente para dono/adminMaster
   const _podeCancel = _podeCancelarDireto();
   const badgeCancelPendente = _podeCancel
     ? `<span style="background:#e74c3c;color:white;font-size:0.7rem;padding:2px 7px;border-radius:10px;margin-left:6px;vertical-align:middle;">CANC. PENDENTE</span>`
     : "";
 
+  // 5. Render
   if (pedidos && pedidos.length > 0) {
     pedidos.forEach((p) => {
       let acoes = "";
@@ -1270,31 +1285,28 @@ async function carregarPedidos(silencioso = false) {
       const btnPrint = `<button class="btn btn-sm btn-info" onclick="imprimirPedido(${p.id})" title="Imprimir"><i class="fas fa-print"></i></button>`;
       const temSolicitacaoCancelamento = p.cancelamento_solicitado;
 
-      // Badge cancelamento (só dono vê)
       const badgeCancelRow =
         temSolicitacaoCancelamento && perfilUsuario === "dono"
           ? `<div style="background:#fff0f0;border:1px solid #e74c3c;border-radius:6px;padding:4px 8px;font-size:0.75rem;margin-top:4px;color:#c0392b">
-                     🚫 <strong>Cancelamento solicitado:</strong> ${p.cancelamento_motivo || "-"}
-                     <br><button class="btn btn-danger btn-sm" onclick="aprovarCancelamento(${p.id})" style="margin-top:4px;font-size:0.7rem">✅ Aprovar</button>
-                     <button class="btn btn-secondary btn-sm" onclick="negarCancelamento(${p.id})" style="margin-top:4px;font-size:0.7rem">❌ Negar</button>
-                   </div>`
+                 🚫 <strong>Cancelamento solicitado:</strong> ${p.cancelamento_motivo || "-"}
+                 <br><button class="btn btn-danger btn-sm" onclick="aprovarCancelamento(${p.id})" style="margin-top:4px;font-size:0.7rem">✅ Aprovar</button>
+                 <button class="btn btn-secondary btn-sm" onclick="negarCancelamento(${p.id})" style="margin-top:4px;font-size:0.7rem">❌ Negar</button>
+               </div>`
           : "";
 
-      // PENDENTE
       if (p.status === "pendente") {
         linhaCor = "background-color: #fff3cd;";
         acoes = `
-                    ${btnPrint}
-                    <button class="btn btn-success btn-sm" onclick="mudarStatus(${p.id}, 'em_preparo')"><i class="fas fa-fire"></i> Cozinha</button>
-                    ${
-                      _podeCancel
-                        ? `<button class="btn btn-danger btn-sm" onclick="mudarStatus(${p.id}, 'cancelado')"><i class="fas fa-times"></i></button>`
-                        : `<button class="btn btn-warning btn-sm" onclick="solicitarCancelamento(${p.id})"><i class="fas fa-ban"></i> Solicitar Cancelamento</button>`
-                    }
-                `;
+          ${btnPrint}
+          <button class="btn btn-success btn-sm" onclick="mudarStatus(${p.id}, 'em_preparo')"><i class="fas fa-fire"></i> Cozinha</button>
+          ${
+            _podeCancel
+              ? `<button class="btn btn-danger btn-sm" onclick="mudarStatus(${p.id}, 'cancelado')"><i class="fas fa-times"></i></button>`
+              : `<button class="btn btn-warning btn-sm" onclick="solicitarCancelamento(${p.id})"><i class="fas fa-ban"></i> Solicitar Cancelamento</button>`
+          }
+        `;
       }
 
-      // EM PREPARO (na cozinha — visível para acompanhamento)
       if (p.status === "em_preparo") {
         linhaCor = "background-color: #fff8e6;";
         const _btnCancelPreparo = _podeCancel
@@ -1313,12 +1325,9 @@ async function carregarPedidos(silencioso = false) {
             ? `<button class="btn btn-warning btn-sm" onclick="solicitarCancelamento(${p.id})" title="Solicitar cancelamento"><i class="fas fa-ban"></i> Cancelar</button>`
             : `<span style="font-size:0.72rem;color:#e67e22;font-weight:600">⏳ Cancel. Pendente</span>`;
         acoes = `${btnPrint} <button class="btn btn-success btn-sm" onclick="confirmarEntregaFuncionario(${p.id})"><i class="fas fa-check-circle"></i> Confirmar</button> ${_btnCancelSaiu}`;
-      }
-      // PRONTO
-      else if (p.status === "pronto_entrega") {
+      } else if (p.status === "pronto_entrega") {
         linhaCor = "background-color: #d4edda;";
 
-        // Botão cancelamento para pronto_entrega
         const btnCancelar = _podeCancel
           ? `<button class="btn btn-danger btn-sm" onclick="mudarStatus(${p.id}, 'cancelado')" title="Cancelar"><i class="fas fa-times"></i></button>`
           : !temSolicitacaoCancelamento
@@ -1330,51 +1339,44 @@ async function carregarPedidos(silencioso = false) {
           checkbox = `<input type="checkbox" class="check-pedido" value="${jsonSeguro}" style="width:20px; height:20px;">`;
           acoes = `${btnPrint} ${btnCancelar} <button class="btn btn-sm" style="background:#25D366;color:#fff" onclick="avisarClientePronto(${p.id})" title="Avisar al cliente por WhatsApp"><i class="fab fa-whatsapp"></i></button> <span style="color:#155724; font-weight:bold; font-size:0.9rem; margin-left:5px;"><i class="fas fa-motorcycle"></i> Aguardando Rota</span>`;
         } else {
-          const icone =
-            p.tipo_entrega === "balcao" ? "fa-store" : "fa-hand-holding";
-          const tipo = p.tipo_entrega === "balcao" ? "BALCÃO" : "RETIRADA";
+          const icone = p.tipo_entrega === "balcao" ? "fa-store" : "fa-hand-holding";
+          const tipo  = p.tipo_entrega === "balcao" ? "BALCÃO" : "RETIRADA";
           checkbox = `<div style="text-align:center; color:#e67e22; font-size:1.2rem"><i class="fas ${icone}" title="${tipo}"></i></div>`;
           acoes = `${btnPrint} ${btnCancelar} <button class="btn btn-sm" style="background:#25D366;color:#fff" onclick="avisarClientePronto(${p.id})" title="Avisar al cliente por WhatsApp"><i class="fab fa-whatsapp"></i></button> <button class="btn btn-success btn-sm" onclick="finalizarMesa(${p.id})">Baixar</button>`;
         }
       }
 
-      // Linha da tabela (desktop) — agora usa p.id sem prefixo
+      // Linha tabela desktop
       tbody.innerHTML += `
-                <tr style="${linhaCor}">
-                    <td style="text-align:center; vertical-align: middle;">${checkbox}</td>
-                    <td><strong>${p.uid_temporal || p.id}</strong></td>
-                    <td>
-                        <div style="font-weight:bold">${p.cliente_nome || "Cliente"}</div>
-                        <div style="font-size:0.8rem; color:#666">${p.endereco_entrega || ""}</div>
-                        ${badgeCancelRow}
-                    </td>
-                    <td><span class="status-badge st-${p.status}">${p.status.toUpperCase().replace("_", " ")}</span>
-                    ${temSolicitacaoCancelamento && _podeCancel ? badgeCancelPendente : ""}</td>
-                    <td>Gs ${(p.total_geral || 0).toLocaleString("es-PY")}</td>
-                    <td class="actions-cell">${acoes}</td>
-                </tr>`;
+        <tr style="${linhaCor}">
+          <td style="text-align:center; vertical-align: middle;">${checkbox}</td>
+          <td><strong>${p.uid_temporal || p.id}</strong></td>
+          <td>
+            <div style="font-weight:bold">${p.cliente_nome || "Cliente"}</div>
+            <div style="font-size:0.8rem; color:#666">${p.endereco_entrega || ""}</div>
+            ${badgeCancelRow}
+          </td>
+          <td><span class="status-badge st-${p.status}">${p.status.toUpperCase().replace("_", " ")}</span>
+          ${temSolicitacaoCancelamento && _podeCancel ? badgeCancelPendente : ""}</td>
+          <td>Gs ${(p.total_geral || 0).toLocaleString("es-PY")}</td>
+          <td class="actions-cell">${acoes}</td>
+        </tr>`;
 
-      // Card mobile — agora usa p.id sem prefixo
+      // Card mobile
       if (cardsDiv) {
         const statusLabel =
-          p.status === "pendente"
-            ? "🔔 Novo"
-            : p.status === "em_preparo"
-              ? "🔥 Na Cozinha"
-              : p.status === "pronto_entrega"
-                ? "✅ Pronto"
-                : p.status.replace("_", " ");
+          p.status === "pendente"       ? "🔔 Novo"
+          : p.status === "em_preparo"    ? "🔥 Na Cozinha"
+          : p.status === "pronto_entrega"? "✅ Pronto"
+          : p.status.replace("_", " ");
         const cardBg =
-          p.status === "pendente"
-            ? "#fff3cd"
-            : p.status === "pronto_entrega"
-              ? "#d4edda"
-              : p.status === "saiu_entrega"
-                ? "#ddf0ff"
-                : "#fff";
+          p.status === "pendente"        ? "#fff3cd"
+          : p.status === "pronto_entrega"? "#d4edda"
+          : p.status === "saiu_entrega"  ? "#ddf0ff"
+          : "#fff";
         const jsonSeguro = encodeURIComponent(JSON.stringify(p));
         let cardAcoes = "";
-        const cardBgSaiu = p.status === "saiu_entrega" ? "#ddf0ff" : "";
+
         if (p.status === "saiu_entrega") {
           const _btnCancelSaiuCard = _podeCancel
             ? `<button class="btn btn-danger btn-sm" onclick="mudarStatus(${p.id}, 'cancelado')"><i class="fas fa-times"></i></button>`
@@ -1382,18 +1384,18 @@ async function carregarPedidos(silencioso = false) {
               ? `<button class="btn btn-warning btn-sm" onclick="solicitarCancelamento(${p.id})"><i class="fas fa-ban"></i> Cancelar</button>`
               : `<span style="font-size:0.7rem;color:#e67e22;font-weight:600">⏳ Pendente</span>`;
           cardAcoes = `
-                        <button class="btn btn-success btn-sm" onclick="confirmarEntregaFuncionario(${p.id})"><i class="fas fa-check-circle"></i> Confirmar</button>
-                        <button class="btn btn-info btn-sm" onclick="imprimirPedido(${p.id})"><i class="fas fa-print"></i> Imprimir</button>
-                        ${_btnCancelSaiuCard}`;
+            <button class="btn btn-success btn-sm" onclick="confirmarEntregaFuncionario(${p.id})"><i class="fas fa-check-circle"></i> Confirmar</button>
+            <button class="btn btn-info btn-sm" onclick="imprimirPedido(${p.id})"><i class="fas fa-print"></i> Imprimir</button>
+            ${_btnCancelSaiuCard}`;
         } else if (p.status === "pendente") {
           cardAcoes = `
-                        <button class="btn btn-success btn-sm" onclick="mudarStatus(${p.id}, 'em_preparo')"><i class="fas fa-fire"></i> Cozinha</button>
-                        <button class="btn btn-info btn-sm" onclick="imprimirPedido(${p.id})"><i class="fas fa-print"></i> Imprimir</button>
-                        ${
-                          _podeCancel
-                            ? `<button class="btn btn-danger btn-sm" onclick="mudarStatus(${p.id}, 'cancelado')"><i class="fas fa-times"></i></button>`
-                            : `<button class="btn btn-warning btn-sm" onclick="solicitarCancelamento(${p.id})"><i class="fas fa-ban"></i> Cancelar</button>`
-                        }`;
+            <button class="btn btn-success btn-sm" onclick="mudarStatus(${p.id}, 'em_preparo')"><i class="fas fa-fire"></i> Cozinha</button>
+            <button class="btn btn-info btn-sm" onclick="imprimirPedido(${p.id})"><i class="fas fa-print"></i> Imprimir</button>
+            ${
+              _podeCancel
+                ? `<button class="btn btn-danger btn-sm" onclick="mudarStatus(${p.id}, 'cancelado')"><i class="fas fa-times"></i></button>`
+                : `<button class="btn btn-warning btn-sm" onclick="solicitarCancelamento(${p.id})"><i class="fas fa-ban"></i> Cancelar</button>`
+            }`;
         } else if (p.status === "em_preparo") {
           const _btnCancelPreparoCard = _podeCancel
             ? `<button class="btn btn-danger btn-sm" onclick="mudarStatus(${p.id}, 'cancelado')"><i class="fas fa-times"></i></button>`
@@ -1401,22 +1403,19 @@ async function carregarPedidos(silencioso = false) {
               ? `<button class="btn btn-warning btn-sm" onclick="solicitarCancelamento(${p.id})"><i class="fas fa-ban"></i> Cancelar</button>`
               : `<span style="font-size:0.7rem;color:#e67e22;font-weight:600">⏳ Pendente</span>`;
           cardAcoes = `
-                        <button class="btn btn-sm" style="background:#e67e22;color:#fff" onclick="mudarStatus(${p.id}, 'pronto_entrega')"><i class="fas fa-check"></i> Pronto</button>
-                        <button class="btn btn-info btn-sm" onclick="imprimirPedido(${p.id})"><i class="fas fa-print"></i> Imprimir</button>
-                        ${_btnCancelPreparoCard}`;
-        } else if (
-          p.status === "pronto_entrega" &&
-          p.tipo_entrega === "balcao"
-        ) {
+            <button class="btn btn-sm" style="background:#e67e22;color:#fff" onclick="mudarStatus(${p.id}, 'pronto_entrega')"><i class="fas fa-check"></i> Pronto</button>
+            <button class="btn btn-info btn-sm" onclick="imprimirPedido(${p.id})"><i class="fas fa-print"></i> Imprimir</button>
+            ${_btnCancelPreparoCard}`;
+        } else if (p.status === "pronto_entrega" && p.tipo_entrega === "balcao") {
           const _btnCancelBalcao = _podeCancel
             ? `<button class="btn btn-danger btn-sm" onclick="mudarStatus(${p.id}, 'cancelado')"><i class="fas fa-times"></i></button>`
             : !temSolicitacaoCancelamento
               ? `<button class="btn btn-warning btn-sm" onclick="solicitarCancelamento(${p.id})"><i class="fas fa-ban"></i> Cancelar</button>`
               : "";
           cardAcoes = `<button class="btn btn-success btn-sm" onclick="finalizarMesa(${p.id})"><i class="fas fa-check"></i> Entregar</button>
-                        <button class="btn btn-sm" style="background:#25D366;color:#fff" onclick="avisarClientePronto(${p.id})"><i class="fab fa-whatsapp"></i></button>
-                        <button class="btn btn-info btn-sm" onclick="imprimirPedido(${p.id})"><i class="fas fa-print"></i></button>
-                        ${_btnCancelBalcao}`;
+            <button class="btn btn-sm" style="background:#25D366;color:#fff" onclick="avisarClientePronto(${p.id})"><i class="fab fa-whatsapp"></i></button>
+            <button class="btn btn-info btn-sm" onclick="imprimirPedido(${p.id})"><i class="fas fa-print"></i></button>
+            ${_btnCancelBalcao}`;
         } else if (p.status === "pronto_entrega") {
           const _btnCancelPronto = _podeCancel
             ? `<button class="btn btn-danger btn-sm" onclick="mudarStatus(${p.id}, 'cancelado')"><i class="fas fa-times"></i></button>`
@@ -1424,50 +1423,95 @@ async function carregarPedidos(silencioso = false) {
               ? `<button class="btn btn-warning btn-sm" onclick="solicitarCancelamento(${p.id})"><i class="fas fa-ban"></i></button>`
               : "";
           cardAcoes = `<label style="display:flex;align-items:center;gap:6px;font-size:0.8rem;color:#155724;font-weight:600;">
-                        <input type="checkbox" class="check-pedido" value="${jsonSeguro}" style="width:18px;height:18px;"> Incluir na Rota
-                    </label>
-                    <button class="btn btn-sm" style="background:#25D366;color:#fff" onclick="avisarClientePronto(${p.id})"><i class="fab fa-whatsapp"></i> Avisar</button>
-                    <button class="btn btn-info btn-sm" onclick="imprimirPedido(${p.id})"><i class="fas fa-print"></i></button>
-                    ${_btnCancelPronto}`;
+              <input type="checkbox" class="check-pedido" value="${jsonSeguro}" style="width:18px;height:18px;"> Incluir na Rota
+            </label>
+            <button class="btn btn-sm" style="background:#25D366;color:#fff" onclick="avisarClientePronto(${p.id})"><i class="fab fa-whatsapp"></i> Avisar</button>
+            <button class="btn btn-info btn-sm" onclick="imprimirPedido(${p.id})"><i class="fas fa-print"></i></button>
+            ${_btnCancelPronto}`;
         }
 
         const badgeCancelCard =
           temSolicitacaoCancelamento && _podeCancel
-            ? `
-                    <div style="background:#fff0f0;border:1px solid #e74c3c;border-radius:6px;padding:6px 8px;font-size:0.75rem;color:#c0392b;margin-top:6px">
-                        🚫 Cancel. solicitado: ${p.cancelamento_motivo || "-"}
-                        <br><button class="btn btn-danger btn-sm" onclick="aprovarCancelamento(${p.id})" style="font-size:0.7rem;margin-top:4px">✅ Aprovar</button>
-                        <button class="btn btn-secondary btn-sm" onclick="negarCancelamento(${p.id})" style="font-size:0.7rem;margin-top:4px">❌ Negar</button>
-                    </div>`
+            ? `<div style="background:#fff0f0;border:1px solid #e74c3c;border-radius:6px;padding:6px 8px;font-size:0.75rem;color:#c0392b;margin-top:6px">
+                🚫 Cancel. solicitado: ${p.cancelamento_motivo || "-"}
+                <br><button class="btn btn-danger btn-sm" onclick="aprovarCancelamento(${p.id})" style="font-size:0.7rem;margin-top:4px">✅ Aprovar</button>
+                <button class="btn btn-secondary btn-sm" onclick="negarCancelamento(${p.id})" style="font-size:0.7rem;margin-top:4px">❌ Negar</button>
+               </div>`
             : "";
 
         cardsDiv.innerHTML += `
-                    <div style="background:${cardBg}; border-radius:10px; padding:14px 16px; box-shadow:0 2px 8px rgba(0,0,0,0.07); border-left:4px solid ${p.status === "pendente" ? "#f59e0b" : p.status === "pronto_entrega" ? "#22c55e" : p.status === "saiu_entrega" ? "#3498db" : "#94a3b8"};">
-                        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
-                            <div>
-                                <div style="font-weight:700;font-size:1rem">${p.uid_temporal || p.id} — ${p.cliente_nome || "Cliente"}</div>
-                                <div style="font-size:0.78rem;color:#666;margin-top:2px">${p.endereco_entrega || (p.tipo_entrega === "balcao" ? "🏪 Mostrador" : "")}</div>
-                            </div>
-                            <span class="status-badge st-${p.status}" style="font-size:0.7rem">${statusLabel}</span>
-                        </div>
-                        <div style="display:flex;justify-content:space-between;align-items:center;">
-                            <div>
-                              <strong style="font-size:1rem;color:var(--dark)">Gs ${(p.total_geral || 0).toLocaleString("es-PY")}</strong>
-                              ${p.frete_motoboy ? `<div style="font-size:0.72rem;color:#27ae60;margin-top:2px">🛵 Motoboy: Gs ${p.frete_motoboy.toLocaleString("es-PY")}</div>` : ""}
-                            </div>
-                            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">${cardAcoes}</div>
-                        </div>
-                        ${badgeCancelCard}
-                    </div>`;
+          <div style="background:${cardBg}; border-radius:10px; padding:14px 16px; box-shadow:0 2px 8px rgba(0,0,0,0.07); border-left:4px solid ${p.status === "pendente" ? "#f59e0b" : p.status === "pronto_entrega" ? "#22c55e" : p.status === "saiu_entrega" ? "#3498db" : "#94a3b8"};">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+              <div>
+                <div style="font-weight:700;font-size:1rem">${p.uid_temporal || p.id} — ${p.cliente_nome || "Cliente"}</div>
+                <div style="font-size:0.78rem;color:#666;margin-top:2px">${p.endereco_entrega || (p.tipo_entrega === "balcao" ? "🏪 Mostrador" : "")}</div>
+              </div>
+              <span class="status-badge st-${p.status}" style="font-size:0.7rem">${statusLabel}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <div>
+                <strong style="font-size:1rem;color:var(--dark)">Gs ${(p.total_geral || 0).toLocaleString("es-PY")}</strong>
+                ${p.frete_motoboy ? `<div style="font-size:0.72rem;color:#27ae60;margin-top:2px">🛵 Motoboy: Gs ${p.frete_motoboy.toLocaleString("es-PY")}</div>` : ""}
+              </div>
+              <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">${cardAcoes}</div>
+            </div>
+            ${badgeCancelCard}
+          </div>`;
       }
     });
   } else {
-    tbody.innerHTML =
-      '<tr><td colspan="6" style="text-align:center; padding:20px; color:#999;">Ningún pedido activo.</td></tr>';
-    if (cardsDiv)
-      cardsDiv.innerHTML =
-        '<div style="text-align:center;padding:30px;color:#aaa;font-size:0.95rem">Ningún pedido activo por el momento.</div>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px; color:#999;">Ningún pedido activo.</td></tr>';
+    if (cardsDiv) cardsDiv.innerHTML = '<div style="text-align:center;padding:30px;color:#aaa;font-size:0.95rem">Ningún pedido activo por el momento.</div>';
   }
+
+  // 6. Render paginação
+  _renderPaginacaoPedidos();
+}
+
+function _renderPaginacaoPedidos() {
+  const info  = document.getElementById("pedidos-pag-info");
+  const prev  = document.getElementById("pedidos-pag-prev");
+  const next  = document.getElementById("pedidos-pag-next");
+  const filtroBox = document.getElementById("pedidos-pag-filtro");
+  if (!info || !prev || !next) return;
+
+  const totalPaginas = Math.max(1, Math.ceil(_pedidosPagTotal / _PEDIDOS_PAGE_SIZE));
+  const pagAtual = Math.min(_pedidosPaginaAtual + 1, totalPaginas);
+
+  info.innerHTML = `
+    <strong>${_pedidosPagTotal}</strong> pedido(s) ·
+    Página <strong>${pagAtual}</strong> de <strong>${totalPaginas}</strong>
+    ${!_pedidosPagFiltroAtivo ? ' <span style="color:#888">(últimos 2 dias)</span>' : ' <span style="color:#e67e22">(todos)</span>'}
+  `;
+
+  prev.disabled = _pedidosPaginaAtual <= 0;
+  prev.style.opacity = prev.disabled ? "0.4" : "1";
+  prev.style.cursor  = prev.disabled ? "not-allowed" : "pointer";
+
+  next.disabled = _pedidosPaginaAtual >= totalPaginas - 1;
+  next.style.opacity = next.disabled ? "0.4" : "1";
+  next.style.cursor  = next.disabled ? "not-allowed" : "pointer";
+
+  if (filtroBox) {
+    filtroBox.checked = _pedidosPagFiltroAtivo;
+  }
+}
+
+function pedidosPagAnterior() {
+  if (_pedidosPaginaAtual <= 0) return;
+  carregarPedidos(false, _pedidosPaginaAtual - 1);
+}
+
+function pedidosPagProxima() {
+  const totalPaginas = Math.max(1, Math.ceil(_pedidosPagTotal / _PEDIDOS_PAGE_SIZE));
+  if (_pedidosPaginaAtual >= totalPaginas - 1) return;
+  carregarPedidos(false, _pedidosPaginaAtual + 1);
+}
+
+function pedidosPagToggleFiltro(checked) {
+  _pedidosPagFiltroAtivo = !!checked;
+  _pedidosPaginaAtual = 0;
+  carregarPedidos(false, 0);
 }
 
 // === CANCELAMENTO WORKFLOW ===
@@ -1728,11 +1772,19 @@ async function imprimirPedido(id) {
 // 5. TELA COZINHA
 // =========================================
 async function carregarCozinha() {
+  // Filtro de data: 48h. Pedidos em_preparo além disso estão travados
+  const _corte = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+
   const { data: pedidos } = await supa
     .from("pedidos")
-    .select("*")
+    .select(
+      "id, uid_temporal, status, tipo_entrega, cliente_nome, " +
+      "endereco_entrega, garcom_nome, itens, created_at",
+    )
     .eq("status", "em_preparo")
-    .order("id", { ascending: true });
+    .gte("created_at", _corte)
+    .order("id", { ascending: true })
+    .limit(100);
 
   const grid = document.getElementById("grid-cozinha");
   if (!grid) return;
@@ -1761,21 +1813,18 @@ async function carregarCozinha() {
     if (minutos > 20) corTempo = "#f1c40f";
     if (minutos > 40) corTempo = "#e74c3c";
 
-    // === Filtra apenas itens PENDENTES para a cozinha ===
-    // Itens sem status_item são tratados como pendente (retrocompatibilidade)
     const itensPendentes = (p.itens || []).filter(
       (item) => !item.status_item || item.status_item === "pendente",
     );
 
-    // Se não há nenhum item pendente neste pedido, pula o card
     if (itensPendentes.length === 0) return;
 
     let itensHtml = "";
     itensPendentes.forEach((item) => {
       const quantidade = item.qtd || item.q || 1;
       const nomeItem = item.nome || item.n || "Item";
-      const variacaoItem = item.variacao || item.t || ""; // variação separada do nome
-      const preparoItem = item.preparo || item.pr || ""; // preparo (cru/flambado etc)
+      const variacaoItem = item.variacao || item.t || "";
+      const preparoItem = item.preparo || item.pr || "";
       const observacao = item.obs || item.o || "";
       const montagemArray = item.montagem || item.m || [];
 
@@ -1804,16 +1853,15 @@ async function carregarCozinha() {
         : "";
 
       itensHtml += `
-                    <li style="border-bottom:1px dashed #444; padding:5px 0;">
-                        <strong>${quantidade}x</strong> ${nomeItem}${variacaoHtml}
-                        ${preparoHtml}
-                        ${montagem}
-                        ${obs}
-                    </li>
-                `;
+        <li style="border-bottom:1px dashed #444; padding:5px 0;">
+          <strong>${quantidade}x</strong> ${nomeItem}${variacaoHtml}
+          ${preparoHtml}
+          ${montagem}
+          ${obs}
+        </li>
+      `;
     });
 
-    // Info de garçom e local de entrega para o KDS
     const garcomHtml = p.garcom_nome
       ? `<div style="font-size:0.78rem;color:#fff;opacity:.85;margin-top:2px">🍽️ ${p.garcom_nome}</div>`
       : "";
@@ -1823,32 +1871,32 @@ async function carregarCozinha() {
       : "";
 
     grid.innerHTML += `
-            <div class="kds-card">
-                <div class="kds-header" style="background:${corTempo}; color:#fff; padding:10px; border-radius:5px 5px 0 0; display:flex; justify-content:space-between; align-items:center;">
-                    <div>
-                      <span style="font-weight:bold; font-size:1.1rem">#${p.uid_temporal || p.id}</span>
-                      ${garcomHtml}
-                    </div>
-                    <div style="text-align:right">
-                      <span>⏱️ ${minutos} min</span>
-                      ${localHtml}
-                    </div>
-                </div>
-                <div style="padding:10px;">
-                    <div style="font-weight:bold; font-size:1.1rem; margin-bottom:10px; color:#2c3e50">
-                        ${p.cliente_nome || "Cliente"}
-                    </div>
-                    <ul style="list-style:none; padding:0; margin:0; color:#333;">
-                        ${itensHtml}
-                    </ul>
-                </div>
-                <div style="padding:10px; margin-top:auto;">
-                    <button class="btn btn-success" style="width:100%; padding:15px; font-size:1.1rem;" onclick="mudarStatus(${p.id}, 'pronto_entrega')">
-                        ✅ PRONTO — ${p.garcom_nome ? `avisa ${p.garcom_nome.split(" ")[0]}` : "entregar"}
-                    </button>
-                </div>
-            </div>
-        `;
+      <div class="kds-card">
+        <div class="kds-header" style="background:${corTempo}; color:#fff; padding:10px; border-radius:5px 5px 0 0; display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <span style="font-weight:bold; font-size:1.1rem">#${p.uid_temporal || p.id}</span>
+            ${garcomHtml}
+          </div>
+          <div style="text-align:right">
+            <span>⏱️ ${minutos} min</span>
+            ${localHtml}
+          </div>
+        </div>
+        <div style="padding:10px;">
+          <div style="font-weight:bold; font-size:1.1rem; margin-bottom:10px; color:#2c3e50">
+            ${p.cliente_nome || "Cliente"}
+          </div>
+          <ul style="list-style:none; padding:0; margin:0; color:#333;">
+            ${itensHtml}
+          </ul>
+        </div>
+        <div style="padding:10px; margin-top:auto;">
+          <button class="btn btn-success" style="width:100%; padding:15px; font-size:1.1rem;" onclick="mudarStatus(${p.id}, 'pronto_entrega')">
+            ✅ PRONTO — ${p.garcom_nome ? `avisa ${p.garcom_nome.split(" ")[0]}` : "entregar"}
+          </button>
+        </div>
+      </div>
+    `;
   });
 }
 
@@ -13661,20 +13709,25 @@ async function carregarMonitorMesas() {
     return;
   }
 
-  // ── 1. Estado de carga ──────────────────────────────────────────
   div.innerHTML = `<p style="text-align:center;font-size:0.85rem;color:#94a3b8;padding:20px">
     <i class="fas fa-spinner fa-spin"></i> Cargando mesas...
   </p>`;
 
   try {
-    // ── 2. Query simples — .select("*") evita erro caso alguma coluna
-    //       específica (uid_temporal, created_at) não exista no schema ──
+    // Filtro de data (48h) + limite para não pesar em caso de acúmulo
+    const _corte = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+
     const { data, error } = await supa
       .from("pedidos")
-      .select("*")
+      .select(
+        "id, uid_temporal, status, tipo_entrega, cliente_nome, " +
+        "endereco_entrega, total_geral, itens, created_at",
+      )
       .eq("tipo_entrega", "balcao")
       .in("status", ["pendente", "em_preparo", "pronto_entrega", "saiu_entrega"])
-      .order("id", { ascending: false });
+      .gte("created_at", _corte)
+      .order("id", { ascending: false })
+      .limit(100);
 
     if (error) {
       console.error("[mesas] Error al buscar mesas:", error);
@@ -13686,29 +13739,14 @@ async function carregarMonitorMesas() {
       return;
     }
 
-    // ── 3. Log de diagnóstico — mostra cada linha devolvida ─────────
     const todos = data || [];
     console.log(`[mesas] Pedidos de balcón activos devueltos: ${todos.length}`);
-    todos.forEach((p) => {
-      console.log(
-        `  #${p.id} | status=${p.status}` +
-        ` | tipo=${p.tipo_entrega}` +
-        ` | endereco="${p.endereco_entrega}"` +
-        ` | cliente="${p.cliente_nome}"`
-      );
-    });
 
-    // ── 4. Filtra em JS — só os que têm "Mesa" no início do endereço ──
-    //       Case-insensitive + trim para pegar qualquer variação
-    //       ("Mesa 5", "mesa 5", "MESA 5", "Mesa  5"...)
     const mesas = todos.filter((p) => {
       const end = (p.endereco_entrega || "").toLowerCase().trim();
       return end.startsWith("mesa");
     });
 
-    console.log(`[mesas] Mesas activas después del filtro: ${mesas.length}`);
-
-    // ── 5. Estado vazio ────────────────────────────────────────────
     if (mesas.length === 0) {
       const naoMesa = todos.length;
       div.innerHTML = `
@@ -13720,14 +13758,12 @@ async function carregarMonitorMesas() {
                           padding:8px 12px;background:rgba(148,163,184,0.08);
                           border-radius:8px;max-width:420px;margin-left:auto;margin-right:auto">
               ℹ️ Hay <b>${naoMesa}</b> pedido(s) de balcón activo(s), pero ninguno tiene
-              número de mesa (endereço distinto de "Mesa X").
-              Verifique en la consola (F12) los endereços exactos.
+              número de mesa.
             </small>` : ""}
         </div>`;
       return;
     }
 
-    // ── 6. Monta o grid de cards ───────────────────────────────────
     div.innerHTML = "";
     const grid = document.createElement("div");
     grid.className = "mesa-grid";
@@ -13761,8 +13797,8 @@ async function carregarMonitorMesas() {
 
       const itensResumo = itens.slice(0, 2).map(item => {
         const nome = item.nome || item.n || "Item";
-        const qtd = item.qtd || item.q || 1;
-        return `${qtd}x ${nome}`;
+        const qtdItem = item.qtd || item.q || 1;
+        return `${qtdItem}x ${nome}`;
       }).join(", ");
       const maisItens = itens.length > 2
         ? ` + ${itens.length - 2} ${t('mesas.outros')}`
@@ -13828,6 +13864,101 @@ async function carregarMonitorMesas() {
         <p>Error al cargar mesas: ${err.message || "desconocido"}</p>
       </div>`;
   }
+}
+
+function iniciarAutoRefreshPedidos() {
+  // 15s (era 10s) + pula quando a aba do navegador está oculta (economia enorme)
+  setInterval(() => {
+    if (document.hidden) return; // navegador em outra aba/app → não consome nada
+    const abaAtual = localStorage.getItem("app_lastTab");
+    if (abaAtual === "pedidos")  carregarPedidos(true);
+    if (abaAtual === "cozinha")  carregarCozinha();
+    if (abaAtual === "pdv")      carregarMonitorMesas();
+    if (abaAtual === "dashboard") carregarDashboard();
+  }, 15000);
+
+  // Atualiza assim que o usuário voltar para a aba do navegador
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) return;
+    const abaAtual = localStorage.getItem("app_lastTab");
+    if (abaAtual === "pedidos")  carregarPedidos(true);
+    if (abaAtual === "cozinha")  carregarCozinha();
+    if (abaAtual === "pdv")      carregarMonitorMesas();
+    if (abaAtual === "dashboard") carregarDashboard();
+  });
+}
+
+async function fecharProntosHoje() {
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+
+  const { data, error } = await supa
+    .from("pedidos")
+    .select("id, cliente_nome, tipo_entrega")
+    .eq("status", "pronto_entrega")
+    .gte("created_at", hoje.toISOString());
+
+  if (error) return alert("Error: " + error.message);
+  if (!data || data.length === 0) return alert("Ningún pedido listo hoy.");
+
+  const lista = data.map(p => `#${p.id} — ${p.cliente_nome || "?"} (${p.tipo_entrega || "?"})`).join("\n");
+  if (!confirm(`¿Marcar ${data.length} pedido(s) LISTOS de HOY como ENTREGUE?\n\n${lista}`)) return;
+
+  const ids = data.map(p => p.id);
+  const agora = new Date().toISOString();
+
+  const { error: errUpd } = await supa
+    .from("pedidos")
+    .update({ status: "entregue", tempo_entregue: agora })
+    .in("id", ids);
+
+  if (errUpd) return alert("Error: " + errUpd.message);
+
+  alert(`✅ ${ids.length} pedido(s) cerrado(s).`);
+  carregarPedidos();
+  carregarCozinha();
+  carregarMonitorMesas();
+  if (typeof calcularFinanceiro === "function") calcularFinanceiro();
+}
+
+async function cancelarTravados24h() {
+  const corte = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+  const { data, error } = await supa
+    .from("pedidos")
+    .select("id, status, cliente_nome, created_at")
+    .in("status", ["pendente", "em_preparo"])
+    .lt("created_at", corte);
+
+  if (error) return alert("Error: " + error.message);
+  if (!data || data.length === 0) return alert("Ningún pedido travado (>24h).");
+
+  const lista = data.map(p => {
+    const dt = new Date(p.created_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+    return `#${p.id} — ${p.cliente_nome || "?"} (${p.status} · ${dt})`;
+  }).join("\n");
+
+  if (!confirm(`Cancelar ${data.length} pedido(s) travado(s) há mais de 24h?\n\n${lista}`)) return;
+
+  const ids = data.map(p => p.id);
+
+  const { error: errUpd } = await supa
+    .from("pedidos")
+    .update({
+      status: "cancelado",
+      cancelamento_motivo: "Auto-cancelado (travado >24h)",
+      cancelamento_aprovado_por: "sistema",
+      cancelamento_aprovado_em: new Date().toISOString(),
+    })
+    .in("id", ids);
+
+  if (errUpd) return alert("Error: " + errUpd.message);
+
+  alert(`✅ ${ids.length} pedido(s) cancelado(s).`);
+  carregarPedidos();
+  carregarCozinha();
+  carregarMonitorMesas();
+  if (typeof calcularFinanceiro === "function") calcularFinanceiro();
 }
 
 // ── Baixa parcial: marca 1 item como 'entregue' no banco ──────────

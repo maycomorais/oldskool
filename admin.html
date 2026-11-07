@@ -459,6 +459,37 @@
           </div>
         </div>
 
+        <!-- Paginação de Pedidos -->
+        <div id="pedidos-paginacao"
+          style="display:flex;justify-content:space-between;align-items:center;gap:10px;
+                padding:12px 14px;margin-bottom:12px;flex-wrap:wrap;
+                background:#fff;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,0.04)">
+
+          <div style="font-size:0.85rem;color:#666" id="pedidos-pag-info">—</div>
+
+          <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+            <label style="display:flex;align-items:center;gap:6px;font-size:0.82rem;
+                          color:#666;cursor:pointer;font-weight:600">
+              <input type="checkbox" id="pedidos-pag-filtro"
+                onchange="pedidosPagToggleFiltro(this.checked)"
+                style="width:16px;height:16px;cursor:pointer">
+              Ver todos (sem filtro de data)
+            </label>
+
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-sm" onclick="pedidosPagAnterior()" id="pedidos-pag-prev"
+                style="background:#f0f0f0;color:#333;font-weight:700">◀ Anterior</button>
+              <button class="btn btn-sm" onclick="pedidosPagProxima()" id="pedidos-pag-next"
+                style="background:#1a7a2e;color:#fff;font-weight:700">Próxima ▶</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="pedidos-list" id="lista-pedidos-cards"></div>
+
+        <div class="card pedidos-table-wrap">
+          <table class="table">
+
         <div class="pedidos-list" id="lista-pedidos-cards"></div>
 
         <!-- Tabela legado (oculta no mobile, visível desktop) -->
@@ -481,6 +512,18 @@
 
       <div id="cozinha" class="tab-content">
         <h2 class="section-title" data-i18n="cozinha.title">Monitor de Cozinha (KDS)</h2>
+
+        <!-- Ações de manutenção da Cozinha -->
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+          <button class="btn btn-success" onclick="fecharProntosHoje()" style="min-width:180px">
+            <i class="fas fa-check-double"></i> Fechar Prontos de Hoje
+          </button>
+          <button class="btn" onclick="cancelarTravados24h()"
+            style="background:#fef3c7;color:#92400e;border:1.5px solid #fcd34d;min-width:180px">
+            <i class="fas fa-broom"></i> Cancelar Travados &gt;24h
+          </button>
+        </div>
+
         <div class="cozinha-grid" id="grid-cozinha"></div>
       </div>
 

@@ -219,16 +219,11 @@ function calcularStatusAssinatura(cfg, hoje) {
 
   const pagouEsteMes = pagamentoConfirmadoNoMes(cfg.ultimo_pagamento_em, ano, mes);
 
-  // Flag: sistema ainda não tem histórico de pagamento (instalação nova).
-  // Nunca bloqueia automaticamente, mas exibe alertas normais de vencimento.
-  // CORREÇÃO Bug 2: o bloco anterior tinha condição invertida
-  // (só entrava quando JÁ estava além da carência, retornando 'em_dia' silenciosamente).
+  // Instalação nova: sem histórico de pagamento → nunca bloqueia automaticamente
   const isInstalacaoNova = !cfg.ultimo_pagamento_em && !cfg.bloqueado;
 
-  // ── Liberação manual temporária ("+1 dia") — tem prioridade sobre
-  //    QUALQUER bloqueio, manual ou automático. É intencional: o botão
-  //    existe justamente para destravar o sistema imediatamente, sem
-  //    depender de confirmar pagamento nem de desbloquear de verdade.
+  // ── 1. Liberação manual temporária ("+1 dia") tem prioridade TOTAL.
+  //    Destrava o sistema mesmo com bloqueio manual ou automático ativo. ──
   if (cfg.liberado_ate) {
     const dLib = new Date(cfg.liberado_ate + 'T23:59:59');
     if (hoje <= dLib) {
@@ -236,42 +231,49 @@ function calcularStatusAssinatura(cfg, hoje) {
     }
   }
 
-  // ── Já foi bloqueado manualmente ──
-  if (cfg.bloqueado && !pagouEsteMes) {
+  // ── 2. Bloqueio manual SEMPRE prevalece — independente de "pagouEsteMes".
+  //    Motivo: o operador do SaaS pode ter confirmado um pagamento no mês
+  //    (a pedido do cliente) e depois descobrir que ele não pagou. O botão
+  //    "Bloquear Manualmente" é uma decisão explícita e não pode ser
+  //    anulada por um registro de pagamento antigo/errado.
+  //    (Bug anterior: `if (cfg.bloqueado && !pagouEsteMes)` fazia o bloqueio
+  //     ser silenciosamente ignorado quando havia pagamento confirmado no mês.) ──
+  if (cfg.bloqueado) {
     return { status: 'bloqueado', diasParaVenc, diasParaBloc, dataVenc, dataLimite };
   }
 
-  // ── Pagamento confirmado este mês → tudo ok ──
+  // ── 3. Pagamento confirmado este mês → tudo ok ──
   if (pagouEsteMes) {
     return { status: 'em_dia', diasParaVenc, diasParaBloc, dataVenc, dataLimite };
   }
 
-  // ── Ultrapassou vencimento + carência → bloqueio automático (instalação nova: nunca bloqueia) ──
+  // ── 4. Ultrapassou vencimento + carência → bloqueio automático
+  //    (instalação nova nunca bloqueia) ──
   if (diasParaBloc < 0 && !isInstalacaoNova) {
     return { status: 'bloqueado', diasParaVenc, diasParaBloc, dataVenc, dataLimite };
   }
 
-  // ── Em carência (vencido mas dentro do prazo) ──
+  // ── 5. Em carência (vencido mas dentro do prazo) ──
   if (diasParaVenc < 0) {
     return { status: 'carencia', diasParaVenc, diasParaBloc, dataVenc, dataLimite };
   }
 
-  // ── No dia do vencimento ──
+  // ── 6. No dia do vencimento ──
   if (diasParaVenc === 0) {
     return { status: 'alerta_laranja', diasParaVenc, diasParaBloc, dataVenc, dataLimite };
   }
 
-  // ── 1 dia antes ──
+  // ── 7. 1 dia antes ──
   if (diasParaVenc === 1) {
     return { status: 'alerta_amarelo', diasParaVenc, diasParaBloc, dataVenc, dataLimite };
   }
 
-  // ── 2 a 5 dias antes ──
+  // ── 8. 2 a 5 dias antes ──
   if (diasParaVenc <= 5) {
     return { status: 'alerta_verde', diasParaVenc, diasParaBloc, dataVenc, dataLimite };
   }
 
-  // ── Fora de qualquer janela de aviso ──
+  // ── 9. Fora de qualquer janela de aviso ──
   return { status: 'em_dia', diasParaVenc, diasParaBloc, dataVenc, dataLimite };
 }
 
