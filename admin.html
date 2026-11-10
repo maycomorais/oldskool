@@ -3127,9 +3127,28 @@
         </div>
 
         <!-- Total geral -->
+                <!-- Forma de Pagamento -->
         <div class="form-group">
-          <label style="font-weight:600;">Total Geral (Gs)</label>
-          <input type="number" id="edit-pedido-total" class="form-control" min="0" step="100" style="font-size:1.1rem; font-weight:700; border:2px solid #1a7a2e;">
+          <label style="font-weight:600;">Forma de Pagamento</label>
+          <select id="edit-pedido-forma-pagamento" class="form-control" style="font-size:1.1rem; font-weight:700; border:2px solid #1a7a2e;">
+            <option value="Efetivo">💵 Efectivo</option>
+            <option value="TarjetaDebito">💳 Tarjeta Débito</option>
+            <option value="TarjetaCredito">💳 Tarjeta Crédito</option>
+            <option value="TarjetaBRDebito">💳🇧🇷 Tarjeta BR Débito</option>
+            <option value="TarjetaBRCredito">💳🇧🇷 Tarjeta BR Crédito</option>
+            <option value="Pix">✅ Pix</option>
+            <option value="Transferencia">🏦 Alias (PY)</option>
+            <option value="Qr">📱 QR</option>
+            <option value="Multipagamento">🔀 Dividir</option>
+            <option value="Mensalista">🎫 Mensalista</option>
+            <option value="NaNota">📋 Na Nota</option>
+          </select>
+        </div>
+
+        <!-- Total geral (Apenas leitura) -->
+        <div class="form-group">
+          <label style="font-weight:600; color:#666;">Total Geral (Gs) - Não editável</label>
+          <input type="number" id="edit-pedido-total" class="form-control" readonly style="font-size:1.1rem; font-weight:700; background:#f5f5f5; color:#666; border:2px solid #ccc; cursor:not-allowed;">
         </div>
 
         <!-- Botões -->

@@ -136,7 +136,7 @@
 
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <script src="supabaseClient.js"></script>
-  <script>
+    <script>
     window.onload = function () {
       // Tenta carregar nome do restaurante do banco
       (async function() {
@@ -147,12 +147,8 @@
               const el = document.getElementById('nome-loja-ticket');
               if (el) el.textContent = data.nome_restaurante.toUpperCase();
             }
-            if (data && data.logo_url) {
-              const logoEl = document.getElementById('logo-ticket');
-              if (logoEl) { logoEl.src = data.logo_url; logoEl.style.display = 'block'; }
-            }
           }
-        } catch(e) { /* ignora — imprime sem nome */ }
+        } catch(e) { }
       })();
 
       const params = new URLSearchParams(window.location.search);
@@ -168,8 +164,6 @@
         const json = decodeURIComponent(escape(atob(pad ? b64 + '='.repeat(4 - pad) : b64)));
         const p = JSON.parse(json);
 
-        carregarQRCode(p.id);
-
         document.getElementById('id-pedido').textContent  = p.id || 'S/N';
         document.getElementById('data-hora').textContent  = p.data || new Date().toLocaleString('es-PY');
         document.getElementById('nome').textContent       = p.cliente?.nome || 'Cliente';
@@ -177,9 +171,13 @@
 
         const tipo = p.entrega?.tipo || 'delivery';
         document.getElementById('tipo-entrega').textContent = tipo.toUpperCase();
+        
         if (tipo === 'delivery') {
           document.getElementById('endereco-box').style.display = 'block';
           document.getElementById('ref-entrega').textContent = p.entrega?.ref || 'No informado';
+        } else {
+          document.getElementById('endereco-box').style.display = 'block';
+          document.getElementById('ref-entrega').textContent = p.entrega?.ref || 'Balcão';
         }
 
         // Itens
@@ -193,30 +191,17 @@
           var preco  = parseFloat(item.p != null ? item.p : (item.preco != null ? item.preco : 0)) || 0;
           var isKg   = item._isKg || (item.peso_gramas > 0);
           var pesoG  = item.peso_gramas || 0;
-          var pesofmt = isKg
-            ? (pesoG >= 1000
-               ? (pesoG / 1000).toFixed(3).replace(/\.?0+$/, '').replace('.', ',') + ' kg'
-               : pesoG + 'g')
-            : null;
+          var pesofmt = isKg ? (pesoG >= 1000 ? (pesoG / 1000).toFixed(3).replace(/\.?0+$/, '').replace('.', ',') + ' kg' : pesoG + 'g') : null;
 
-          // variação/tipo: campo t, tipo ou variacao
-          var variacao  = item.t || item.variacao || item.tipo || '';
+          var variacao  = item.t || item.variacao || '';
           var preparo   = item.pr || item.preparo || '';
-          // montagem: campo m, montagem — pode ser array de strings ou array de objetos
           var montagemRaw = item.m || item.montagem || [];
           var obs       = item.o || item.obs || '';
 
           var det = '';
+          if (variacao && variacao !== nome) det += '<span class="det">▸ ' + variacao + '</span>';
+          if (preparo) det += '<span class="det">🍳 ' + preparo + '</span>';
 
-          // Variação (tamanho de pizza, size de shake, etc.)
-          if (variacao && variacao !== nome && variacao !== 'Estándar' && variacao !== 'Armado')
-            det += '<span class="det">▸ ' + variacao + '</span>';
-
-          // Preparo
-          if (preparo)
-            det += '<span class="det">🍳 ' + preparo + '</span>';
-
-          // Montagem/etapas/sabores — normaliza: cada item pode ser string ou objeto {nome}
           if (Array.isArray(montagemRaw) && montagemRaw.length > 0) {
             montagemRaw.forEach(function(l) {
               var txt = (typeof l === 'object' && l !== null) ? (l.nome || JSON.stringify(l)) : String(l);
@@ -224,9 +209,7 @@
             });
           }
 
-          // Obs
-          if (obs)
-            det += '<span class="det-obs">⚠ ' + obs + '</span>';
+          if (obs) det += '<span class="det-obs">⚠ ' + obs + '</span>';
 
           var totalItem = (preco * (isKg ? 1 : qtd)).toLocaleString('es-PY');
 
@@ -238,16 +221,14 @@
           tbody.appendChild(tr);
         });
 
-        
-
         // Totais
         var v = p.valores || {};
-        var frete    = v.frete || v.frete_cobrado_cliente || 0;
-        var desconto = v.desconto || v.desconto_cupom || 0;
-        var subtotal = v.sub || v.subtotal || 0;
+        var frete    = v.frete || 0;
+        var desconto = v.desconto || 0;
+        var subtotal = v.sub || 0;
 
         document.getElementById('subtotal').textContent    = 'Gs ' + subtotal.toLocaleString('es-PY');
-        document.getElementById('total-geral').textContent = 'Gs ' + (v.total || v.total_geral || 0).toLocaleString('es-PY');
+        document.getElementById('total-geral').textContent = 'Gs ' + (v.total || 0).toLocaleString('es-PY');
 
         if (desconto > 0) {
           document.getElementById('row-desconto').style.display = '';
@@ -258,54 +239,25 @@
           document.getElementById('frete').textContent = 'Gs ' + frete.toLocaleString('es-PY');
         }
 
-        // ── SEÇÃO CORRIGIDA: Pagamento Seguro e Validação de Tipos ─────────
+        // Pagamento
         var pg  = p.pagamento || {};
-        var met = pg.metodo || pg.forma_pagamento || 'No informado';
-        var obsp = pg.obs   || pg.obs_pagamento   || '';
-
-        var metodosValidos = ['efectivo', 'tarjeta', 'dinero', 'cartão', 'débito', 'crédito', 'efetivo'];
-        var deveAbrirGaveta = false;
+        var met = pg.metodo || 'No informado';
+        var obsp = pg.obs   || '';
 
         if (met === 'Multipagamento') {
           document.getElementById('forma-pag').textContent = '🔀 Pago dividido:';
           try {
             var partes = JSON.parse(obsp);
-            
             if (Array.isArray(partes)) {
-              deveAbrirGaveta = partes.some(function(x) {
-                return x && x.metodo && metodosValidos.some(function(m) {
-                  return String(x.metodo).toLowerCase().includes(m);
-                });
-              });
-
               document.getElementById('obs-pag').innerHTML = partes.map(function(x, i) {
                 var l = (i + 1) + '. ' + x.metodo + ': Gs ' + parseFloat(x.valor).toLocaleString('es-PY');
-                if (x.troco) l += ' (Vuelto p/ ' + x.troco + ')';
                 return l;
               }).join('<br>');
-            } else {
-              document.getElementById('obs-pag').textContent = obsp;
-              deveAbrirGaveta = metodosValidos.some(function(m) {
-                return String(obsp).toLowerCase().includes(m);
-              });
             }
-          } catch(e) { 
-            document.getElementById('obs-pag').textContent = obsp;
-            deveAbrirGaveta = metodosValidos.some(function(m) {
-              return String(obsp).toLowerCase().includes(m);
-            });
-          }
+          } catch(e) { document.getElementById('obs-pag').textContent = obsp; }
         } else {
           document.getElementById('forma-pag').textContent = met;
           document.getElementById('obs-pag').textContent   = obsp;
-
-          deveAbrirGaveta = metodosValidos.some(function(m) {
-            return String(met).toLowerCase().includes(m);
-          });
-        }
-        if (deveAbrirGaveta) {
-          fetch('http://127.0.0.1:9091/abrir', { method: 'POST', mode: 'cors' })
-          .catch(function(err) { console.error('Erro ao chamar gaveta:', err); });
         }
 
         // Factura
@@ -315,76 +267,14 @@
           document.getElementById('razao').textContent = p.factura.razao || 'S/N';
         }
 
-        // Auto-print
         setTimeout(function() { window.print(); }, 600);
 
       } catch(e) {
         console.error(e);
         document.body.innerHTML =
-          '<p style="color:red;text-align:center;margin-top:40px">Error al leer el pedido.<br><small>' + e.message + '</small></p>';
+          '<p style="color:red;text-align:center;margin-top:40px">Error al leer los datos del pedido.<br><small>' + e.message + '</small></p>';
       }
     };
-
-     async function carregarQRCode(pedidoId) {
-      try {
-        // Busca a factura vinculada ao pedido
-        const { data, error } = await window.supa
-          .from('facturas')
-          .select('qr_code, link_validacao, kude')
-          .eq('pedido_id', pedidoId)
-          .maybeSingle();
-
-        if (error || !data) {
-          console.log('Nenhuma factura encontrada para este pedido.');
-          return;
-        }
-
-        const qrContainer = document.getElementById('qr-code-container');
-        if (!qrContainer) return;
-
-        // Se o provedor retornou uma URL ou Base64, exibe a imagem
-        if (data.qr_code) {
-          // Se for URL, usa como src; se for Base64, também funciona
-          const img = document.createElement('img');
-          img.src = data.qr_code;
-          img.style.width = '80px';
-          img.style.height = '80px';
-          img.style.display = 'block';
-          img.style.margin = '0 auto';
-          img.style.borderRadius = '4px';
-          qrContainer.innerHTML = '';
-          qrContainer.appendChild(img);
-        } 
-        // Fallback: se não tem imagem, gera um QR Code a partir do link de validação ou KUDE
-        else if (data.link_validacao || data.kude) {
-          const link = data.link_validacao || `https://www.sifende.com.py/validar?kude=${data.kude}`;
-          // Usa a API pública do Google Charts para gerar QR (simples e sem lib)
-          const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(link)}`;
-          const img = document.createElement('img');
-          img.src = qrUrl;
-          img.style.width = '80px';
-          img.style.height = '80px';
-          img.style.display = 'block';
-          img.style.margin = '0 auto';
-          img.style.borderRadius = '4px';
-          qrContainer.innerHTML = '';
-          qrContainer.appendChild(img);
-        }
-
-        // Exibe o KUDE embaixo do QR (padrão DNIT)
-        if (data.kude) {
-          const kudeLabel = document.createElement('div');
-          kudeLabel.style.cssText = 'text-align:center; font-size:8px; color:#666; margin-top:4px;';
-          kudeLabel.textContent = `KUDE: ${data.kude}`;
-          qrContainer.appendChild(kudeLabel);
-        }
-
-        qrContainer.style.display = 'block';
-
-      } catch (err) {
-        console.warn('Erro ao carregar QR Code:', err);
-      }
-    }
   </script>
 </body>
 </html>
