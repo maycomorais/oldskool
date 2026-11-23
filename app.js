@@ -398,6 +398,9 @@ async function verificarHorario() {
     TABELA_FRETE = data.tabela_frete;
   if (data.limite_distancia_km != null)
     LIMITE_DISTANCIA_KM = parseFloat(data.limite_distancia_km) || null;
+
+   window.ZONAS_ESPECIAIS = Array.isArray(data.zonas_especiais) ? data.zonas_especiais : [];
+   
   // Aplica visibilidade das formas de pagamento conforme configuração
   FEATURES_PAGAMENTOS_CLIENTE = data.features_ativas?.pagamentos || null;
   _aplicarFormasPagamentoCliente(data.features_ativas);
@@ -914,17 +917,22 @@ async function renderMenu() {
   const minAgora = agora.getHours() * 60 + agora.getMinutes();
 
   function categoriaVisivel(cat) {
-    // Filtro por dia da semana (0=Dom...6=Sáb, igual ao Date.getDay())
-    if (Array.isArray(cat.dias_semana) && cat.dias_semana.length > 0) {
-      if (!cat.dias_semana.includes(agora.getDay())) return false;
-    }
-    if (!cat.hora_inicio || !cat.hora_fim) return true;
-    const [hI, mI] = cat.hora_inicio.split(":").map(Number);
-    const [hF, mF] = cat.hora_fim.split(":").map(Number);
-    const inicio = hI * 60 + mI;
-    const fim = hF * 60 + mF;
-    if (fim < inicio) return minAgora >= inicio || minAgora <= fim;
-    return minAgora >= inicio && minAgora <= fim;
+  // Filtro por dia da semana (0=Dom...6=Sáb, igual ao Date.getDay())
+  if (Array.isArray(cat.dias_semana) && cat.dias_semana.length > 0) {
+    // Converte tudo para número para garantir que a comparação funcione
+    const diasInt = cat.dias_semana.map(Number);
+    if (!diasInt.includes(agora.getDay())) return false;
+  }
+  
+  if (!cat.hora_inicio || !cat.hora_fim) return true;
+  
+  const [hI, mI] = cat.hora_inicio.split(":").map(Number);
+  const [hF, mF] = cat.hora_fim.split(":").map(Number);
+  const inicio = hI * 60 + mI;
+  const fim = hF * 60 + mF;
+  
+  if (fim < inicio) return minAgora >= inicio || minAgora <= fim;
+  return minAgora >= inicio && minAgora <= fim;
   }
 
   function renderProdutoDiv(item) {
@@ -2559,23 +2567,27 @@ function adicionarDoModal() {
     tipo = "montavel";
 
   // Validações por tipo
-    if (tipo === "pizza") {
+  if (tipo === "pizza") {
+    if (!_pizzaConfig.tamanhoSelecionado) {
+      alert(tt({es:"¡Seleccione el tamaño de la pizza!",pt:"Selecione o tamanho da pizza!",en:"Select the pizza size!",de:"Wählen Sie die Pizzagröße!"}));
+      return;
+    }
     const saboresOk = (_pizzaConfig.sabores || []).filter(Boolean);
-    const _tam = _pizzaConfig.tamanhoSelecionado;
-    
-    // AQUI TAMBÉM: preço da borda dinâmico
-    const precoBorda = _getPrecoBordaAtual();
-    precoFinal = _calcularBasePizza(_tam, saboresOk) + precoBorda;
-
-    variacao = _pizzaConfig.tamanhoSelecionado?.nome || "";
-    const numSab = _pizzaConfig.numSabores || 1;
-    const saboresStr = saboresOk
-      .map((s, i) => (numSab > 1 ? `${i + 1}/${numSab} ${s.nome}` : s.nome))
-      .join(" | ");
-
-    montagem = [saboresStr].filter(Boolean);
-    if (_pizzaConfig.bordaConfig)
-      montagem.push(`Borda: ${_pizzaConfig.bordaConfig.nome}`);
+    if (saboresOk.length === 0) {
+      alert(tt({es:"¡Seleccione al menos 1 sabor!",pt:"Selecione ao menos 1 sabor!",en:"Select at least 1 flavor!",de:"Wählen Sie mindestens 1 Geschmacksrichtung!"}));
+      return;
+    }
+    if (_pizzaConfig.numSabores && saboresOk.length < _pizzaConfig.numSabores) {
+      alert(
+        tt({
+          es: `Eligió ${_pizzaConfig.numSabores} sabores pero seleccionó solo ${saboresOk.length}. ¡Complete la selección!`,
+          pt: `Você escolheu ${_pizzaConfig.numSabores} sabores mas selecionou apenas ${saboresOk.length}. Complete a seleção!`,
+          en: `You chose ${_pizzaConfig.numSabores} flavors but only selected ${saboresOk.length}. Complete your selection!`,
+          de: `Sie haben ${_pizzaConfig.numSabores} Geschmacksrichtungen gewählt, aber nur ${saboresOk.length} ausgewählt. Vervollständigen Sie die Auswahl!`,
+        }),
+      );
+      return;
+    }
   }
   if (tipo === "almoco" && !prodAtual._pratoselecionado) {
     alert(tt({es:"¡Seleccione el plato!",pt:"Selecione o prato!",en:"Select the dish!",de:"Wählen Sie das Gericht!"}));
@@ -2609,7 +2621,9 @@ function adicionarDoModal() {
   // Monta descrição para o carrinho
   let montagem = [];
   let variacao = "";
-  let precoFinal = prodAtual.preco;
+  
+  // AQUI ESTAVA O ERRO: A variável foi declarada agora no topo, antes de qualquer if.
+  let precoFinal = prodAtual.preco || 0; 
 
   if (tipo === "combo_fechado") {
     const partes = _comboFechadoConfig.sabores
@@ -2635,16 +2649,11 @@ function adicionarDoModal() {
   }
 
   if (tipo === "pizza") {
-    // ─────────────────────────────────────────────────────────────
-    // PREÇO PIZZA:
-    //   Base    = tamanho selecionado (sempre — é o preço principal)
-    //   Extra   = maior preco individual dos sabores (0 se não há premium)
-    //   Borda   = preco da borda escolhida (0 se sem borda)
-    //   Total   = (Base + Extra) * qtd + Borda * qtd
-    // ─────────────────────────────────────────────────────────────
     const saboresOk = (_pizzaConfig.sabores || []).filter(Boolean);
     const _tam       = _pizzaConfig.tamanhoSelecionado;
-    const precoBorda = _pizzaConfig.bordaConfig?.preco || 0;
+    
+    // Puxa o preço da borda dinamicamente do objeto salvo
+    const precoBorda = _getPrecoBordaAtual();
     precoFinal = _calcularBasePizza(_tam, saboresOk) + precoBorda;
 
     variacao = _pizzaConfig.tamanhoSelecionado?.nome || "";
@@ -2653,7 +2662,6 @@ function adicionarDoModal() {
       .map((s, i) => (numSab > 1 ? `${i + 1}/${numSab} ${s.nome}` : s.nome))
       .join(" | ");
 
-    // montagem: string legível para exibição no carrinho/cozinha
     montagem = [saboresStr].filter(Boolean);
     if (_pizzaConfig.bordaConfig)
       montagem.push(`Borda: ${_pizzaConfig.bordaConfig.nome}`);
@@ -2669,19 +2677,16 @@ function adicionarDoModal() {
   if (tipo === "variacoes" && _variacaoSelecionada) {
     variacao = _variacaoSelecionada.nome;
     precoFinal = _variacaoSelecionada.preco || prodAtual.preco;
-    // Usa imagem da variação se disponível
     if (_variacaoSelecionada.img)
       prodAtual._variacaoImg = _variacaoSelecionada.img;
   }
 
-  // ── shake ────────────────────────────────────────────────────
   if (tipo === "shake") {
     precoFinal = (_shakeConfig.tamanho?.preco || 0) + (_shakeConfig.sabor?.preco || 0);
     variacao   = _shakeConfig.tamanho?.nome || "";
     if (_shakeConfig.sabor) montagem = [_shakeConfig.sabor.nome];
   }
 
-  // ── sorvete ──────────────────────────────────────────────────
   if (tipo === "sorvete") {
     precoFinal = _sorveteConfig.tamanho?.preco || prodAtual.preco;
     variacao   = _sorveteConfig.tamanho?.nome || "";
@@ -2692,7 +2697,6 @@ function adicionarDoModal() {
     });
   }
 
-  // ── açaí ─────────────────────────────────────────────────────
   if (tipo === "acai") {
     precoFinal = _acaiConfig.tamanho?.preco || prodAtual.preco;
     variacao   = _acaiConfig.tamanho?.nome || "";
@@ -2701,7 +2705,6 @@ function adicionarDoModal() {
     });
   }
 
-  // ── suco ─────────────────────────────────────────────────────
   if (tipo === "suco") {
     precoFinal = _sucoConfig.tamanho?.preco || prodAtual.preco;
     variacao   = _sucoConfig.tamanho?.nome || "";
@@ -2742,7 +2745,7 @@ function adicionarDoModal() {
 
   carrinho.push({
     id: Date.now(),
-    produto_id: prodAtual.id || null, // ID real do banco — necessário para desconto de estoque
+    produto_id: prodAtual.id || null,
     nome: prodAtual.nome,
     variacao: variacao || "",
     preparo: preparoEscolhido,
@@ -2751,7 +2754,7 @@ function adicionarDoModal() {
     montagem: montagem.filter(Boolean),
     obs: document.getElementById("modal-obs").value,
     img: prodAtual._variacaoImg || prodAtual.img,
-    categoria_slug: prodAtual.categoria_slug || "", // para filtro bebidas no motoboy
+    categoria_slug: prodAtual.categoria_slug || "",
     es_bebida: prodAtual.es_bebida || false,
     ...(pizzaMeta ? { pizzaMeta } : {}),
   });
@@ -3662,12 +3665,36 @@ function _executarGetPosition(btn, msg, boxErro) {
         lat: position.coords.latitude,
         lng: position.coords.longitude,
       };
-      const dist = calcularDistancia(
+      
+      // MUDANÇA 1: Trocado de const para let
+      let dist = calcularDistancia(
         COORD_LOJA.lat,
         COORD_LOJA.lng,
         localCliente.lat,
         localCliente.lng,
       );
+
+      // MUDANÇA 2: Adicionada a Margem de Segurança (10% + 150m)
+      dist = (dist * 1.10) + 0.15;
+
+      // ── VERIFICAÇÃO DE ZONAS ESPECIAIS (Prioridade Máxima) ─────────────
+      const zona = (window.ZONAS_ESPECIAIS || []).find((z) => {
+        const distZona = calcularDistancia(z.lat, z.lng, localCliente.lat, localCliente.lng);
+        // MUDANÇA 3: Number() para garantir
+        return distZona <= Number(z.raio_km);
+      });
+
+      if (zona) {
+        freteCalculado = Number(zona.valor_cliente);
+        freteMotoboy = Number(zona.valor_motoboy);
+        msg.innerHTML = `<span style="color:#27ae60">✅ Zona Especial: ${zona.nome} → Env: Gs ${zona.valor_cliente.toLocaleString("es-PY")}</span>`;
+        msg.style.color = "#27ae60";
+        boxErro.style.display = "none";
+        btn.innerText = _gL.localizacaoOk;
+        btn.disabled = true;
+        atualizarTotalCheckout();
+        return; // Encerra aqui, não processa a tabela normal
+      }
 
       // === TABELA DE FRETE DINÂMICA (configurada no admin) ===
       // ATENÇÃO: deve ser IDÊNTICO ao index.ts (Edge Function) e admin.js calcularFretePDV
@@ -3731,9 +3758,7 @@ function _executarGetPosition(btn, msg, boxErro) {
       atualizarTotalCheckout();
     },
     (err) => {
-      // ⚠️ CORRIGIDO: antes disso só mostrava "marque a opção pra combinar
-      // pelo WhatsApp" e travava o pedido até o cliente fazer isso
-      // manualmente. Agora aplica automaticamente o frete mínimo da
+      // ⚠️ CORRIGIDO: aplica automaticamente o frete mínimo da
       // tabela (faixa de 0-1km) e deixa claro que pode aumentar depois.
       const freteMinimo = _obterFreteMinimoDaTabela();
       freteCalculado = freteMinimo;
@@ -4406,9 +4431,23 @@ function _menuContemProduto(item) {
       (item.produto_id && p.id === item.produto_id) ||
       (p.nome || "").toLowerCase() === (item.nome || "").toLowerCase()
     );
-    if (found) return true;
+    
+    if (found) {
+      // Verifica se a variação (ex: Coca-Cola Zero) ainda existe e está ativa
+      let cfg = found.montagem;
+      if (typeof cfg === "string") {
+        try { cfg = JSON.parse(cfg); } catch (_) { cfg = null; }
+      }
+      
+      if (item.variacao && cfg && cfg.__tipo === "variacoes" && Array.isArray(cfg.variacoes)) {
+        const vAtiva = cfg.variacoes.find(v => v.nome === item.variacao && v.ativo !== false);
+        if (!vAtiva) return false; // A variação foi pausada/deletada
+      }
+      
+      return true; // Produto e variação válidos
+    }
   }
-  return false;
+  return false; // Produto não existe mais no menu ou está pausado/sem estoque
 }
 
 // Chamada APÓS renderMenu() para enriquecer o box com disponibilidade real
@@ -4495,13 +4534,23 @@ function repetirPedido() {
   })();
   if (!last || !Array.isArray(last) || last.length === 0) return;
 
+  // Filtra apenas o que ainda está no menu e disponível
   const disponiveis   = last.filter(i => _menuContemProduto(i));
   const indisponiveis = last.length - disponiveis.length;
 
   if (disponiveis.length === 0) {
-    mostrarToast(tt({es:"Ningún ítem del pedido anterior está disponible en el menú actual.",pt:"Nenhum item do pedido anterior está disponível no menu atual.",en:"No items from the previous order are available in the current menu.",de:"Keine Artikel der vorherigen Bestellung sind im aktuellen Menü verfügbar."}), "warning", 4000);
+    mostrarToast(
+      tt({
+        es: "Ningún ítem del pedido anterior está disponible en el menú actual.",
+        pt: "Nenhum item do pedido anterior está disponível no menu atual.",
+        en: "No items from the previous order are available in the current menu.",
+        de: "Keine Artikel der vorherigen Bestellung sind im aktuellen Menü verfügbar."
+      }),
+      "warning", 4000
+    );
     return;
   }
+
   if (indisponiveis > 0) {
     mostrarToast(
       tt({
@@ -5504,3 +5553,4 @@ setInterval(salvarCarrinhoLocal, 5000); // A cada 5 segundos
 setTimeout(restaurarCarrinhoBackup, 1000);
 
 // ==========================================
+

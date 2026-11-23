@@ -477,22 +477,6 @@ select.form-control, select.input-modern {
     font-style: italic;
 }
 
-/* Responsivo */
-@media (max-width: 600px) {
-    .modal-content {
-        width: 95%;
-        padding: 20px;
-        max-height: 90vh;
-    }
-    
-    .modal-actions {
-        flex-direction: column;
-    }
-    
-    .modal-actions .btn {
-        width: 100%;
-    }
-}
 
 /* --- MONTAGEM (POKE/COMBO) --- */
 .builder-box { background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px dashed #ccc; margin-top: 10px; }
@@ -606,13 +590,16 @@ select.form-control, select.input-modern {
 ═══════════════════════════════════════════════════════════ */
 .pdv-layout {
     display: grid;
-    grid-template-columns: 1fr 330px;
-    height: 100vh;
+    grid-template-columns: 1fr 360px;
+    /* 100dvh é melhor que 100vh para telas de celular */
+    height: calc(100dvh - 140px); 
+    min-height: 450px; /* Evita que esmague em telas muito pequenas */
     border-radius: 10px;
     overflow: hidden;
     border: 1px solid #ccc;
     gap: 1px;
     background: #ccc;
+    margin-bottom: 0;
 }
 
 /* ── Left column: Products ──────────────────────────────── */
@@ -791,11 +778,11 @@ select.form-control, select.input-modern {
 
 /* ── Right column: Order ────────────────────────────────── */
 .pdv-col-dir {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  background: #fff;
-  height: 100%;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+    background: #fff;
 }
 .pdv-dir-titulo {
     padding: 9px 10px 7px;
@@ -804,30 +791,44 @@ select.form-control, select.input-modern {
 }
 
 /* Order type tabs */
-.pdv-tipo-tabs { display: flex; border-bottom: 2px solid #ddd; flex-shrink: 0; }
+.pdv-tipo-tabs {
+    display: flex;
+    background: #fff;
+    border-bottom: 2px solid #e2e8f0;
+}
 .pdv-tipo-tab {
-    flex: 1; padding: 7px 2px;
-    border: none; background: #f5f5f5;
-    font-size: 0.67rem; font-weight: 700; color: #666;
-    cursor: pointer; border-right: 1px solid #ddd;
-    transition: background 0.1s; white-space: nowrap; text-align: center;
+    flex: 1;
+    padding: 10px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: #64748b;
+    transition: all 0.2s;
 }
 .pdv-tipo-tab:last-child { border-right: none; }
 .pdv-tipo-tab:hover { background: #e8e8e8; }
-.pdv-tipo-tab.active { background: var(--primary); color: #fff; }
+.pdv-tipo-tab.active {
+    color: #fff;
+    background: #1a7a2e;
+}
 
 /* Discount */
 .pdv-dir-desconto {
-    padding: 6px 8px;
-    background: #fffbf0; border-bottom: 1px solid #ffe082;
-    flex-shrink: 0;
+    padding: 10px 12px;
+    background: #fffbf0;
+    border-top: 1px solid #ffe082;
 }
+
 .pdv-dir-desc-label { font-size: 0.67rem; font-weight: 800; color: #7d5a00; letter-spacing: 0.5px; margin-bottom: 3px; }
 
 /* Client data */
 .pdv-dir-dados {
-    padding: 6px 8px; border-bottom: 1px solid #f0f0f0;
-    display: flex; flex-direction: column; gap: 5px; flex-shrink: 0;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 .pdv-dado-row { display: flex; gap: 6px; }
 .pdv-dir-label { display: block; font-size: 0.67rem; font-weight: 700; color: #666; margin-bottom: 2px; }
@@ -838,8 +839,42 @@ select.form-control, select.input-modern {
 }
 .pdv-dir-input:focus { border-color: var(--primary); }
 
+.pdv-dir-topo-fixo,
+.pdv-dir-pagamento-fixo,
+.pdv-dir-footer {
+    flex-shrink: 0;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+
 /* Item table — lista de itens com flex:1 para ocupar espaço disponível */
-.pdv-dir-lista-wrap { flex: 1; overflow-y: auto; scrollbar-width: thin; min-height: 60px; }
+.pdv-dir-topo-fixo {
+    flex-shrink: 0;
+    border-bottom: 1px solid #e2e8f0;
+    max-height: 55%; /* Impede que o topo coma a tela inteira */
+    overflow-y: auto;
+}
+.pdv-dir-pagamento-fixo {
+    flex-shrink: 0;
+    background: #f8fafc;
+    border-top: 1px solid #e2e8f0;
+    max-height: 45vh; /* Se a tela for muito baixa, ele rola sozinho, mas sem esmagar */
+    overflow-y: auto;
+}
+.pdv-dir-lista-wrap {
+    flex: 1;
+    overflow-y: auto;
+    background: #fff;
+    min-height: 120px; /* OBRIGATÓRIO: Garante que a lista NUNCA suma */
+}
+.pdv-dir-totais-rodape {
+    flex-shrink: 0;
+    background: #f8fafc;
+    padding: 12px;
+    border-top: 2px solid #e2e8f0;
+    box-shadow: 0 -4px 10px rgba(0,0,0,0.05);
+    z-index: 10;
+}
 .pdv-dir-table { width: 100%; border-collapse: collapse; font-size: 0.76rem; }
 .pdv-dir-table thead th {
     padding: 4px 5px; text-align: left;
@@ -878,29 +913,36 @@ select.form-control, select.input-modern {
 
 /* Totals */
 .pdv-dir-totais {
-    padding: 5px 8px; border-top: 2px solid #e0e0e0;
-    flex-shrink: 0; background: #fafafa;
+    padding: 12px;
+    background: #fff;
+    border-bottom: 1px solid #e2e8f0;
 }
 .pdv-dir-total-row { display: flex; justify-content: space-between; font-size: 0.76rem; color: #666; padding: 1px 0; }
 .pdv-dir-valor-total {
-    display: flex; justify-content: space-between; align-items: baseline;
-    font-size: 0.8rem; font-weight: 700; color: #333;
-    padding-top: 4px; margin-top: 3px; border-top: 1px dashed #ddd;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 0.9rem;
+    font-weight: 700;
 }
-.pdv-dir-valor-total strong { font-size: 1.4rem; font-weight: 900; color: #111; }
+.pdv-dir-valor-total strong {
+    font-size: 1.5rem;
+    color: #1a7a2e;
+}
+
+/* Área de pagamento (Select, troco, etc) */
+.pdv-dir-formas-pag {
+    padding: 12px;
+    background: #f8fafc;
+}
 
 /* Action buttons */
 .pdv-dir-footer {
-  position: sticky;
-  bottom: 0;
-  background: #fff;
-  z-index: 10;
-  padding: 8px 12px;
-  border-top: 1px solid #e0e0e0;
-  display: flex;
-  gap: 6px;
-  flex-shrink: 0;
-  box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.05);
+    padding: 10px 12px;
+    border-top: 2px solid #e2e8f0;
+    background: #f8fafc;
+    display: flex;
+    gap: 8px;
 }
 .pdv-btn-cancelar {
     padding: 9px 10px; background: #ffeaea; color: #c0392b;
@@ -923,95 +965,6 @@ select.form-control, select.input-modern {
 .pdv-tabs {
     display: none;  /* hidden on desktop */
 }
-
-@media (max-width: 768px) {
-    /* Show mobile tabs, hide desktop layout */
-    .pdv-tabs {
-        display: flex;
-        background: #fff;
-        border-bottom: 2px solid #e0e0e0;
-        position: sticky;
-        top: 0;
-        z-index: 100;
-        flex-shrink: 0;
-    }
-    .pdv-tab-btn {
-        flex: 1;
-        padding: 10px 4px;
-        border: none;
-        background: #f5f5f5;
-        font-size: 0.75rem;
-        font-weight: 700;
-        color: #666;
-        cursor: pointer;
-        border-right: 1px solid #e0e0e0;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 3px;
-    }
-    .pdv-tab-btn:last-child { border-right: none; }
-    .pdv-tab-btn.active { background: var(--primary); color: #fff; }
-    .pdv-tab-btn.active i { color: #fff !important; opacity: 1 !important; }
-    .pdv-tab-btn i { font-size: 1.1rem; }
-
-    /* On mobile: single-column, tabs switch panels */
-    .pdv-layout {
-        grid-template-columns: 1fr;
-        height: calc(100vh - 200px);
-        background: #fff;
-        border: none;
-        border-radius: 0;
-    }
-
-    /* Each panel hides/shows based on active tab */
-    .pdv-tab-panel {
-        display: none;
-        height: calc(100vh - 200px);
-    }
-    .pdv-tab-panel.pdv-tab-active {
-        display: flex;
-        flex-direction: column;
-    }
-
-    /* Mobile: category chips wrap */
-    .pdv-cats {
-        overflow-x: auto;
-        flex-wrap: nowrap;
-        scrollbar-width: none;
-    }
-    .pdv-cats::-webkit-scrollbar { display: none; }
-    .pdv-cat-chip { padding: 9px 14px; font-size: 0.74rem; }
-
-    /* Mobile: product cards smaller */
-    .pdv-cat-row { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
-    .pdv-card { min-height: 52px; }
-
-    /* Mobile: right column full width */
-    .pdv-col-dir {
-        height: calc(100vh - 200px);
-        overflow-y: hidden;
-    }
-    .pdv-dir-bottom-scroll {
-        max-height: 38vh;
-    }
-    .pdv-tipo-tab { font-size: 0.62rem; padding: 8px 2px; }
-
-    /* Mobile: table columns adjust */
-    .pdv-dir-table th:nth-child(3),
-    .pdv-dir-tbody td:nth-child(3) { display: none; } /* hide Unitário */
-
-    /* Mobile: larger touch targets */
-    .pdv-btn-lancar { padding: 12px; font-size: 0.9rem; }
-    .pdv-btn-cancelar { padding: 12px 10px; }
-}
-
-@media (max-width: 480px) {
-    .pdv-cat-row { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
-    .pdv-card-img { width: 100%; }
-    .pdv-dir-valor-total strong { font-size: 1.2rem; }
-}
-
 
 .pdv-monitor {
     background: linear-gradient(160deg, #2c3e50 0%, #1a252f 100%);
@@ -1210,404 +1163,9 @@ select.form-control, select.input-modern {
     outline: none;
 }
 
-/* ============================================================
-   MOBILE: FUSÃO DEFINITIVA (MENU KIMI + CORREÇÃO GERAL)
-   ============================================================ */
-@media (max-width: 768px) {
-
-    /* --- 1. RESET DO BODY (Trazido do Kimi - É muito bom) --- */
-    html, body {
-        overflow-x: hidden !important;
-        overflow-y: auto !important;
-        height: auto !important;
-        min-height: 100vh !important;
-    }
-    
-    body {
-        display: block !important;
-        padding-bottom: 80px !important; /* Espaço para não cobrir o rodapé */
-    }
-
-    /* Modal bottom sheet: botão salvar não fica sob a navbar */
-    .modal-bottom-sheet {
-        padding-bottom: 75px !important;
-    }
-    .modal-actions {
-        padding-bottom: 10px !important;
-    }
-
-    /* --- 2. CONTEÚDO PRINCIPAL --- */
-    .main-content {
-        margin: 0 !important;
-        padding: 15px !important;
-        width: 100% !important;
-        height: auto !important;
-        overflow: visible !important;
-    }
-
-    /* --- 3. O MENU DO KIMI (Exatamente como ele fez, pois ficou bom) --- */
-    .sidebar {
-        position: fixed !important;
-        bottom: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        top: auto !important; /* Garante que não suba */
-        width: 100% !important;
-        height: 65px !important;
-        background: var(--dark) !important;
-        z-index: 99999 !important;
-        display: flex !important;
-        flex-direction: row !important;
-        justify-content: space-between !important;
-        padding: 0 !important;
-        box-shadow: 0 -4px 20px rgba(0,0,0,0.4);
-        border-top: 1px solid #34495e;
-    }
-
-    /* Esconde elementos do desktop */
-    .brand, #user-cargo, #user-email, .sidebar > div:not(.menu):not(.menu-item) {
-        display: none !important;
-    }
-
-    /* Menu de ícones scrollável horizontalmente */
-    .menu {
-        display: flex !important;
-        flex-direction: row !important;
-        flex-wrap: nowrap !important;
-        align-items: center !important;
-        justify-content: flex-start !important;
-        height: 100% !important;
-        width: 100% !important;
-        overflow-x: auto !important;
-        overflow-y: hidden !important;
-        padding: 0 5px !important;
-        margin: 0 !important;
-    }
-
-    .menu-item {
-        flex: 0 0 auto !important;
-        min-width: 70px !important; /* Tamanho bom pro dedo */
-        height: 100% !important;
-        padding: 0 !important;
-        border: none !important;
-        justify-content: center !important;
-        align-items: center !important;
-        display: flex !important;
-        flex-direction: column !important;
-        gap: 4px !important;
-        font-size: 0.7rem !important;
-        color: #bdc3c7 !important;
-    }
-    
-    .menu-item i {
-        font-size: 1.4rem !important;
-        margin-bottom: 2px !important;
-        width: auto !important;
-    }
-
-    /* Botão Sair destacado */
-    .menu-item[onclick="logout()"] {
-        background: #c0392b !important;
-        color: white !important;
-        margin-left: auto !important; /* Empurra pra direita se sobrar espaço */
-    }
-
-    /* --- 4. CORREÇÃO DOS INPUTS (Cadastrar Funcionário / Filtros) --- */
-    /* Isso resolve o problema de ficarem "espremidos" */
-    
-    /* Força qualquer div flex dentro de formulários a virar coluna */
-    .form-group, 
-    .filtro-bar,
-    #equipe .card > div > div { 
-        display: flex !important;
-        flex-direction: column !important;
-        gap: 10px !important;
-    }
-
-    /* Inputs ocupam 100% da largura */
-    input, select, button:not([style*="32px"]):not([id$="close"]):not(.close-btn-modern), .form-control {
-        width: 100% !important;
-        max-width: 100% !important;
-        margin: 0 !important;
-        height: 45px !important; /* Altura boa para toque */
-    }
-
-    /* --- 5. TABELAS (Sem Cards Quebrados - Solução: Scroll Horizontal) --- */
-    /* Não usei a solução do Kimi aqui pq ela exige mudar o HTML */
-    
-  .card, .table-container {
-        display: block !important;
-        width: 100% !important;
-        overflow-x: auto !important;
-        -webkit-overflow-scrolling: touch;
-        padding-bottom: 10px !important;
-    }
-
-    .subtab-content {
-        width: 100% !important;
-        overflow-x: auto !important;
-        -webkit-overflow-scrolling: touch;
-        padding-bottom: 10px !important;
-    }
-    
-    table {
-        width: 100% !important;
-        min-width: 800px !important; /* Força largura para aparecer o scroll se precisar */
-        table-layout: auto !important;
-    }
-
-    /* Botões de Ação na Tabela - Agora um embaixo do outro para não vazar */
-    .actions-cell {
-        display: flex !important;
-        flex-direction: column !important;
-        gap: 5px !important;
-    }
-    
-    .actions-cell button {
-        width: 100% !important;
-        padding: 8px !important;
-    }
-
-    /* --- 6. PDV Mobile — layout compacto com chips e barra inferior --- */
-    .pdv-header-bar { flex-direction: column; align-items: flex-start; }
-    .pdv-view-btns  { display: none !important; }
-    
-    .pdv-container {
-        display: block !important;
-        height: auto !important;
-        gap: 0 !important;
-    }
-    .pdv-tabs {
-        display: flex !important;
-        border-bottom: 2px solid #f0f0f0;
-        margin-bottom: 8px;
-        background: #fff;
-        border-radius: 10px 10px 0 0;
-        overflow: hidden;
-    }
-    .pdv-tab-btn {
-        flex: 1;
-        padding: 10px 4px;
-        font-size: 0.78rem;
-        font-weight: 700;
-        border: none;
-        background: none;
-        color: #999;
-        cursor: pointer;
-        border-bottom: 3px solid transparent;
-        margin-bottom: -2px;
-    }
-    .pdv-tab-btn.active { background: var(--primary); color: #fff; border-bottom-color: var(--primary); }
-    .pdv-tab-btn.active i { color: #fff !important; opacity: 1 !important; }
-    
-    .pdv-carrinho, .pdv-produtos, .pdv-monitor {
-        display: none !important;
-        height: auto !important;
-        max-height: none !important;
-        position: static !important;
-        width: 100% !important;
-        border-radius: 0 0 12px 12px !important;
-    }
-    .pdv-carrinho.pdv-tab-active {
-        display: flex !important;
-        flex-direction: column !important;
-        max-height: calc(100vh - 190px) !important;
-        overflow-y: auto !important;
-    }
-    .pdv-produtos.pdv-tab-active {
-        display: flex !important;
-        flex-direction: column !important;
-        max-height: calc(100vh - 190px) !important;
-        overflow-y: hidden !important;
-    }
-    .pdv-monitor.pdv-tab-active {
-        display: block !important;
-        max-height: calc(100vh - 190px) !important;
-        overflow-y: auto !important;
-    }
-    /* Mobile: chips scrolláveis horizontalmente */
-    .pdv-cat-chips {
-        flex-wrap: nowrap !important;
-        overflow-x: auto !important;
-        padding-bottom: 4px;
-        -webkit-overflow-scrolling: touch;
-    }
-    .pdv-cat-chip { flex-shrink: 0; }
-    /* Mobile: grid 3 colunas */
-    .pdv-cat-row {
-        grid-template-columns: repeat(3, 1fr) !important;
-        gap: 7px !important;
-    }
-    /* Mobile: barra inferior visível */
-    .pdv-mobile-footer {
-        display: flex !important;
-    }
-    /* Espaço extra no fundo para não cobrir conteúdo */
-    #pdv-grid { padding-bottom: 80px !important; }
-
-    /* --- 7. MODAIS --- */
-    .modal-content {
-        width: 95% !important;
-        max-width: 95% !important;
-        margin: 5% auto !important;
-        max-height: 85vh !important;
-    }
-
-    .actions-grid {
-        display: grid !important;
-        grid-template-columns: repeat(3, 1fr) !important; /* 3 botões por linha */
-        gap: 8px !important;
-    }
-
-    /* 2. Reseta a altura do botão (Liberta dos 45px globais) */
-    button.action-card {
-        height: auto !important;        /* Deixa crescer conforme o conteúdo */
-        min-height: 90px !important;    /* Altura mínima para ficar quadrado */
-        aspect-ratio: 1 / 1 !important; /* Tenta manter formato quadrado */
-        
-        display: flex !important;
-        flex-direction: column !important; /* Ícone em cima, texto embaixo */
-        justify-content: center !important;
-        align-items: center !important;
-        
-        padding: 5px !important;
-        margin: 0 !important;
-        width: 100% !important;
-    }
-
-    /* 3. Ajusta o tamanho do Ícone e Texto */
-    .action-card i {
-        font-size: 1.8rem !important;
-        margin-bottom: 5px !important;
-        height: auto !important; /* Remove sua tentativa de 10px */
-        width: auto !important;
-    }
-
-    .action-card span {
-        font-size: 0.7rem !important;
-        line-height: 1.1 !important;
-        white-space: normal !important; /* Permite quebrar linha se o texto for longo */
-        height: auto !important; /* Remove sua tentativa de 10px */
-        text-align: center !important;
-    }
-
-    .filtro-bar {
-        flex-direction: column !important;
-        align-items: stretch !important; /* Estica inputs 100% */
-    }
-    .btn-filtrar {
-        width: 100% !important;
-        margin-top: 5px;
-    }
-
-    /* Esconde tabelas no mobile */
-    .subtab-content table {
-        display: none !important;
-    }
-    
-    /* Header da aba mais compacto */
-    .subtab-content > div:first-child {
-        display: flex !important;
-        flex-direction: row !important;
-        justify-content: space-between !important;
-        align-items: center !important;
-        gap: 10px !important;
-        margin-bottom: 15px !important;
-        padding: 10px !important;
-        background: linear-gradient(135deg, var(--dark), #34495e) !important;
-        border-radius: 8px !important;
-        color: white !important;
-    }
-    
-    .subtab-content h3 {
-        font-size: 1rem !important;
-        margin: 0 !important;
-        flex: 1 !important;
-        color: white !important;
-    }
-    
-    .subtab-content button.btn-primary {
-        height: 40px !important;
-        padding: 0 15px !important;
-        font-size: 0.85rem !important;
-        white-space: nowrap !important;
-        border-radius: 20px !important;
-    }
-    
-    /* Container de Cards */
-    .mobile-cards-container {
-        display: flex !important;
-        flex-direction: column !important;
-        gap: 12px !important;
-        width: 100% !important;
-    }
-    
-    /* Card Individual */
-    .mobile-card {
-        background: white !important;
-        border-radius: 12px !important;
-        padding: 15px !important;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
-        border-left: 4px solid var(--primary) !important;
-    }
-    
-    .mobile-card-header {
-        display: flex !important;
-        justify-content: space-between !important;
-        align-items: center !important;
-        margin-bottom: 10px !important;
-        padding-bottom: 10px !important;
-        border-bottom: 1px solid #eee !important;
-    }
-    
-    .mobile-card-title {
-        font-size: 1.1rem !important;
-        font-weight: bold !important;
-        color: var(--dark) !important;
-    }
-    
-    .mobile-card-body {
-        margin-bottom: 12px !important;
-    }
-    
-    .mobile-card-row {
-        display: flex !important;
-        justify-content: space-between !important;
-        padding: 6px 0 !important;
-        font-size: 0.9rem !important;
-    }
-    
-    .mobile-card-label {
-        color: #7f8c8d !important;
-        font-weight: 600 !important;
-    }
-    
-    .mobile-card-value {
-        color: var(--dark) !important;
-        text-align: right !important;
-    }
-    
-    .mobile-card-actions {
-        display: flex !important;
-        gap: 8px !important;
-        margin-top: 12px !important;
-    }
-    
-    .mobile-card-actions button {
-        flex: 1 !important;
-        height: 40px !important;
-        font-size: 0.85rem !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        gap: 5px !important;
-    }
-    
-}
 /* =============================================
    NOVOS ESTILOS — Dashboard, PDV, Mobile UX
    ============================================= */
-
 /* --- DASHBOARD HEADER --- */
 .dash-header {
     display: flex;
@@ -1724,37 +1282,6 @@ select.form-control, select.input-modern {
     grid-template-columns: 1fr 1fr auto auto;
     gap: 10px;
     align-items: end;
-}
-
-/* =============================================
-   MOBILE OVERRIDES
-   ============================================= */
-@media (max-width: 768px) {
-
-    /* Dashboard */
-    .dash-kpi-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
-    .kpi-card { padding: 12px 14px; gap: 10px; }
-    .kpi-icon { width: 36px; height: 36px; font-size: 1rem; }
-    .kpi-card .value { font-size: 1rem; }
-    .dash-rankings { grid-template-columns: 1fr; }
-
-    /* Pedidos: mostra lista de cards, esconde tabela */
-    .pedidos-list { display: flex !important; flex-direction: column; gap: 10px; }
-    .pedidos-table-wrap { display: none !important; }
-    .rota-controls { flex-direction: column; }
-    .rota-controls .form-control { max-width: 100% !important; }
-    .rota-controls .btn-zap { width: 100% !important; justify-content: center; }
-
-    /* Equipe form em coluna */
-    .equipe-form {
-        grid-template-columns: 1fr !important;
-    }
-    .equipe-form button {
-        width: 100% !important; height: 48px !important;
-    }
-
-    /* Seção topbar */
-    .section-topbar { margin-bottom: 10px; }
 }
 
 /* ===== CONFIGURAÇÕES ===== */
@@ -1943,38 +1470,6 @@ select.form-control, select.input-modern {
     background-color: #c0392b;
 }
 
-/* Responsivo */
-@media (max-width: 600px) {
-    .modal-card-modern {
-        width: 95%;
-        max-height: 90vh;
-    }
-    
-    .modal-body-modern {
-        padding: 20px;
-        max-height: calc(90vh - 160px);
-    }
-    
-    .modal-footer-modern {
-        flex-direction: column;
-        padding: 15px 20px;
-    }
-    
-    .btn-modern {
-        width: 100%;
-    }
-
-    .modal-header-modern {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 8px;
-    }
-
-    .close-btn-modern {
-        width: 50px;
-    }
-}
 /* ── Mesas Ativas no PDV ─────────────────────────────────── */
 .pdv-mesas-bar {
   display: flex;
@@ -2732,10 +2227,6 @@ select.form-control, select.input-modern {
 }
 .pizza-sabor-upload-btn:hover { background: #dce6ff; }
 .pizza-sabor-tipo { font-size: 0.82rem !important; }
-@media (max-width: 480px) {
-    .pizza-sabor-main { grid-template-columns: 1fr 110px 30px; }
-    .pizza-sabor-img-row { grid-template-columns: 40px 1fr 36px; }
-}
 
 /* Prato de almoço */
 .almoco-prato-card {
@@ -3047,27 +2538,6 @@ select.form-control, select.input-modern {
 }
 .btn-modal-fechar:hover { background: #c0392b; }
 
-@media (max-width: 600px) {
-    .modal-produto-content {
-        width: 100% !important;
-        max-width: 100% !important;
-        max-height: 96vh !important;
-        border-radius: 16px 16px 0 0 !important;
-        margin: auto 0 0 0 !important;
-        padding: 16px !important;
-    }
-    .modal-produto-header {
-        top: -16px;
-        margin-top: -16px;
-        padding-top: 16px;
-    }
-    #modal-produto.modal-overlay {
-        align-items: flex-end !important;
-        padding-top: 0 !important;
-    }
-    #builder-pizza { overflow-x: hidden; }
-}
-
 /* ── Painel de Produtos — header ─────────────────────────── */
 .produtos-header {
     display: flex;
@@ -3093,12 +2563,6 @@ select.form-control, select.input-modern {
     width: 220px;
     padding: 10px 14px;
     font-size: 0.9rem;
-}
-@media (max-width: 600px) {
-    .produtos-header { flex-direction: column; align-items: flex-start; }
-    .produtos-header-actions { width: 100%; }
-    .produtos-header-actions .form-control { width: 100%; }
-    .produtos-header-actions .btn { width: 100%; justify-content: center; }
 }
 
 /* ── Painel de Produtos — card grid ─────────────────────── */
@@ -3247,16 +2711,6 @@ select.form-control, select.input-modern {
     gap: 4px;
 }
 
-/* Responsivo: 4 cols → 3 → 2 → 1 */
-@media (max-width: 1100px) {
-    .produto-card { width: calc(33.333% - 11px); }
-}
-@media (max-width: 750px) {
-    .produto-card { width: calc(50% - 8px); min-width: 160px; }
-}
-@media (max-width: 480px) {
-    .produto-card { width: 100%; }
-}
 /* ── Divisor do modal ──────────────────────────────── */
 hr.modal-divisor {
     border: none;
@@ -3374,13 +2828,6 @@ hr.modal-divisor {
 .tipo-btn:hover span {
     color: var(--primary);
 }
-@media (max-width: 768px) {
-    .tipo-btn { width: calc(33.333% - 7px); }
-}
-@media (max-width: 480px) {
-    .tipo-btn { width: calc(50% - 5px); }
-    .tipo-btn small { display: none; }
-}
 
 /* ── Fix: pizza sabor input minúsculo no mobile ─── */
 .pizza-sabor-row .form-control,
@@ -3394,22 +2841,6 @@ hr.modal-divisor {
     font-size: 1rem !important;
     padding: 10px 12px !important;
     min-height: 42px;
-}
-@media (max-width: 480px) {
-    .pizza-sabor-main {
-        flex-wrap: wrap;
-    }
-    .pizza-sabor-main input[data-f="snome"] {
-        flex: 1 1 100%;
-        order: 1;
-    }
-    .pizza-sabor-main select[data-f="stipo"] {
-        flex: 1 1 auto;
-        order: 2;
-    }
-    .pizza-sabor-main .btn-danger {
-        order: 3;
-    }
 }
 
 /* ── builder-type-grid compacto dentro do modal ─── */
@@ -3768,12 +3199,6 @@ hr.modal-divisor {
   padding: 18px;
 }
 
-/* Mobile: um card por linha em telas pequenas */
-@media (max-width: 480px) {
-  .cat-grid {
-    grid-template-columns: 1fr;
-  }
-}
 /* ══════════════════════════════════════════════
    GRADE SEMANAL — Novo Design
 ═══════════════════════════════════════════════ */
@@ -3947,10 +3372,6 @@ hr.modal-divisor {
   background: #fff5f5;
 }
 
-@media (max-width: 480px) {
-  .gs-turno-label { width: 100%; }
-  .gs-turno-row   { flex-direction: column; align-items: flex-start; }
-}
 /* ═══════════════════════════════════════════════════════════════
    PEDIDOS TOPBAR — novo layout limpo
    ═══════════════════════════════════════════════════════════════ */
@@ -4033,22 +3454,6 @@ hr.modal-divisor {
 .btn-reabrir  { background: #d4edda; color: #155724; }
 .btn-relatorio { background: linear-gradient(135deg, #2563eb, #1a4fc0); color: white; }
 
-/* Mobile: botões menores, 2 por linha */
-@media (max-width: 768px) {
-    .pedidos-topbar-row2 {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 8px;
-    }
-    .topbar-btn {
-        padding: 10px 8px;
-        font-size: 0.8rem;
-    }
-    .section-title {
-        font-size: 1.1rem;
-    }
-}
-
 /* ═══════════════════════════════════════════════════════════════
    RELATÓRIO DE PEDIDOS — modal e tabela
    ═══════════════════════════════════════════════════════════════ */
@@ -4077,12 +3482,7 @@ hr.modal-divisor {
     margin-bottom: 16px;
     border: 1px solid #e9ecef;
 }
-@media (max-width: 600px) {
-    #modal-relatorio .modal-content { padding: 12px; }
-    #modal-relatorio .rel-filtros { flex-direction: column; }
-    #modal-relatorio table { font-size: 0.75rem; }
-    #modal-relatorio th, #modal-relatorio td { padding: 8px 6px; }
-}
+
 /* ══════════════════════════════════════════════════════
    SIDEBAR RETRÁTIL (desktop)
    ══════════════════════════════════════════════════════ */
@@ -4151,17 +3551,6 @@ body.sidebar-collapsed .main-content {
   cursor: pointer; font-size: 0.78rem; font-weight: 600;
 }
 
-/* Padding extra no fundo para não ficar atrás da navbar mobile */
-@media (max-width: 768px) {
-  .modal-actions {
-    padding-bottom: max(16px, env(safe-area-inset-bottom, 16px)) !important;
-  }
-  .modal-content {
-    padding-bottom: max(16px, env(safe-area-inset-bottom, 16px)) !important;
-  }
-  #pdv-grid { padding-bottom: 90px !important; }
-  .tab-content { padding-bottom: 80px !important; }
-}
 .topbar-btn.btn-baixar-mesas { background: #e8f4fd; color: #2980b9; }
 .topbar-btn.btn-baixar-mesas:hover { background: #2980b9; color: #fff; }
 .topbar-btn.btn-baixar-nd { background: #f3e5f5; color: #7b1fa2; }
@@ -4274,17 +3663,6 @@ body.sidebar-collapsed .main-content {
   padding: 40px;
   gap: 12px;
   color: #666;
-}
-
-/* ── Responsivo novas abas ── */
-@media (max-width: 600px) {
-  .est-kpi-wrap {
-    grid-template-columns: 1fr 1fr;
-  }
-  #ft-panel-insumos table,
-  #crm-lista-clientes {
-    font-size: 0.78rem;
-  }
 }
 
 /* ============================================================
@@ -4888,29 +4266,7 @@ body.sidebar-collapsed .main-content {
     background: #4338ca;
 }
 
-/* Responsivo mobile */
-@media (max-width: 768px) {
-    .pdv-main-grid {
-        grid-template-columns: 1fr;
-    }
 
-    .pdv-cart-col {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        max-height: 70vh;
-        border-radius: 20px 20px 0 0;
-        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
-        transform: translateY(100%);
-        transition: transform 0.3s ease;
-        z-index: 1000;
-    }
-
-    .pdv-cart-col.open {
-        transform: translateY(0);
-    }
-}
 
 /* Impressão do modal de fechamento */
 @media print {
@@ -4958,4 +4314,226 @@ body.sidebar-collapsed .main-content {
 #modal-editar-pedido .form-control:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(255,68,31,0.1);
+}
+
+/* ==========================================================================
+   CSS RESPONSIVO UNIFICADO E DEFINITIVO (MOBILE & TABLETS)
+   Apague todos os outros @media do arquivo e deixe apenas este.
+   ========================================================================== */
+
+/* --- 1. TELA MÉDIA / TABLET (até 1100px) --- */
+@media (max-width: 1100px) {
+    .produto-card { width: calc(33.333% - 11px); }
+}
+
+/* --- 2. MOBILE LARGO E PDV (até 768px) --- */
+@media (max-width: 768px) {
+    /* RESET GLOBAL E MENU LATERAL (Bottom Nav) */
+    html, body {
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        height: auto !important;
+        min-height: 100vh !important;
+    }
+    
+    body {
+        display: block !important;
+        padding-bottom: 80px !important;
+    }
+
+    .main-content {
+        margin: 0 !important;
+        padding: 15px !important;
+        width: 100% !important;
+        height: auto !important;
+        overflow: visible !important;
+    }
+
+    .sidebar {
+        position: fixed !important;
+        bottom: 0 !important; left: 0 !important; right: 0 !important; top: auto !important;
+        width: 100% !important; height: 65px !important;
+        background: var(--dark) !important;
+        z-index: 99999 !important;
+        display: flex !important; flex-direction: row !important; justify-content: space-between !important;
+        padding: 0 !important;
+        box-shadow: 0 -4px 20px rgba(0,0,0,0.4);
+        border-top: 1px solid #34495e;
+    }
+
+    .brand, #user-cargo, #user-email, .sidebar > div:not(.menu):not(.menu-item) { display: none !important; }
+
+    .menu {
+        display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important;
+        align-items: center !important; justify-content: flex-start !important;
+        height: 100% !important; width: 100% !important;
+        overflow-x: auto !important; overflow-y: hidden !important;
+        padding: 0 5px !important; margin: 0 !important;
+        scrollbar-width: none;
+    }
+    .menu::-webkit-scrollbar { display: none; }
+
+    .menu-item {
+        flex: 0 0 auto !important; min-width: 70px !important; height: 100% !important;
+        padding: 0 !important; border: none !important;
+        justify-content: center !important; align-items: center !important;
+        display: flex !important; flex-direction: column !important; gap: 4px !important;
+        font-size: 0.7rem !important; color: #bdc3c7 !important;
+    }
+    .menu-item i { font-size: 1.4rem !important; margin-bottom: 2px !important; width: auto !important; }
+    .menu-item[onclick="logout()"] { background: #c0392b !important; color: white !important; margin-left: auto !important; }
+
+    /* FORMULÁRIOS E TABELAS */
+    .form-group, .filtro-bar, #equipe .card > div > div { display: flex !important; flex-direction: column !important; gap: 10px !important; }
+    input, select, button:not([style*="32px"]):not([id$="close"]):not(.close-btn-modern), .form-control { width: 100% !important; max-width: 100% !important; margin: 0 !important; height: 45px !important; }
+    .btn-filtrar { width: 100% !important; margin-top: 5px; }
+
+    .card, .table-container, .subtab-content { display: block !important; width: 100% !important; overflow-x: auto !important; -webkit-overflow-scrolling: touch; padding-bottom: 10px !important; }
+    table { width: 100% !important; min-width: 800px !important; }
+    .actions-cell { display: flex !important; flex-direction: column !important; gap: 5px !important; }
+    .actions-cell button { width: 100% !important; padding: 8px !important; }
+    .subtab-content table { display: none !important; }
+
+    /* CARDS MOBILE */
+    .mobile-cards-container { display: flex !important; flex-direction: column !important; gap: 12px !important; width: 100% !important; }
+    .mobile-card { background: white !important; border-radius: 12px !important; padding: 15px !important; box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important; border-left: 4px solid var(--primary) !important; }
+    .mobile-card-header { display: flex !important; justify-content: space-between !important; align-items: center !important; margin-bottom: 10px !important; padding-bottom: 10px !important; border-bottom: 1px solid #eee !important; }
+    .mobile-card-title { font-size: 1.1rem !important; font-weight: bold !important; color: var(--dark) !important; }
+    .mobile-card-row { display: flex !important; justify-content: space-between !important; padding: 6px 0 !important; font-size: 0.9rem !important; }
+    .mobile-card-label { color: #7f8c8d !important; font-weight: 600 !important; }
+    .mobile-card-value { color: var(--dark) !important; text-align: right !important; }
+    .mobile-card-actions { display: flex !important; gap: 8px !important; margin-top: 12px !important; }
+    .mobile-card-actions button { flex: 1 !important; height: 40px !important; font-size: 0.85rem !important; display: flex !important; align-items: center !important; justify-content: center !important; gap: 5px !important; }
+
+    /* DASHBOARD / PEDIDOS / EQUIPE */
+    .dash-kpi-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .kpi-card { padding: 12px 14px; gap: 10px; }
+    .kpi-icon { width: 36px; height: 36px; font-size: 1rem; }
+    .kpi-card .value { font-size: 1rem; }
+    .dash-rankings { grid-template-columns: 1fr; }
+    .pedidos-list { display: flex !important; flex-direction: column; gap: 10px; }
+    .pedidos-table-wrap { display: none !important; }
+    .rota-controls { flex-direction: column; }
+    .rota-controls .form-control { max-width: 100% !important; }
+    .rota-controls .btn-zap { width: 100% !important; justify-content: center; }
+    .pedidos-topbar-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .topbar-btn { padding: 10px 8px; font-size: 0.8rem; }
+    .section-title { font-size: 1.1rem; }
+    .equipe-form { grid-template-columns: 1fr !important; }
+    .equipe-form button { width: 100% !important; height: 48px !important; }
+    .section-topbar { margin-bottom: 10px; }
+
+    /* MODAIS GERAIS */
+    .modal-content { width: 95% !important; max-width: 95% !important; margin: 5% auto !important; max-height: 85vh !important; padding-bottom: max(16px, env(safe-area-inset-bottom, 16px)) !important; }
+    .modal-bottom-sheet { padding-bottom: 75px !important; }
+    .modal-actions { padding-bottom: max(10px, env(safe-area-inset-bottom, 10px)) !important; }
+    .actions-grid { display: grid !important; grid-template-columns: repeat(3, 1fr) !important; gap: 8px !important; }
+    button.action-card { height: auto !important; min-height: 90px !important; aspect-ratio: 1 / 1 !important; display: flex !important; flex-direction: column !important; justify-content: center !important; align-items: center !important; padding: 5px !important; margin: 0 !important; width: 100% !important; }
+    .action-card i { font-size: 1.8rem !important; margin-bottom: 5px !important; height: auto !important; width: auto !important; }
+    .action-card span { font-size: 0.7rem !important; line-height: 1.1 !important; white-space: normal !important; height: auto !important; text-align: center !important; }
+    .tipo-btn { width: calc(33.333% - 7px); }
+
+    /* --- PDV MOBILE --- */
+    .pdv-header-bar { flex-direction: column; align-items: flex-start; }
+    .pdv-view-btns  { display: none !important; }
+    
+    .pdv-tabs { display: flex !important; background: #fff; border-bottom: 2px solid #e0e0e0; position: sticky; top: 0; z-index: 100; flex-shrink: 0; border-radius: 10px 10px 0 0; overflow: hidden; }
+    .pdv-tab-btn { flex: 1; padding: 10px 4px; border: none; background: #f5f5f5; font-size: 0.75rem; font-weight: 700; color: #666; cursor: pointer; border-right: 1px solid #e0e0e0; display: flex; flex-direction: column; align-items: center; gap: 3px; border-bottom: 3px solid transparent; margin-bottom: -2px; }
+    .pdv-tab-btn:last-child { border-right: none; }
+    .pdv-tab-btn.active { background: var(--primary); color: #fff; border-bottom-color: var(--primary); }
+    .pdv-tab-btn.active i { color: #fff !important; opacity: 1 !important; }
+    .pdv-tab-btn i { font-size: 1.1rem; }
+
+    /* TRAVA A ALTURA TOTAL DO PDV NO CELULAR */
+    .pdv-layout {
+        display: block !important;
+        height: calc(100dvh - 180px) !important; 
+        background: #fff !important;
+        border: none !important;
+        border-radius: 0 !important;
+        overflow: hidden !important;
+        margin: 0 !important;
+    }
+
+    /* REMOVIDO O display: flex !important DAQUI PARA AS ABAS FUNCIONAREM */
+    .pdv-tab-panel { display: none !important; height: 100% !important; width: 100% !important; background: #fff !important; }
+    .pdv-tab-panel.pdv-tab-active { display: flex !important; flex-direction: column !important; }
+
+    .pdv-col-esq, .pdv-col-dir { width: 100% !important; height: 100% !important; border: none !important; background: #fff !important; }
+
+    /* O Topo (Cliente/Delivery) rola sozinho se ficar muito grande */
+    .pdv-dir-topo-fixo { flex-shrink: 0 !important; max-height: 45% !important; overflow-y: auto !important; border-bottom: 1px solid #e2e8f0; }
+    
+    /* O Meio (Itens) SEMPRE terá pelo menos 80px de altura e rola */
+    .pdv-dir-lista-wrap { flex: 1 !important; min-height: 80px !important; overflow-y: auto !important; }
+    
+    /* O Rodapé (Total e Botão Verde) NUNCA encolhe e tem 85px de padding para não ficar atrás da barra "VER PEDIDO" */
+    .pdv-dir-totais-rodape { flex-shrink: 0 !important; padding: 10px 12px 85px 12px !important; background: #f8fafc; border-top: 2px solid #e2e8f0; z-index: 10; }
+
+    .pdv-mobile-footer { display: flex !important; position: fixed; bottom: 65px; left: 0; right: 0; z-index: 1000; } 
+
+    .pdv-cats { overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; flex-shrink: 0; }
+    .pdv-cats::-webkit-scrollbar { display: none; }
+    .pdv-cat-chip { padding: 9px 14px; font-size: 0.74rem; flex-shrink: 0; }
+    .pdv-cat-row { grid-template-columns: repeat(3, 1fr) !important; gap: 7px !important; }
+    .pdv-card { min-height: 52px; }
+    .pdv-produtos.pdv-tab-active { overflow-y: hidden !important; }
+    #pdv-grid { padding-bottom: 80px !important; overflow-y: auto !important; }
+}
+
+/* --- 3. MOBILE MÉDIO (até 750px) --- */
+@media (max-width: 750px) {
+    .produto-card { width: calc(50% - 8px); min-width: 160px; }
+}
+
+/* --- 4. MOBILE PEQUENO (até 600px) --- */
+@media (max-width: 600px) {
+    .modal-content { width: 95%; padding: 20px; max-height: 90vh; }
+    .modal-actions { flex-direction: column; }
+    .modal-actions .btn { width: 100%; }
+    
+    .modal-card-modern { width: 95%; max-height: 90vh; }
+    .modal-body-modern { padding: 20px; max-height: calc(90vh - 160px); }
+    .modal-footer-modern { flex-direction: column; padding: 15px 20px; }
+    .btn-modern { width: 100%; }
+    .modal-header-modern { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .close-btn-modern { width: 50px; }
+    
+    .est-kpi-wrap { grid-template-columns: 1fr 1fr; }
+    #ft-panel-insumos table, #crm-lista-clientes { font-size: 0.78rem; }
+    #modal-relatorio .modal-content { padding: 12px; }
+    #modal-relatorio .rel-filtros { flex-direction: column; }
+    #modal-relatorio table { font-size: 0.75rem; }
+    #modal-relatorio th, #modal-relatorio td { padding: 8px 6px; }
+    
+    .produtos-header { flex-direction: column; align-items: flex-start; }
+    .produtos-header-actions { width: 100%; }
+    .produtos-header-actions .form-control { width: 100%; }
+    .produtos-header-actions .btn { width: 100%; justify-content: center; }
+    
+    .modal-produto-content { width: 100% !important; max-width: 100% !important; max-height: 96vh !important; border-radius: 16px 16px 0 0 !important; margin: auto 0 0 0 !important; padding: 16px !important; }
+    .modal-produto-header { top: -16px; margin-top: -16px; padding-top: 16px; }
+    #modal-produto.modal-overlay { align-items: flex-end !important; padding-top: 0 !important; }
+    #builder-pizza { overflow-x: hidden; }
+}
+
+/* --- 5. MOBILE EXTRA PEQUENO (até 480px) --- */
+@media (max-width: 480px) {
+    .produto-card { width: 100%; }
+    .cat-grid { grid-template-columns: 1fr; }
+    .tipo-btn { width: calc(50% - 5px); }
+    .tipo-btn small { display: none; }
+    
+    .gs-turno-label { width: 100%; }
+    .gs-turno-row { flex-direction: column; align-items: flex-start; }
+    
+    .pizza-sabor-main { flex-wrap: wrap; grid-template-columns: 1fr 110px 30px; }
+    .pizza-sabor-main input[data-f="snome"] { flex: 1 1 100%; order: 1; }
+    .pizza-sabor-main select[data-f="stipo"] { flex: 1 1 auto; order: 2; }
+    .pizza-sabor-main .btn-danger { order: 3; }
+    .pizza-sabor-img-row { grid-template-columns: 40px 1fr 36px; }
+    
+    .pdv-cat-row { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)) !important; }
+    .pdv-card-img { width: 100%; }
+    .pdv-dir-valor-total strong { font-size: 1.2rem; }
 }

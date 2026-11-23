@@ -591,326 +591,107 @@
             </div>
 
             <!-- ══ COLUNA DIREITA: Pedido ══ -->
-            <div class="pdv-col-dir pdv-tab-panel" id="pdv-panel-carrinho">
+            <!-- ══ COLUNA DIREITA: Pedido ══ -->
+<!-- ══ COLUNA DIREITA: Pedido ══ -->
+<div class="pdv-col-dir pdv-tab-panel" id="pdv-panel-carrinho">
 
-              <div class="pdv-dir-titulo"><span data-i18n="pdv.novo_pedido">Nuevo Pedido</span></div>
+  <!-- TOPO FIXO: Tipo, Cliente e Delivery -->
+  <div class="pdv-dir-topo-fixo">
+    <div class="pdv-dir-titulo"><span data-i18n="pdv.novo_pedido">Nuevo Pedido</span></div>
 
-              <!-- Tipo de pedido — abas -->
-              <div class="pdv-tipo-tabs">
-                <button class="pdv-tipo-tab active" data-tipo="balcao"
-                  onclick="pdvSelecionarTipo('balcao',this)"><span data-i18n="pdv.tipo_balcao">Mostrador</span></button>
-                <button class="pdv-tipo-tab" data-tipo="delivery"
-                  onclick="pdvSelecionarTipo('delivery',this)"><span data-i18n="pdv.tipo_delivery">Delivery</span></button>
-                <button class="pdv-tipo-tab" data-tipo="retirada"
-                  onclick="pdvSelecionarTipo('retirada',this)"><span data-i18n="pdv.tipo_retirada">Retirada</span></button>
+    <div class="pdv-tipo-tabs">
+      <button class="pdv-tipo-tab active" data-tipo="balcao" onclick="pdvSelecionarTipo('balcao',this)"><span data-i18n="pdv.tipo_balcao">Mostrador</span></button>
+      <button class="pdv-tipo-tab" data-tipo="delivery" onclick="pdvSelecionarTipo('delivery',this)"><span data-i18n="pdv.tipo_delivery">Delivery</span></button>
+      <button class="pdv-tipo-tab" data-tipo="retirada" onclick="pdvSelecionarTipo('retirada',this)"><span data-i18n="pdv.tipo_retirada">Retirada</span></button>
+    </div>
+    <input type="hidden" id="balcao-tipo-entrega" value="balcao">
 
-              </div>
-              <input type="hidden" id="balcao-tipo-entrega" value="balcao">
+    <div class="pdv-dir-dados">
+      <div class="pdv-dado-row">
+        <div style="flex:0 0 76px">
+          <label class="pdv-dir-label" data-i18n="pdv.mesa_num">Mesa Nº</label>
+          <input type="number" id="balcao-mesa" class="pdv-dir-input" placeholder="Nº" min="1" oninput="atualizarTextoBotaoPDV()" />
+        </div>
+        <div style="flex:1">
+          <label class="pdv-dir-label" data-i18n="crm.tabela_cliente">Cliente</label>
+          <input type="text" id="balcao-cliente" class="pdv-dir-input" placeholder="Nome" oninput="pdvNomeInput()" />
+        </div>
+      </div>
+      <div>
+        <label class="pdv-dir-label" data-i18n="crm.tel_label">Teléfono</label>
+        <input type="tel" id="balcao-telefone" class="form-control" placeholder="Ex: 0981234567" oninput="pdvTelefoneInput(this.value)" />
+      </div>
+    </div>
 
-              <!-- Dados cliente -->
-              <div class="pdv-dir-dados">
-                <div class="pdv-dado-row">
-                  <div style="flex:0 0 76px">
-                    <label class="pdv-dir-label" data-i18n="pdv.mesa_num">Mesa Nº</label>
-                    <input type="number" id="balcao-mesa" class="pdv-dir-input" placeholder="Nº" min="1" oninput="atualizarTextoBotaoPDV()" />
-                  </div>
-                  <div style="flex:1">
-                    <label class="pdv-dir-label" data-i18n="crm.tabela_cliente">Cliente</label>
-                    <input type="text" id="balcao-cliente" class="pdv-dir-input" data-i18n-ph="pdv.nome_ph" placeholder="Nome" oninput="pdvNomeInput()" />
-                  </div>
-                </div>
-                <div>
-                  <label class="pdv-dir-label" data-i18n="crm.tel_label">Teléfono</label>
-                  <input type="tel" id="balcao-telefone" class="form-control"
-                  data-i18n-ph="pdv.telefone_ph" placeholder="Ex: 0981234567"
-                  oninput="pdvTelefoneInput(this.value)" />
-                
-                <!-- Box de cashback — aparece automaticamente quando cliente tem saldo -->
-                <div id="pdv-cashback-box" style="display:none;background:#fff8e1;border:1.5px solid #ffd54f;
-                  border-radius:10px;padding:10px 12px;margin-top:6px;font-size:0.85rem">
-                  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">
-                    <div>
-                      <div style="font-weight:700;color:#795548" data-i18n="pdv.cashback_disponivel">💰 Cashback disponible</div>
-                      <div style="color:#555"><b id="pdv-cash-nome">—</b>: <span style="color:#1a7a2e;font-weight:700" id="pdv-cash-saldo">—</span></div>
-                    </div>
-                    <button id="pdv-btn-usar-cash" onclick="pdvToggleCashback()"
-                      style="padding:7px 14px;background:#ff9800;color:#fff;border:none;border-radius:8px;
-                            font-weight:700;cursor:pointer;font-size:0.82rem">
-                      💰 <span data-i18n="pdv.usar_cashback">Usar Cashback</span>
-                    </button>
-                  </div>
-                </div>
-                </div>
-              </div>
+    <!-- Delivery Row (Oculto por padrão, ativado ao clicar na aba Delivery) -->
+    <div id="pdv-delivery-row" style="display:none;padding:0 12px 12px; background:#fff; border-bottom: 1px dashed #e2e8f0;">
+      <label class="pdv-dir-label">📍 <span data-i18n="pdv.endereco">Dirección</span></label>
+      <input type="text" id="balcao-endereco" class="pdv-dir-input" data-i18n-ph="pdv.endereco_ph" placeholder="Calle, número, barrio..." />
+      
+      <label class="pdv-dir-label" style="margin-top:5px">🗺️ <span data-i18n="pdv.link_gmaps">Link Google Maps</span></label>
+      <div style="display:flex;gap:5px;align-items:center">
+        <input type="url" id="balcao-gmaps-link" class="pdv-dir-input" placeholder="https://..." style="flex:1;font-size:0.78rem" oninput="pdvOnGmapsLinkInput(this.value)" />
+        <a id="btn-abrir-gmaps" href="#" target="_blank" rel="noopener" style="display:none;padding:6px 8px;background:#4285f4;color:#fff;border-radius:5px;font-size:0.8rem;text-decoration:none;white-space:nowrap;line-height:1.4">🔗</a>
+      </div>
+      <input type="hidden" id="balcao-geo-lat" value="">
+      <input type="hidden" id="balcao-geo-lng" value="">
 
-              <!-- Delivery row -->
-              <div id="pdv-delivery-row" style="display:none;padding:0 8px 6px">
+            <div style="display:flex;gap:6px;align-items:center;margin-top:6px">
+        <div style="flex:1">
+          <label class="pdv-dir-label">🛵 <span data-i18n="pdv.frete_label">Valor Delivery (Gs)</span></label>
+          <input type="number" id="balcao-frete" class="pdv-dir-input" placeholder="Gs 0" min="0" step="1000" style="border-color:#27ae60;width:100%;box-sizing:border-box" oninput="atualizarCarrinhoPDV()" />
+          <input type="hidden" id="balcao-frete-motoboy" value="0">
+        </div>
+        <div style="flex-shrink:0;padding-top:18px;display:flex;gap:4px">
+          <!-- NOVO BOTÃO APLICAR -->
+          <button onclick="aplicarFretePDV()" style="padding:8px 11px;background:#2980b9;color:#fff;border:none;border-radius:7px;font-size:0.78rem;cursor:pointer;font-weight:700;white-space:nowrap;display:flex;align-items:center;height:36px">
+            ✓ Aplicar
+          </button>
+          <button id="btn-gps-pdv" onclick="calcularFretePDV()" style="padding:8px 11px;background:linear-gradient(135deg,#1a7a2e,#145a22);color:#fff;border:none;border-radius:7px;font-size:0.78rem;cursor:pointer;font-weight:700;white-space:nowrap;display:flex;align-items:center;gap:4px;height:36px">
+            📍 <span data-i18n="pdv.calcular_frete">GPS</span>
+          </button>
+        </div>
+      </div>
+      <div id="frete-msg-pdv" style="font-size:0.76rem;margin-top:4px;min-height:16px;padding:3px 6px;border-radius:5px;"></div>
+    </div>
+  </div>
 
-                <!-- Endereço de texto -->
-                <label class="pdv-dir-label">📍 <span data-i18n="pdv.endereco">Dirección</span></label>
-                <input type="text" id="balcao-endereco" class="pdv-dir-input"
-                  data-i18n-ph="pdv.endereco_ph" placeholder="Calle, número, barrio..." />
+  <!-- MEIO: Lista de Itens (Rola) -->
+  <div class="pdv-dir-lista-wrap">
+    <div id="pdv-lista" class="pdv-cards-lista"></div>
+  </div>
 
-                <!-- Link do Google Maps -->
-                <label class="pdv-dir-label" style="margin-top:5px">
-                  🗺️ <span data-i18n="pdv.link_gmaps">Link Google Maps</span>
-                </label>
-                <div style="display:flex;gap:5px;align-items:center">
-                  <input type="url" id="balcao-gmaps-link" class="pdv-dir-input"
-                    placeholder="https://maps.app.goo.gl/... ou cole o link copiado"
-                    style="flex:1;font-size:0.78rem"
-                    oninput="pdvOnGmapsLinkInput(this.value)" />
-                  <a id="btn-abrir-gmaps" href="#" target="_blank" rel="noopener"
-                    title="Abrir en Google Maps"
-                    style="display:none;padding:6px 8px;background:#4285f4;color:#fff;border-radius:5px;
-                           font-size:0.8rem;text-decoration:none;white-space:nowrap;line-height:1.4">
-                    🔗
-                  </a>
-                </div>
+  <!-- RODAPÉ: Total e Botão de Finalizar -->
+  <div class="pdv-dir-totais-rodape">
+    <div style="display:flex;justify-content:space-between;font-size:0.85rem;color:#666;margin-bottom:4px">
+      <span data-i18n="pdv.subtotal">Subtotal</span>
+      <span>Gs <span id="balcao-subtotal">0</span></span>
+    </div>
+    
+    <!-- O desconto pode ficar oculto aqui no rodapé pois agora está no modal, 
+         mas deixamos o input hidden para não quebrar o JS antigo -->
+    <input type="hidden" id="pdv-desconto-tipo" value="fixo">
+    <input type="hidden" id="pdv-desconto-val" value="0">
 
-                <input type="hidden" id="balcao-geo-lat" value="">
-                <input type="hidden" id="balcao-geo-lng" value="">
+    <div class="pdv-dir-valor-total" style="margin-bottom:12px; border:none; padding:0;">
+      <span data-i18n="pdv.valor_total">Valor Total</span>
+      <span>Gs <strong id="balcao-total">0</strong></span>
+    </div>
+    
+    <div style="display:flex;gap:8px">
+      <button class="pdv-btn-cancelar" onclick="limparCarrinhoPDV()" style="flex:0 0 45px; padding:12px 0; justify-content:center" title="Cancelar Venda">
+        <i class="fas fa-trash"></i>
+      </button>
+      <button class="pdv-btn-lancar" onclick="abrirModalPagamentoPDV()" id="pdv-btn-lancar" style="flex:1">
+        <i class="fas fa-check-circle"></i> <span id="pdv-btn-text" data-i18n="pdv.receber_finalizar">Receber e Finalizar</span>
+      </button>
+    </div>
+    <button class="pdv-btn-lancar" id="pdv-btn-finalizar-mesa" style="display:none;width:100%;margin-top:8px;background:linear-gradient(135deg,#e74c3c,#c0392b)" onclick="finalizarPedidoMesaPDV()">
+      <i class="fas fa-flag-checkered"></i> <span data-i18n="pdv.finalizar_pedido">Finalizar Pedido</span>
+    </button>
+  </div>
 
-                <!-- Frete + botão calcular -->
-                <div style="display:flex;gap:6px;align-items:center;margin-top:6px">
-                  <div style="flex:1">
-                    <label class="pdv-dir-label">🛵 <span data-i18n="pdv.frete_label">Valor Delivery (Gs)</span></label>
-                    <input type="number" id="balcao-frete" class="pdv-dir-input"
-                      placeholder="Gs 0" min="0" step="1000"
-                      style="border-color:#27ae60;width:100%;box-sizing:border-box"
-                      oninput="atualizarCarrinhoPDV()" />
-                  </div>
-                  <div style="flex-shrink:0;padding-top:18px">
-                    <button id="btn-gps-pdv" onclick="calcularFretePDV()"
-                      style="padding:8px 11px;background:linear-gradient(135deg,#1a7a2e,#145a22);
-                             color:#fff;border:none;border-radius:7px;font-size:0.78rem;
-                             cursor:pointer;font-weight:700;white-space:nowrap;
-                             display:flex;align-items:center;gap:4px;height:36px">
-                      📍 <span data-i18n="pdv.calcular_frete">Calcular</span>
-                    </button>
-                  </div>
-                </div>
-
-                <!-- Mensagem de resultado do cálculo -->
-                <div id="frete-msg-pdv"
-                  style="font-size:0.76rem;margin-top:4px;min-height:16px;
-                         padding:3px 6px;border-radius:5px;transition:background .2s"></div>
-              </div>
-
-              <!-- Desconto -->
-              <div class="pdv-dir-desconto">
-                <div class="pdv-dir-desc-label">🏷️ <span data-i18n="pdv.desconto">DESCUENTO</span></div>
-                <div style="display:flex;gap:6px">
-                  <select id="pdv-desconto-tipo" onchange="atualizarCarrinhoPDV()"
-                    class="pdv-dir-input" style="flex:0 0 88px">
-                    <option value="fixo" data-i18n="pdv.gs_fixo">Gs fixo</option>
-                    <option value="percentual" data-i18n="pdv.percentual">% perc.</option>
-                  </select>
-                  <input type="number" id="pdv-desconto-val" min="0" step="1000"
-                    placeholder="0" oninput="atualizarCarrinhoPDV()"
-                    class="pdv-dir-input" style="flex:1;text-align:center">
-                </div>
-              </div>
-
-              <!-- Lista de itens (cards) -->
-              <div class="pdv-dir-lista-wrap">
-                <div id="pdv-lista" class="pdv-cards-lista"></div>
-              </div>
-
-              <!-- Scroll wrapper: totais + pagamento — footer fica fora e sempre visível -->
-              <div class="pdv-dir-bottom-scroll">
-
-              <!-- Totais -->
-              <div class="pdv-dir-totais">
-                <div class="pdv-dir-total-row" id="pdv-row-desconto" style="display:none;color:#e67e22">
-                  <span data-i18n="pdv.desconto_label">– Descuento</span>
-                  <span>Gs <span id="balcao-desconto">0</span></span>
-                </div>
-                <div class="pdv-dir-total-row" style="font-size:0.78rem;color:#888">
-                  <span data-i18n="pdv.subtotal">Subtotal</span>
-                  <span>Gs <span id="balcao-subtotal">0</span></span>
-                </div>
-                <div class="pdv-dir-valor-total">
-                  <span data-i18n="pdv.valor_total">Valor Total</span>
-                  <span>Gs <strong id="balcao-total">0</strong></span>
-                </div>
-              </div>
-
-                            <!-- Pagamento -->
-              <div style="padding:4px 8px 0">
-                <select id="balcao-pag" class="pdv-dir-input"
-                  onchange="atualizarInfoPagPDV(window._pdvTotalBaseSemTaxas || 0)">
-                  <option value="Efetivo">💵 Efectivo</option>
-                  <option value="TarjetaDebito">💳 Tarjeta Débito</option>
-                  <option value="TarjetaCredito">💳 Tarjeta Crédito</option>
-                  <option value="TarjetaBRDebito">💳🇧🇷 Tarjeta BR Débito</option>
-                  <option value="TarjetaBRCredito">💳🇧🇷 Tarjeta BR Crédito</option>
-                  <option value="Pix">✅ Pix</option>
-                  <option value="Transferencia">🏦 Alias (PY)</option>
-                  <option value="Qr">📱 QR</option>
-                  <option value="Multipagamento">🔀 Dividir</option>
-                  <option value="Mensalista">🎫 Mensalista</option>
-                  <option value="NaNota">📋 Colocar na Nota</option>
-                </select>
-                <div id="balcao-pag-info" style="display:none;background:#e8f5e9;border:1px solid #4caf50;border-radius:5px;padding:5px 8px;font-size:0.82rem;color:#1b5e20;margin-top:3px"></div>
-
-                <!-- Taxa de Serviço (opcional, presume-se consumo no local) -->
-                <div style="display:flex;align-items:center;gap:8px;background:#fff8e1;border:1.5px solid #f0c14b;border-radius:8px;padding:8px 10px;margin-top:6px">
-                  <input type="checkbox" id="pdv-check-taxa-servico" onchange="pdvToggleTaxaServico()" style="width:18px;height:18px;flex-shrink:0">
-                  <label for="pdv-check-taxa-servico" style="font-size:0.82rem;font-weight:700;color:#7a5c00;flex:1;cursor:pointer" data-i18n="pdv.taxa_servico_label">
-                    Cobrar <span id="pdv-taxa-servico-pct-label">10</span>% de taxa de Serviço
-                  </label>
-                  <input type="number" id="pdv-taxa-servico-pct" value="10" min="0" max="100" step="1"
-                    style="width:52px;padding:4px;border:1px solid #f0c14b;border-radius:5px;text-align:center;font-size:0.8rem;display:none"
-                    oninput="pdvAtualizarPctServico()">
-                </div>
-              </div>
-
-              <!-- Box Efetivo: valor recebido + troco -->
-              <div id="pdv-efetivo-box" style="display:none;padding:4px 8px 0">
-                <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
-                  <label style="font-size:0.78rem;font-weight:700;color:#555;white-space:nowrap;min-width:80px">💵 Recebido</label>
-                  <input
-                    id="pdv-valor-recebido"
-                    type="number"
-                    min="0"
-                    step="1000"
-                    placeholder="Gs 0"
-                    oninput="pdvCalcTroco()"
-                    style="flex:1;padding:6px 8px;border:1.5px solid #d1d5db;border-radius:6px;font-size:0.9rem;font-weight:700;text-align:right;color:#1a1a1a;background:#fffde7"
-                  />
-                </div>
-                <div
-                  id="pdv-troco-row"
-                  style="display:none;padding:6px 10px;border-radius:6px;border:1.5px solid #86efac;background:#f0fdf4;
-                         display:flex;justify-content:space-between;align-items:center"
-                >
-                  <span style="font-size:0.8rem;font-weight:700;color:#374151">💵 Troco / Vuelta</span>
-                  <span id="pdv-troco-val" style="font-size:0.95rem;font-weight:900;color:#15803d">Gs 0</span>
-                </div>
-              </div>
-
-              <!-- Multipagamento -->
-              <div id="box-multi-pdv" style="display:none;padding:4px 8px 0">
-                <button type="button" onclick="voltarPagamentoPDVUnico()"
-                  style="width:100%;padding:7px;background:#eef4ff;color:#2980b9;border:1.5px solid #2980b9;border-radius:5px;font-weight:700;cursor:pointer;font-size:0.78rem;margin-bottom:5px">
-                  🔁 Pagamento único
-                </button>
-                <div id="multi-partes-pdv"></div>
-                <button type="button" onclick="adicionarPartePagamentoPDV()"
-                  style="width:100%;padding:6px;background:#f8f9fa;color:#555;border:1.5px dashed #ccc;border-radius:5px;font-weight:600;cursor:pointer;font-size:0.76rem;margin-top:3px">
-                  + Adicionar forma
-                </button>
-                <div id="multi-status-pdv" style="display:none;margin-top:5px;padding:7px 10px;border-radius:5px;background:#eafaf1;border:1.5px solid #27ae60">
-                  <span id="multi-restante-pdv" style="font-weight:700;font-size:0.83rem"></span>
-                </div>
-              </div>
-
-                            <!-- Box Mensalista -->
-              <div id="box-mensalista-pdv" style="display:none;padding:4px 8px 0">
-                <div style="font-size:0.72rem;font-weight:700;color:#1a7a2e;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">🎫 Selecionar Mensalista</div>
-                <input type="text" id="pdv-mens-busca" placeholder="Buscar cliente mensualista..."
-                  oninput="pdvFiltrarMensalistas()"
-                  style="width:100%;padding:6px 9px;border:1.5px solid #d1fae5;border-radius:6px;font-size:0.8rem;outline:none;margin-bottom:5px">
-                <div id="pdv-mens-lista" style="max-height:130px;overflow-y:auto;display:flex;flex-direction:column;gap:3px"></div>
-                <div id="pdv-mens-selecionado" style="display:none;background:#f0fdf4;border:1.5px solid #86efac;border-radius:7px;padding:7px 10px;margin-top:5px">
-                  <div style="display:flex;justify-content:space-between;align-items:center">
-                    <div>
-                      <div id="pdv-mens-sel-nome" style="font-weight:700;font-size:0.85rem"></div>
-                      <div id="pdv-mens-sel-saldo" style="font-size:0.75rem;color:#15803d;margin-top:1px"></div>
-                    </div>
-                    <button onclick="pdvDeselecionarMensalista()" style="background:#fee2e2;border:none;border-radius:5px;padding:3px 7px;cursor:pointer;font-size:0.75rem;color:#dc2626">✕</button>
-                  </div>
-
-                  <!-- NOVO: status do saldo -->
-                  <div id="pdv-mens-status" style="margin-top:8px;padding:8px 10px;border-radius:7px;font-size:0.78rem;font-weight:600;line-height:1.4"></div>
-
-                  <!-- NOVO: seletor de pagamento complementar -->
-                  <div id="pdv-mens-complemento" style="display:none;margin-top:8px">
-                    <label style="font-size:0.72rem;font-weight:700;color:#7d5a00;text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:3px">
-                      💳 Cobrar o restante em:
-                    </label>
-                    <select id="pdv-mens-metodo-resto" class="pdv-dir-input" style="font-weight:700">
-                      <option value="Efetivo">💵 Efectivo</option>
-                      <option value="Cartao">💳 Tarjeta</option>
-                      <option value="CartaoBR">💳🇧🇷 Tarjeta BR</option>
-                      <option value="Pix">✅ Pix</option>
-                      <option value="Transferencia">🏦 Alias</option>
-                      <option value="QrMaquina">📱 QR Maquina</option>
-                      <option value="QrCelular">📱 QR Celular</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Box Na Nota (fiado) -->
-              <div id="box-nanota-pdv" style="display:none;padding:4px 8px 0">
-                <div style="font-size:0.72rem;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">📋 Poner en la Cuenta del Cliente</div>
-                <input type="text" id="pdv-nota-busca" placeholder="Buscar cliente..."
-                  oninput="pdvFiltrarClientesNota()"
-                  style="width:100%;padding:6px 9px;border:1.5px solid #ede9fe;border-radius:6px;font-size:0.8rem;outline:none;margin-bottom:5px">
-                <div id="pdv-nota-lista" style="max-height:100px;overflow-y:auto;display:flex;flex-direction:column;gap:3px"></div>
-                <div id="pdv-nota-selecionado" style="display:none;background:#faf5ff;border:1.5px solid #c4b5fd;border-radius:7px;padding:7px 10px;margin-top:5px">
-                  <div style="display:flex;justify-content:space-between;align-items:center">
-                    <div>
-                      <div id="pdv-nota-sel-nome" style="font-weight:700;font-size:0.85rem"></div>
-                      <div id="pdv-nota-sel-tel" style="font-size:0.75rem;color:#7c3aed;margin-top:1px"></div>
-                    </div>
-                    <button onclick="pdvDeselecionarNota()" style="background:#fee2e2;border:none;border-radius:5px;padding:3px 7px;cursor:pointer;font-size:0.75rem;color:#dc2626">✕</button>
-                  </div>
-                </div>
-                <!-- Cadastrar novo cliente inline -->
-                <div id="pdv-nota-novo" style="display:none;border-top:1px dashed #c4b5fd;margin-top:8px;padding-top:8px">
-                  <div style="font-size:0.72rem;font-weight:700;color:#7c3aed;margin-bottom:5px">+ Nuevo cliente</div>
-                  <input type="text" id="pdv-nota-novo-nome" placeholder="Nome *"
-                    style="width:100%;padding:6px 9px;border:1.5px solid #ede9fe;border-radius:6px;font-size:0.8rem;outline:none;margin-bottom:4px">
-                  <input type="tel" id="pdv-nota-novo-tel" placeholder="Teléfono *"
-                    style="width:100%;padding:6px 9px;border:1.5px solid #ede9fe;border-radius:6px;font-size:0.8rem;outline:none;margin-bottom:4px">
-                  <button onclick="pdvCadastrarClienteNota()"
-                    style="width:100%;padding:6px;background:#7c3aed;color:#fff;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-size:0.78rem">
-                    ✅ Cadastrar e Selecionar
-                  </button>
-                </div>
-                <button onclick="document.getElementById('pdv-nota-novo').style.display = document.getElementById('pdv-nota-novo').style.display==='none'?'block':'none'"
-                  style="width:100%;padding:5px;background:#f3f0ff;color:#7c3aed;border:1.5px dashed #c4b5fd;border-radius:6px;font-size:0.74rem;font-weight:600;cursor:pointer;margin-top:5px">
-                  + Cadastrar novo cliente
-                </button>
-              </div>
-
-              </div><!-- /pdv-dir-bottom-scroll -->
-
-              <!-- Factura Electrónica -->
-              <div style="padding: 4px 8px 0; border-top: 1px solid #f0f0f0; margin-top: 8px;">
-                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-                  <input type="checkbox" id="pdv-check-factura" onchange="pdvToggleFactura()" style="width: 18px; height: 18px;">
-                  <label for="pdv-check-factura" style="font-weight: 700; font-size: 0.85rem; cursor: pointer;">
-                    📄 Necesito Factura Electrónica
-                  </label>
-                </div>
-                <div id="pdv-box-ruc" style="display: none; margin-top: 4px;">
-                  <input type="text" id="pdv-cli-ruc" class="pdv-dir-input" placeholder="RUC o CI (opcional)" style="margin-bottom: 4px;">
-                  <input type="text" id="pdv-cli-razao" class="pdv-dir-input" placeholder="Razón Social (opcional)">
-                  <small style="color: #888; font-size: 0.7rem;">Si no se ingresa RUC, se emitirá a Consumidor Final.</small>
-                </div>
-              </div>
-
-              <!-- Botões de ação -->
-              <div class="pdv-dir-footer" style="flex-wrap:wrap">
-                <button class="pdv-btn-cancelar" onclick="limparCarrinhoPDV()">
-                  <i class="fas fa-times-circle"></i> <span data-i18n="geral.cancelar">Cancelar</span>
-                </button>
-                <button class="pdv-btn-lancar" onclick="salvarPedidoBalcao()" id="pdv-btn-lancar">
-                  <i class="fas fa-check-circle"></i> <span id="pdv-btn-text" data-i18n="pdv.receber_finalizar">Receber e Finalizar</span>
-                </button>
-                <!-- Só aparece quando uma mesa está aberta na comanda: fecha a mesa,
-                     exige forma de pagamento e dá baixa no pedido inteiro. -->
-                <button class="pdv-btn-lancar" id="pdv-btn-finalizar-mesa"
-                  style="display:none;width:100%;margin-top:8px;background:linear-gradient(135deg,#e74c3c,#c0392b)"
-                  onclick="finalizarPedidoMesaPDV()">
-                  <i class="fas fa-flag-checkered"></i> <span data-i18n="pdv.finalizar_pedido">Finalizar Pedido</span>
-                </button>
-              </div>
-            </div>
+</div>
 
           </div>
         </div>
@@ -1781,6 +1562,55 @@
           <button class="btn btn-primary" onclick="salvarTabelaFrete()" style="margin-top:14px;width:100%">
             <i class="fas fa-save"></i> <span data-i18n="cfg.salvar_frete">Guardar Tabla de Envío</span>
           </button>
+        </div>
+
+                <!-- ── ZONAS ESPECIAIS DE ENTREGA ─────────────────────── -->
+        <div class="card cfg-card" style="margin-top:16px">
+          <div class="cfg-section-title">
+            <i class="fas fa-map-marked-alt"></i> Zonas de Entrega Especiais
+            <small style="font-weight:400;color:#888;font-size:0.82rem;display:block;margin-top:4px">
+              Crie zonas (ex: Centro, Bairro X) com um raio e um valor fixo. Elas ignoram a tabela por km.
+            </small>
+          </div>
+          
+          <div id="zonas-especiais-lista" style="margin-bottom:12px"></div>
+          
+          <div style="background:#f8fafc;border:1.5px dashed #cbd5e1;border-radius:10px;padding:14px">
+            <div style="font-weight:700;font-size:0.88rem;margin-bottom:10px;color:#334155">➕ Adicionar Nova Zona</div>
+            <div class="cfg-grid">
+              <div class="form-group">
+                <label>Nome da Zona</label>
+                <input type="text" id="zona-nome" class="form-control" placeholder="Ex: Zona Centro">
+              </div>
+              <div class="form-group">
+                <label>Link do Google Maps (Opcional)</label>
+                <input type="text" id="zona-link" class="form-control" placeholder="Cole o link do Maps aqui" oninput="_extrairCoordsZona(this.value)">
+              </div>
+              <div class="form-group">
+                <label>Latitude</label>
+                <input type="number" id="zona-lat" class="form-control" step="0.000001">
+              </div>
+              <div class="form-group">
+                <label>Longitude</label>
+                <input type="number" id="zona-lng" class="form-control" step="0.000001">
+              </div>
+              <div class="form-group">
+                <label>Raio (km)</label>
+                <input type="number" id="zona-raio" class="form-control" value="2" min="0.1" step="0.1">
+              </div>
+              <div class="form-group">
+                <label>Valor Cliente (Gs)</label>
+                <input type="number" id="zona-valor-cliente" class="form-control" value="5000" min="0" step="500">
+              </div>
+              <div class="form-group">
+                <label>Repasse Motoboy (Gs)</label>
+                <input type="number" id="zona-valor-motoboy" class="form-control" value="5000" min="0" step="500">
+              </div>
+            </div>
+            <button class="btn btn-success" onclick="adicionarZonaEspecial()" style="margin-top:10px;width:100%">
+              <i class="fas fa-plus"></i> Adicionar Zona
+            </button>
+          </div>
         </div>
 
         <!-- ── TAXA DE CARTÃO (repassada ao cliente: CartaoBR e Cartao) ── -->
@@ -3970,5 +3800,139 @@
       }
     });
   </script>
+
+  <!-- MODAL DE PAGAMENTO PDV -->
+<div id="modal-pagamento-pdv" class="modal-overlay" style="display:none; z-index:9999;">
+  <div class="modal-content" style="max-width:480px; padding:24px;">
+    
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; border-bottom:2px solid #eee; padding-bottom:12px;">
+      <h3 style="margin:0; font-size:1.3rem; color:#1a1a2e;"><i class="fas fa-cash-register" style="color:var(--primary)"></i> Finalizar Venda</h3>
+      <button onclick="fecharModal('modal-pagamento-pdv')" style="background:none; border:none; font-size:1.5rem; cursor:pointer; color:#999;">✕</button>
+    </div>
+
+    <!-- Total em Destaque -->
+    <div style="background:#f0fdf4; border:1.5px solid #86efac; border-radius:12px; padding:16px; text-align:center; margin-bottom:16px;">
+      <div style="font-size:0.85rem; color:#166534; font-weight:600; margin-bottom:4px;">TOTAL A PAGAR</div>
+      <div style="font-size:2.2rem; font-weight:900; color:#15803d; line-height:1;">Gs <span id="pdv-pagto-total">0</span></div>
+      <div id="pdv-pagto-desconto-label" style="display:none; font-size:0.8rem; color:#e67e22; margin-top:6px;">Desc: Gs <span id="pdv-pagto-desconto-val">0</span></div>
+    </div>
+
+    <!-- Desconto -->
+    <div class="form-group" style="margin-bottom:12px; background:#fffbf0; border:1px solid #ffe082; padding:10px; border-radius:8px;">
+      <label style="font-size:0.8rem; font-weight:700; color:#7d5a00; display:flex; align-items:center; gap:6px;">
+        🏷️ Desconto
+      </label>
+      <div style="display:flex; gap:8px; margin-top:4px;">
+        <select id="pdv-desconto-tipo" onchange="atualizarInfoPagPDV(window._pdvTotalBaseSemTaxas || 0)" style="flex:0 0 90px; padding:6px; border-radius:6px; border:1px solid #ddd;">
+          <option value="fixo">Gs fixo</option>
+          <option value="percentual">% perc.</option>
+        </select>
+        <input type="number" id="pdv-desconto-val" min="0" step="1000" placeholder="0" oninput="atualizarCarrinhoPDV()" style="flex:1; padding:6px; border-radius:6px; border:1px solid #ddd; text-align:center;">
+      </div>
+    </div>
+
+    <!-- Formas de Pagamento -->
+    <div class="form-group" style="margin-bottom:12px;">
+      <label style="font-size:0.85rem; font-weight:700; color:#333;">Forma de Pagamento</label>
+      <select id="balcao-pag" class="form-control" onchange="atualizarInfoPagPDV(window._pdvTotalBaseSemTaxas || 0)" style="font-size:1rem; font-weight:600; padding:10px;">
+        <option value="Efetivo">💵 Efectivo</option>
+        <option value="TarjetaDebito">💳 Tarjeta Débito</option>
+        <option value="TarjetaCredito">💳 Tarjeta Crédito</option>
+        <option value="TarjetaBRDebito">💳🇧🇷 Tarjeta BR Débito</option>
+        <option value="TarjetaBRCredito">💳🇧🇷 Tarjeta BR Crédito</option>
+        <option value="Pix">✅ Pix</option>
+        <option value="Transferencia">🏦 Alias (PY)</option>
+        <option value="Qr">📱 QR</option>
+        <option value="Multipagamento">🔀 Dividir</option>
+        <option value="Mensalista">🎫 Mensalista</option>
+        <option value="NaNota">📋 Colocar na Nota</option>
+      </select>
+      <div id="balcao-pag-info" style="display:none; background:#e8f5e9; border:1px solid #4caf50; border-radius:5px; padding:6px 10px; font-size:0.85rem; color:#1b5e20; margin-top:6px;"></div>
+    </div>
+
+    <!-- Taxa de Serviço (Opcional) -->
+    <div style="display:flex; align-items:center; gap:8px; background:#fff8e1; border:1.5px solid #f0c14b; border-radius:8px; padding:8px 12px; margin-bottom:12px;">
+      <input type="checkbox" id="pdv-check-taxa-servico" onchange="pdvToggleTaxaServico()" style="width:18px; height:18px; cursor:pointer;">
+      <label for="pdv-check-taxa-servico" style="font-size:0.85rem; font-weight:700; color:#7a5c00; flex:1; cursor:pointer;">Cobrar <span id="pdv-taxa-servico-pct-label">10</span>% de Taxa de Serviço</label>
+      <input type="number" id="pdv-taxa-servico-pct" value="10" min="0" max="100" step="1" style="width:50px; padding:4px; border:1px solid #f0c14b; border-radius:5px; text-align:center; display:none;" oninput="pdvAtualizarPctServico()">
+    </div>
+
+    <!-- Área Dinâmica (Troco, Mensalista, NaNota, etc) -->
+    <div id="pdv-dynamic-area">
+      
+      <!-- Box Efetivo (Troco) -->
+      <div id="pdv-efetivo-box" style="display:none; background:#f8fafc; border:1.5px solid #cbd5e1; border-radius:8px; padding:12px; margin-bottom:12px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <label style="font-size:0.85rem; font-weight:700; color:#475569; white-space:nowrap;">💵 Recebido</label>
+          <input id="pdv-valor-recebido" type="number" min="0" step="1000" placeholder="Gs 0" oninput="pdvCalcTroco()" style="flex:1; padding:8px 12px; border:1.5px solid #cbd5e1; border-radius:6px; font-size:1.1rem; font-weight:800; text-align:right; color:#0f172a;">
+        </div>
+        <div id="pdv-troco-row" style="display:none; padding:8px 12px; border-radius:6px; border:1.5px solid #86efac; background:#f0fdf4; justify-content:space-between; align-items:center;">
+          <span style="font-size:0.9rem; font-weight:700; color:#374151;">💵 Troco / Vuelta</span>
+          <span id="pdv-troco-val" style="font-size:1.2rem; font-weight:900; color:#15803d;">Gs 0</span>
+        </div>
+      </div>
+
+      <!-- Multipagamento -->
+      <div id="box-multi-pdv" style="display:none; margin-bottom:12px;">
+        <button type="button" onclick="voltarPagamentoPDVUnico()" style="width:100%; padding:8px; background:#eef4ff; color:#2980b9; border:1.5px solid #2980b9; border-radius:6px; font-weight:700; cursor:pointer; font-size:0.8rem; margin-bottom:8px;">🔁 Pagamento único</button>
+        <div id="multi-partes-pdv"></div>
+        <button type="button" onclick="adicionarPartePagamentoPDV()" style="width:100%; padding:8px; background:#f8f9fa; color:#555; border:1.5px dashed #ccc; border-radius:6px; font-weight:600; cursor:pointer; font-size:0.8rem; margin-top:6px;">+ Adicionar forma</button>
+        <div id="multi-status-pdv" style="display:none; margin-top:8px; padding:8px 12px; border-radius:6px; background:#eafaf1; border:1.5px solid #27ae60;"><span id="multi-restante-pdv" style="font-weight:700; font-size:0.9rem;"></span></div>
+      </div>
+
+      <!-- Box Mensalista -->
+      <div id="box-mensalista-pdv" style="display:none; margin-bottom:12px;">
+        <input type="text" id="pdv-mens-busca" placeholder="Buscar mensalista..." oninput="pdvFiltrarMensalistas()" class="form-control" style="margin-bottom:6px;">
+        <div id="pdv-mens-lista" style="max-height:120px; overflow-y:auto; display:flex; flex-direction:column; gap:4px;"></div>
+        <div id="pdv-mens-selecionado" style="display:none; background:#f0fdf4; border:1.5px solid #86efac; border-radius:8px; padding:10px; margin-top:8px;">
+          <div style="display:flex; justify-content:space-between;">
+            <div><div id="pdv-mens-sel-nome" style="font-weight:700;"></div><div id="pdv-mens-sel-saldo" style="font-size:0.75rem; color:#15803d;"></div></div>
+            <button onclick="pdvDeselecionarMensalista()" style="background:#fee2e2; border:none; border-radius:4px; padding:4px 8px; cursor:pointer;">✕</button>
+          </div>
+          <div id="pdv-mens-status" style="margin-top:8px; padding:8px; border-radius:6px; font-size:0.8rem; font-weight:600;"></div>
+          <div id="pdv-mens-complemento" style="display:none; margin-top:8px;">
+            <select id="pdv-mens-metodo-resto" class="form-control">
+              <option value="Efetivo">💵 Efectivo</option>
+              <option value="Cartao">💳 Tarjeta</option>
+              <option value="Pix">✅ Pix</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Box Na Nota -->
+      <div id="box-nanota-pdv" style="display:none; margin-bottom:12px;">
+        <input type="text" id="pdv-nota-busca" placeholder="Buscar cliente..." oninput="pdvFiltrarClientesNota()" class="form-control" style="margin-bottom:6px;">
+        <div id="pdv-nota-lista" style="max-height:100px; overflow-y:auto; display:flex; flex-direction:column; gap:4px;"></div>
+        <div id="pdv-nota-selecionado" style="display:none; background:#faf5ff; border:1.5px solid #c4b5fd; border-radius:8px; padding:10px; margin-top:8px;">
+          <div style="display:flex; justify-content:space-between;">
+            <div><div id="pdv-nota-sel-nome" style="font-weight:700;"></div><div id="pdv-nota-sel-tel" style="font-size:0.75rem; color:#7c3aed;"></div></div>
+            <button onclick="pdvDeselecionarNota()" style="background:#fee2e2; border:none; border-radius:4px; padding:4px 8px; cursor:pointer;">✕</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Factura -->
+    <div style="margin-bottom:16px;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <input type="checkbox" id="pdv-check-factura" onchange="pdvToggleFactura()" style="width: 18px; height: 18px;">
+        <label for="pdv-check-factura" style="font-weight: 700; font-size: 0.9rem; cursor: pointer;">📄 Necesito Factura Electrónica</label>
+      </div>
+      <div id="pdv-box-ruc" style="display: none; margin-top: 8px; padding: 10px; background:#f8fafc; border-radius:8px; border:1px solid #e2e8f0;">
+        <input type="text" id="pdv-cli-ruc" class="form-control" placeholder="RUC o CI (opcional)" style="margin-bottom: 6px;">
+        <input type="text" id="pdv-cli-razao" class="form-control" placeholder="Razón Social (opcional)">
+      </div>
+    </div>
+
+    <!-- Botão Confirmar -->
+    <button onclick="salvarPedidoBalcao()" style="width:100%; padding:16px; background:#1a7a2e; color:#fff; border:none; border-radius:10px; font-size:1.1rem; font-weight:800; cursor:pointer; display:flex; justify-content:center; align-items:center; gap:8px; box-shadow:0 4px 12px rgba(26,122,46,0.3);">
+      <i class="fas fa-check-circle"></i> Confirmar e Imprimir
+    </button>
+
+  </div>
+</div>
+
 </body>
 </html>
